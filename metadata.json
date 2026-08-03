@@ -1,0 +1,6 @@
+{
+  "name": "ARKA - Geospatial Command Platform",
+  "description": "Advanced Real-Time Kinetic Analysis (ARKA) - Geospatial Situational Awareness Platform for Bhubaneswar",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
