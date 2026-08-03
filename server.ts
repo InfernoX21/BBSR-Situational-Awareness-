@@ -834,6 +834,47 @@ app.post('/api/telegram/send-test', (req, res) => {
   });
 });
 
+let activeBotToken = process.env.TELEGRAM_BOT_TOKEN || '';
+
+app.post('/api/telegram/set-token', async (req, res) => {
+  const { token } = req.body || {};
+  if (!token || typeof token !== 'string') {
+    return res.status(400).json({ success: false, message: 'Bot Token string is required.' });
+  }
+
+  const cleanToken = token.trim();
+  try {
+    const testRes = await fetch(`https://api.telegram.org/bot${cleanToken}/getMe`);
+    const data = await testRes.json();
+
+    if (data.ok && data.result) {
+      activeBotToken = cleanToken;
+      process.env.TELEGRAM_BOT_TOKEN = cleanToken;
+
+      try {
+        const envPath = path.join(process.cwd(), '.env');
+        fs.writeFileSync(envPath, `TELEGRAM_BOT_TOKEN="${cleanToken}"\nGEMINI_API_KEY="${process.env.GEMINI_API_KEY || ''}"\n`);
+      } catch (err) {}
+
+      // Trigger active polling loop
+      startTelegramPolling(cleanToken);
+
+      return res.json({
+        success: true,
+        message: `Successfully connected and activated Telegram bot @${data.result.username} (${data.result.first_name})!`,
+        botUsername: `@${data.result.username}`,
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      message: `Invalid Bot Token: ${data.description || 'Telegram API returned error.'}`,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: `Failed to connect to Telegram API: ${err.message}` });
+  }
+});
+
 app.get('/api/telegram/health', async (req, res) => {
   const token = process.env.TELEGRAM_BOT_TOKEN || '';
   const isConfigured = !!(token && !token.includes('ExampleBotToken'));
@@ -903,15 +944,20 @@ app.post('/api/telegram/test-chat', (req, res) => {
   });
 });
 
+let isPollingActive = false;
+
 // Active Telegram Long-Polling Loop for @Arkacmd_bot
-async function startTelegramPolling() {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
+async function startTelegramPolling(overrideToken?: string) {
+  const token = overrideToken || activeBotToken || process.env.TELEGRAM_BOT_TOKEN;
   if (!token || token.includes('ExampleBotToken')) {
     console.log('[Telegram Bot] TELEGRAM_BOT_TOKEN not configured in .env. Waiting for Bot Token...');
     return;
   }
 
-  console.log('[Telegram Bot] Starting live Telegram long-polling for @Arkacmd_bot...');
+  if (isPollingActive && !overrideToken) return;
+  isPollingActive = true;
+
+  console.log('[Telegram Bot] Starting live Telegram long-polling connection for @Arkacmd_bot...');
   let lastUpdateId = 0;
 
   while (true) {

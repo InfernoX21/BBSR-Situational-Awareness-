@@ -154,46 +154,86 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-          {/* Account Linking Workflow */}
+          {/* Account Linking Workflow & Bot Token Activation */}
           <div className="p-3.5 bg-black border border-white/10 rounded space-y-3">
             <div className="text-white/60 font-bold text-[11px] uppercase tracking-wider flex items-center space-x-1.5">
-              <Smartphone className="w-4 h-4 text-[#06B6D4]" />
-              <span>Link Telegram Account (@Arkacmd_bot)</span>
+              <Key className="w-4 h-4 text-[#10B981]" />
+              <span>Step 1: Activate Telegram Bot API Token (@BotFather)</span>
             </div>
 
             <p className="text-white/40 text-[10px] leading-relaxed">
-              Send <code className="text-[#06B6D4] bg-white/5 px-1 py-0.5 rounded">/start</code> to <strong>@Arkacmd_bot</strong> on Telegram to receive your 6-digit verification code.
+              Paste your Bot Token from <strong>@BotFather</strong> below to activate live responses for Telegram.
             </p>
 
-            <form onSubmit={handleVerifyCode} className="flex items-center space-x-2">
+            <form onSubmit={handleSetBotToken} className="flex items-center space-x-2">
               <input
-                type="text"
-                maxLength={6}
-                value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value)}
-                placeholder="Enter 6-digit code..."
-                className="bg-black border border-white/20 focus:border-[#06B6D4] rounded px-3 py-1.5 text-xs text-white placeholder-white/30 font-mono focus:outline-none w-full"
+                type="password"
+                value={botTokenInput}
+                onChange={(e) => setBotTokenInput(e.target.value)}
+                placeholder="e.g. 7891234567:AAx..."
+                className="bg-black border border-white/20 focus:border-[#10B981] rounded px-3 py-1.5 text-xs text-white placeholder-white/30 font-mono focus:outline-none w-full"
               />
               <button
                 type="submit"
-                disabled={isLinking || !verificationCode.trim()}
-                className="px-3.5 py-1.5 rounded bg-[#06B6D4] text-black font-bold text-xs uppercase hover:bg-cyan-500 disabled:opacity-50 transition-all cursor-pointer shrink-0"
+                disabled={isSettingToken || !botTokenInput.trim()}
+                className="px-3.5 py-1.5 rounded bg-[#10B981] text-black font-bold text-xs uppercase hover:bg-emerald-400 disabled:opacity-50 transition-all cursor-pointer shrink-0"
               >
-                {isLinking ? 'Verifying...' : 'Link Account'}
+                {isSettingToken ? 'Connecting...' : 'Activate Token'}
               </button>
             </form>
 
-            {linkingMessage && (
+            {botTokenStatus && (
               <div
                 className={`p-2 rounded text-[10px] font-bold ${
-                  linkingMessage.type === 'success'
+                  botTokenStatus.success
                     ? 'bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/30'
                     : 'bg-[#EF4444]/10 text-[#EF4444] border border-[#EF4444]/30'
                 }`}
               >
-                {linkingMessage.text}
+                {botTokenStatus.text}
               </div>
             )}
+
+            <div className="pt-2 border-t border-white/10 space-y-2">
+              <div className="text-white/60 font-bold text-[11px] uppercase tracking-wider flex items-center space-x-1.5">
+                <Smartphone className="w-4 h-4 text-[#06B6D4]" />
+                <span>Step 2: Link Dashboard Session</span>
+              </div>
+
+              <p className="text-white/40 text-[10px] leading-relaxed">
+                Send <code className="text-[#06B6D4] bg-white/5 px-1 py-0.5 rounded">/start</code> to your bot on Telegram to receive your 6-digit verification code.
+              </p>
+
+              <form onSubmit={handleVerifyCode} className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                  placeholder="Enter 6-digit code..."
+                  className="bg-black border border-white/20 focus:border-[#06B6D4] rounded px-3 py-1.5 text-xs text-white placeholder-white/30 font-mono focus:outline-none w-full"
+                />
+                <button
+                  type="submit"
+                  disabled={isLinking || !verificationCode.trim()}
+                  className="px-3.5 py-1.5 rounded bg-[#06B6D4] text-black font-bold text-xs uppercase hover:bg-cyan-500 disabled:opacity-50 transition-all cursor-pointer shrink-0"
+                >
+                  {isLinking ? 'Verifying...' : 'Link Account'}
+                </button>
+              </form>
+
+              {linkingMessage && (
+                <div
+                  className={`p-2 rounded text-[10px] font-bold ${
+                    linkingMessage.type === 'success'
+                      ? 'bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/30'
+                      : 'bg-[#EF4444]/10 text-[#EF4444] border border-[#EF4444]/30'
+                  }`}
+                >
+                  {linkingMessage.text}
+                </div>
+              )}
+            </div>
 
             {isLinked && (
               <div className="p-2.5 bg-white/[0.02] border border-white/10 rounded flex items-center justify-between text-[10px]">
