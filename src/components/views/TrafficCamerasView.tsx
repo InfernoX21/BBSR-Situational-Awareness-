@@ -55,7 +55,34 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
   // Laptop Camera State
   const [isWebcamActive, setIsWebcamActive] = useState(false);
   const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const webcamRef = useRef<HTMLVideoElement | null>(null);
+
+  const enableCamera = async () => {
+    try {
+      setCameraError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+      });
+      setWebcamStream(stream);
+      setIsWebcamActive(true);
+      setSelectedCameraId('CAM-LAPTOP-01');
+    } catch (err: any) {
+      console.warn('Laptop camera access error:', err);
+      setCameraError('Camera access denied or unavailable. Click "Connect Laptop Cam" to retry.');
+    }
+  };
+
+  useEffect(() => {
+    // Automatically request laptop camera access on mount
+    enableCamera();
+
+    return () => {
+      if (webcamStream) {
+        webcamStream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (webcamRef.current && webcamStream) {
@@ -71,16 +98,7 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
       setWebcamStream(null);
       setIsWebcamActive(false);
     } else {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-        });
-        setWebcamStream(stream);
-        setIsWebcamActive(true);
-        setSelectedCameraId('CAM-LAPTOP-01');
-      } catch (err) {
-        alert('Could not access laptop camera. Please grant camera permissions in your browser.');
-      }
+      await enableCamera();
     }
   };
 
@@ -313,6 +331,32 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
             </span>
             <span className="text-white/40 text-[10px]">H.265 / WebRTC Stream</span>
           </div>
+
+          {/* Camera Permission Status Banner */}
+          {isWebcamActive ? (
+            <div className="p-2 rounded bg-[#10B981]/10 border border-[#10B981]/40 text-[#10B981] flex items-center justify-between text-[10px] font-bold">
+              <span className="flex items-center space-x-2">
+                <span className="w-2 h-2 rounded-full bg-[#10B981] animate-ping" />
+                <span>🎥 LOCAL LAPTOP CAMERA CONNECTED — LIVE STREAMING IN SLOT 1 WITH SEMANTIC EDGE 5G AI OVERLAYS</span>
+              </span>
+              <button onClick={toggleWebcam} className="underline text-white hover:text-[#10B981] cursor-pointer">
+                Disconnect
+              </button>
+            </div>
+          ) : (
+            <div className="p-2 rounded bg-amber-500/10 border border-amber-500/40 text-amber-400 flex items-center justify-between text-[10px] font-bold">
+              <span className="flex items-center space-x-2">
+                <CameraIcon className="w-4 h-4 animate-pulse text-amber-400" />
+                <span>ALLOW BROWSER CAMERA PERMISSION TO USE YOUR LAPTOP CAMERA IN REAL-TIME</span>
+              </span>
+              <button
+                onClick={toggleWebcam}
+                className="px-2.5 py-1 rounded bg-amber-400 text-black font-extrabold uppercase hover:bg-amber-300 transition-all cursor-pointer"
+              >
+                Grant Camera Access
+              </button>
+            </div>
+          )}
 
           {/* Dynamic Grid Layout */}
           <div
