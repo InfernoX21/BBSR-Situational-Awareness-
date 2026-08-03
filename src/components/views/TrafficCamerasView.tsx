@@ -185,17 +185,17 @@ const LiveYoloDetectorCanvas: React.FC<{
 
       // Label Header
       ctx.fillStyle = '#064E3B';
-      ctx.fillRect(drawX, drawY - 18, 160, 18);
+      ctx.fillRect(drawX, drawY - 18, 175, 18);
       ctx.fillStyle = '#6EE7B7';
       ctx.font = 'bold 9px monospace';
-      ctx.fillText(`SEMENTIC EDGE YOLOv8 | PERSON #106 [99.4%]`, drawX + 4, drawY - 5);
+      ctx.fillText(`yolov8n.pt | PERSON #106 [99.4%]`, drawX + 4, drawY - 5);
 
       // Velocity Tag
       ctx.fillStyle = 'rgba(0,0,0,0.85)';
-      ctx.fillRect(drawX + boxW - 85, drawY + boxH - 15, 82, 14);
+      ctx.fillRect(drawX + boxW - 115, drawY + boxH - 15, 112, 14);
       ctx.fillStyle = '#10B981';
       ctx.font = 'bold 8px monospace';
-      ctx.fillText(`YOLOv8 INFERENCE`, drawX + boxW - 80, drawY + boxH - 4);
+      ctx.fillText(`YOLOv8 DETECTOR ACTIVE`, drawX + boxW - 110, drawY + boxH - 4);
 
       // 3. Dynamic Vehicle Bounding Box from YOLO model detections
       const box2X = Math.min(width - 85, Math.max(15, width - drawX - 60));
