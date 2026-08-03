@@ -6,11 +6,26 @@ import {
 } from '../../types';
 import { OpenClawToolRegistry, ToolExecutionContext } from './OpenClawToolRegistry';
 
+// Dynamic Bhubaneswar Spatial Entity Registry
+const BHUBANESWAR_LOCATIONS: Record<string, { lat: number; lng: number; name: string }> = {
+  patia: { lat: 20.3540, lng: 85.8150, name: 'Patia Square' },
+  aiims: { lat: 20.2285, lng: 85.7780, name: 'AIIMS Bhubaneswar' },
+  'jayadev vihar': { lat: 20.3010, lng: 85.8250, name: 'Jayadev Vihar Flyover' },
+  'master canteen': { lat: 20.2660, lng: 85.8400, name: 'Master Canteen Station Square' },
+  rasulgarh: { lat: 20.2920, lng: 85.8650, name: 'Rasulgarh Square NH-16' },
+  'vani vihar': { lat: 20.2980, lng: 85.8380, name: 'Vani Vihar Square' },
+  khandagiri: { lat: 20.2580, lng: 85.7850, name: 'Khandagiri Square' },
+  'saheed nagar': { lat: 20.2880, lng: 85.8420, name: 'Saheed Nagar Commercial Zone' },
+  'capital hospital': { lat: 20.2620, lng: 85.8260, name: 'Capital Hospital Campus' },
+  kims: { lat: 20.3520, lng: 85.8170, name: 'KIMS Medical College' },
+  janpath: { lat: 20.2850, lng: 85.8350, name: 'Janpath Boulevard Corridor' },
+  cuttack: { lat: 20.3150, lng: 85.8650, name: 'Cuttack-Puri Road Axis' },
+};
+
 export class OpenClawOrchestrator {
   private static instance: OpenClawOrchestrator;
   private toolRegistry = OpenClawToolRegistry.getInstance();
 
-  // Multi-Agent Roster Definitions
   private agents: Record<OpenClawAgentId, OpenClawAgentStatus> = {
     supervisor: {
       id: 'supervisor',
@@ -93,12 +108,10 @@ export class OpenClawOrchestrator {
     const executionId = `EXEC-OPENCLAW-${Date.now()}`;
     const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-    // Update command history memory
     this.sessionContext.recentCommands.push(userPrompt);
 
     const steps: OpenClawWorkflowStep[] = [];
     const supervisorPlan: string[] = [];
-    let finalSummary = '';
     const recommendations: string[] = [];
     let stateChanges: OpenClawExecutionResult['stateChanges'] = {};
     let requiresConfirmation: OpenClawExecutionResult['requiresConfirmation'] = undefined;
@@ -111,307 +124,183 @@ export class OpenClawOrchestrator {
     this.agents.supervisor.status = 'BUSY';
 
     // ----------------------------------------------------------------------
-    // WORKFLOW MATCHING ENGINE
+    // DYNAMIC SPATIAL & INTENT PARSER (No Hardcoding)
     // ----------------------------------------------------------------------
-    if (promptLower.includes('fire') && promptLower.includes('patia')) {
-      // Workflow: Investigate Fire near Patia
-      supervisorPlan.push('1. Query news feeds and incident registry for Patia Fire hazard.');
-      supervisorPlan.push('2. Fly Digital Twin camera to Patia coordinates (20.3540, 85.8150).');
-      supervisorPlan.push('3. Activate Fire, Infrastructure, and Hospital map layers.');
-      supervisorPlan.push('4. Query nearest hospitals (KIMS & SUM Hospital) and Fire Tenders.');
-      supervisorPlan.push('5. Generate AI dispatch recommendations.');
+    let targetLocation = { lat: 20.2961, lng: 85.8245, name: 'Bhubaneswar Central Command' };
+    let matchedLocationKey = '';
 
-      // Step 1: Intelligence Agent
-      this.agents.intelligence.status = 'BUSY';
-      const step1Result = await this.toolRegistry.executeTool('intelligence_search_news', { query: 'Patia fire' }, context);
-      steps.push({
-        id: 'step-1',
-        agentId: 'intelligence',
-        agentName: 'Intelligence Agent',
-        toolName: 'intelligence_search_news',
-        description: 'Searched live news & advisory feeds for Patia emergency reporting.',
-        status: 'COMPLETED',
-        result: step1Result,
-        durationMs: 240,
-      });
-      this.agents.intelligence.status = 'COMPLETED';
+    for (const [key, loc] of Object.entries(BHUBANESWAR_LOCATIONS)) {
+      if (promptLower.includes(key)) {
+        targetLocation = loc;
+        matchedLocationKey = key;
+        break;
+      }
+    }
 
-      // Step 2: GIS Agent - Fly Camera
-      this.agents.gis.status = 'BUSY';
-      const step2Result = await this.toolRegistry.executeTool('gis_fly_to_location', { locationName: 'Patia Square', lat: 20.3540, lng: 85.8150, zoom: 16 }, context);
-      steps.push({
-        id: 'step-2',
-        agentId: 'gis',
-        agentName: 'GIS & Map Agent',
-        toolName: 'gis_fly_to_location',
-        description: 'Centered map camera on Patia Square (20.3540, 85.8150).',
-        status: 'COMPLETED',
-        result: step2Result,
-        durationMs: 180,
-      });
-      stateChanges.targetLocation = { lat: 20.3540, lng: 85.8150, name: 'Patia Square' };
+    // Extract numerical radius if present (e.g. "5 km", "2km", "10 km")
+    const radiusMatch = promptLower.match(/(\d+)\s*km/);
+    const queriedRadiusKm = radiusMatch ? parseInt(radiusMatch[1], 10) : 5;
 
-      // Step 3: GIS Agent - Enable Layers
-      const step3Result = await this.toolRegistry.executeTool('gis_toggle_map_layer', { layerId: 'fire', enabled: true }, context);
-      steps.push({
-        id: 'step-3',
-        agentId: 'gis',
-        agentName: 'GIS & Map Agent',
-        toolName: 'gis_toggle_map_layer',
-        description: 'Activated Fire, Infrastructure, and Hospital overlays on Digital Twin.',
-        status: 'COMPLETED',
-        result: step3Result,
-        durationMs: 120,
-      });
-      this.agents.gis.status = 'COMPLETED';
-      stateChanges.layersToEnable = ['incidents', 'fire', 'hospitals', 'infrastructure'];
+    // Dynamic Intent Detection
+    const isFire = promptLower.includes('fire') || promptLower.includes('smoke') || promptLower.includes('burn');
+    const isFlood = promptLower.includes('flood') || promptLower.includes('rain') || promptLower.includes('water') || promptLower.includes('cyclone');
+    const isTraffic = promptLower.includes('traffic') || promptLower.includes('speed') || promptLower.includes('jam') || promptLower.includes('congestion') || promptLower.includes('route');
+    const isHospital = promptLower.includes('hospital') || promptLower.includes('icu') || promptLower.includes('medical') || promptLower.includes('ambulance');
+    const isPower = promptLower.includes('power') || promptLower.includes('outage') || promptLower.includes('substation') || promptLower.includes('grid') || promptLower.includes('utility');
+    const isIncidentQuery = promptLower.includes('incident') || promptLower.includes('emergency') || promptLower.includes('report') || promptLower.includes('investigate');
 
-      // Step 4: Infrastructure Agent
-      this.agents.infrastructure.status = 'BUSY';
-      const step4Result = await this.toolRegistry.executeTool('infrastructure_query_hospitals', { area: 'Patia' }, context);
-      steps.push({
-        id: 'step-4',
-        agentId: 'infrastructure',
-        agentName: 'Infrastructure Agent',
-        toolName: 'infrastructure_query_hospitals',
-        description: 'Identified KIMS Hospital & Trauma Center (1.2 km) with 14 available ICU beds.',
-        status: 'COMPLETED',
-        result: step4Result,
-        durationMs: 310,
-      });
-      this.agents.infrastructure.status = 'COMPLETED';
+    // Build Dynamic Supervisor Plan
+    supervisorPlan.push(`1. Decompose prompt intent and resolve target location: ${targetLocation.name}.`);
+    supervisorPlan.push(`2. Execute spatial radius query (${queriedRadiusKm} km) and activate relevant domain layers.`);
+    supervisorPlan.push(`3. Invoke specialized domain agents (GIS, Intelligence, Disaster, Infrastructure, Traffic).`);
+    supervisorPlan.push(`4. Synthesize C2 recommendations and update Digital Twin camera.`);
 
-      // Step 5: Resource & Reporting Agent
-      this.agents.reporting.status = 'BUSY';
-      const step5Result = await this.toolRegistry.executeTool('analytics_generate_report', { title: 'Patia Commercial Fire Operational Plan' }, context);
-      steps.push({
-        id: 'step-5',
-        agentId: 'reporting',
-        agentName: 'Reporting & Analytics Agent',
-        toolName: 'analytics_generate_report',
-        description: 'Synthesized response plan and calculated emergency unit ETAs.',
-        status: 'COMPLETED',
-        result: step5Result,
-        durationMs: 290,
-      });
-      this.agents.reporting.status = 'COMPLETED';
+    // ----------------------------------------------------------------------
+    // DYNAMIC MULTI-AGENT STEP EXECUTION
+    // ----------------------------------------------------------------------
+    let stepCount = 1;
 
-      finalSummary = 'OpenClaw completed Patia Fire investigation. Digital Twin centered on Patia Square. KIMS Trauma Center alerted for emergency reception. Fire Station 2 unit en route (ETA 3.8 mins).';
-      recommendations.push('Deploy 2 Water Tenders from Kalpana Fire Station.');
-      recommendations.push('Isolate TPCODL 11kV Feeder Line P-12 near Patia Plaza.');
-      recommendations.push('Alert KIMS Emergency Emergency Ward for burn reception.');
+    // 1. Intelligence Agent Step
+    this.agents.intelligence.status = 'BUSY';
+    const newsResult = await this.toolRegistry.executeTool('intelligence_search_news', { query: userPrompt }, context);
+    steps.push({
+      id: `step-${stepCount++}`,
+      agentId: 'intelligence',
+      agentName: 'Intelligence Agent',
+      toolName: 'intelligence_search_news',
+      description: `Ingested live intelligence feeds for query: "${userPrompt}".`,
+      status: 'COMPLETED',
+      result: newsResult,
+      durationMs: 180 + Math.floor(Math.random() * 80),
+    });
+    this.agents.intelligence.status = 'COMPLETED';
 
-    } else if (promptLower.includes('aiims') || promptLower.includes('5 km') || promptLower.includes('5km')) {
-      // Workflow: Show incidents within 5 km of AIIMS
-      supervisorPlan.push('1. Resolve spatial coordinates for AIIMS Bhubaneswar (20.2285, 85.7780).');
-      supervisorPlan.push('2. Perform 5 km spatial radius query across open emergency registry.');
-      supervisorPlan.push('3. Fly Digital Twin camera and focus incident cluster.');
+    // 2. GIS Agent Step (Fly Camera)
+    this.agents.gis.status = 'BUSY';
+    const flyResult = await this.toolRegistry.executeTool(
+      'gis_fly_to_location',
+      { locationName: targetLocation.name, lat: targetLocation.lat, lng: targetLocation.lng, zoom: matchedLocationKey ? 16 : 14 },
+      context
+    );
+    steps.push({
+      id: `step-${stepCount++}`,
+      agentId: 'gis',
+      agentName: 'GIS & Map Agent',
+      toolName: 'gis_fly_to_location',
+      description: `Flew Digital Twin camera to ${targetLocation.name} (${targetLocation.lat.toFixed(4)}, ${targetLocation.lng.toFixed(4)}).`,
+      status: 'COMPLETED',
+      result: flyResult,
+      durationMs: 150 + Math.floor(Math.random() * 50),
+    });
+    stateChanges.targetLocation = targetLocation;
 
-      this.agents.gis.status = 'BUSY';
-      const step1Result = await this.toolRegistry.executeTool('gis_fly_to_location', { locationName: 'AIIMS Bhubaneswar', lat: 20.2285, lng: 85.7780, zoom: 14 }, context);
-      steps.push({
-        id: 'step-1',
-        agentId: 'gis',
-        agentName: 'GIS & Map Agent',
-        toolName: 'gis_fly_to_location',
-        description: 'Navigated map to AIIMS Bhubaneswar (20.2285, 85.7780).',
-        status: 'COMPLETED',
-        result: step1Result,
-        durationMs: 190,
-      });
-      stateChanges.targetLocation = { lat: 20.2285, lng: 85.7780, name: 'AIIMS Bhubaneswar' };
+    // Determine layers to enable dynamically
+    const layersToEnable = ['incidents'];
+    if (isFlood) layersToEnable.push('weather', 'floodZones', 'drones');
+    if (isTraffic) layersToEnable.push('traffic');
+    if (isHospital) layersToEnable.push('hospitals');
+    if (isPower) layersToEnable.push('utilities', 'power');
+    if (isFire) layersToEnable.push('fire', 'hospitals');
 
-      this.agents.infrastructure.status = 'BUSY';
-      const step2Result = await this.toolRegistry.executeTool('gis_query_nearby_assets', { lat: 20.2285, lng: 85.7780, radiusKm: 5, assetType: 'all' }, context);
-      steps.push({
-        id: 'step-2',
-        agentId: 'gis',
-        agentName: 'GIS & Map Agent',
-        toolName: 'gis_query_nearby_assets',
-        description: 'Queried spatial radius of 5 km around AIIMS campus. Found 6 critical infrastructure nodes.',
-        status: 'COMPLETED',
-        result: step2Result,
-        durationMs: 250,
-      });
-      this.agents.gis.status = 'COMPLETED';
-      this.agents.infrastructure.status = 'COMPLETED';
+    const layerResult = await this.toolRegistry.executeTool('gis_toggle_map_layer', { layerId: layersToEnable[0], enabled: true }, context);
+    steps.push({
+      id: `step-${stepCount++}`,
+      agentId: 'gis',
+      agentName: 'GIS & Map Agent',
+      toolName: 'gis_toggle_map_layer',
+      description: `Activated map overlays: [${layersToEnable.join(', ')}].`,
+      status: 'COMPLETED',
+      result: layerResult,
+      durationMs: 120,
+    });
+    this.agents.gis.status = 'COMPLETED';
+    stateChanges.layersToEnable = layersToEnable;
 
-      finalSummary = 'Identified 2 open operational incidents within 5 km of AIIMS Bhubaneswar (Rasulgarh NH-16 Collision & Khandagiri Traffic Slowdown).';
-      recommendations.push('Maintain 108 Ambulance standby at AIIMS emergency ramp.');
-      recommendations.push('Keep NH-16 southbound lane clear for trauma transport.');
-
-    } else if (promptLower.includes('cyclone') || promptLower.includes('flood') || promptLower.includes('weather')) {
-      // Workflow: Prepare dashboard for cyclone & flood monitoring
-      supervisorPlan.push('1. Ingest IMD Doppler Weather Radar readings & precipitation intensity.');
-      supervisorPlan.push('2. Enable Weather, Flood Zones, Rain Radar, and Drone Surveillance layers.');
-      supervisorPlan.push('3. Query urban drainage bottlenecks (Jayadev Vihar & Acharya Vihar).');
-      supervisorPlan.push('4. Generate disaster response readiness executive summary.');
-
+    // 3. Domain Specific Agent Steps
+    if (isFlood || isFire) {
       this.agents.disaster.status = 'BUSY';
-      const step1Result = await this.toolRegistry.executeTool('weather_get_current', {}, context);
+      const weatherResult = await this.toolRegistry.executeTool('weather_get_current', {}, context);
       steps.push({
-        id: 'step-1',
+        id: `step-${stepCount++}`,
         agentId: 'disaster',
         agentName: 'Disaster & Weather Agent',
         toolName: 'weather_get_current',
-        description: 'Ingested live Doppler radar: Rain intensity 45 mm/hr, Flood Risk: SEVERE.',
+        description: `Ingested Doppler radar metrics: Rain ${weatherResult.rainIntensity} mm/hr, Flood Risk: ${weatherResult.floodRiskLevel}.`,
         status: 'COMPLETED',
-        result: step1Result,
+        result: weatherResult,
         durationMs: 210,
-      });
-
-      const step2Result = await this.toolRegistry.executeTool('weather_get_flood_warnings', {}, context);
-      steps.push({
-        id: 'step-2',
-        agentId: 'disaster',
-        agentName: 'Disaster & Weather Agent',
-        toolName: 'weather_get_flood_warnings',
-        description: 'Identified 4 flood inundation hotspots: Jayadev Vihar (2.2 ft), Acharya Vihar (1.5 ft).',
-        status: 'COMPLETED',
-        result: step2Result,
-        durationMs: 180,
       });
       this.agents.disaster.status = 'COMPLETED';
-
-      this.agents.gis.status = 'BUSY';
-      const step3Result = await this.toolRegistry.executeTool('gis_toggle_map_layer', { layerId: 'floodZones', enabled: true }, context);
-      steps.push({
-        id: 'step-3',
-        agentId: 'gis',
-        agentName: 'GIS & Map Agent',
-        toolName: 'gis_toggle_map_layer',
-        description: 'Activated Weather Radar, Flood Inundation Heatmap, and UAV Surveillance layers.',
-        status: 'COMPLETED',
-        result: step3Result,
-        durationMs: 140,
-      });
-      this.agents.gis.status = 'COMPLETED';
-      stateChanges.layersToEnable = ['weather', 'floodZones', 'incidents', 'drones'];
-
-      this.agents.reporting.status = 'BUSY';
-      const step4Result = await this.toolRegistry.executeTool('analytics_generate_report', { title: 'Bhubaneswar Urban Flood Operational Brief' }, context);
-      steps.push({
-        id: 'step-4',
-        agentId: 'reporting',
-        agentName: 'Reporting & Analytics Agent',
-        toolName: 'analytics_generate_report',
-        description: 'Generated storm readiness brief for Bhubaneswar Municipal Corporation (BMC).',
-        status: 'COMPLETED',
-        result: step4Result,
-        durationMs: 220,
-      });
-      this.agents.reporting.status = 'COMPLETED';
-
-      finalSummary = 'Prepared ARKA C2 Dashboard for Cyclone & Flood monitoring. Flood inundation layers activated across Jayadev Vihar & Patia corridors. BMC Dewatering Pump #4 activated.';
-      recommendations.push('Keep high-capacity dewatering pumps operational at Jayadev Vihar underpass.');
-      recommendations.push('Divert southbound traffic via Acharya Vihar flyover.');
-      recommendations.push('Issue public SMS advisory for low-lying areas near Patia Canal.');
-
-    } else if (promptLower.includes('hospital') || promptLower.includes('outage') || promptLower.includes('power')) {
-      // Workflow: Highlight hospitals affected by power outages
-      supervisorPlan.push('1. Query TPCODL 11kV electrical feeder grid and substation health.');
-      supervisorPlan.push('2. Cross-reference power outages with hospital trauma centers.');
-      supervisorPlan.push('3. Highlight affected healthcare nodes on Digital Twin map.');
-
-      this.agents.infrastructure.status = 'BUSY';
-      const step1Result = await this.toolRegistry.executeTool('infrastructure_query_utilities', { utilityType: 'power' }, context);
-      steps.push({
-        id: 'step-1',
-        agentId: 'infrastructure',
-        agentName: 'Infrastructure & Utility Agent',
-        toolName: 'infrastructure_query_utilities',
-        description: 'Queried TPCODL 11kV Feeder Line MC-84 and Master Canteen Substation.',
-        status: 'COMPLETED',
-        result: step1Result,
-        durationMs: 260,
-      });
-
-      const step2Result = await this.toolRegistry.executeTool('infrastructure_query_hospitals', { area: 'Central' }, context);
-      steps.push({
-        id: 'step-2',
-        agentId: 'infrastructure',
-        agentName: 'Infrastructure & Utility Agent',
-        toolName: 'infrastructure_query_hospitals',
-        description: 'Audited Capital Hospital & Master Canteen Clinic emergency backup generators.',
-        status: 'COMPLETED',
-        result: step2Result,
-        durationMs: 200,
-      });
-      this.agents.infrastructure.status = 'COMPLETED';
-
-      this.agents.gis.status = 'BUSY';
-      const step3Result = await this.toolRegistry.executeTool('gis_toggle_map_layer', { layerId: 'utilities', enabled: true }, context);
-      steps.push({
-        id: 'step-3',
-        agentId: 'gis',
-        agentName: 'GIS & Map Agent',
-        toolName: 'gis_toggle_map_layer',
-        description: 'Toggled Hospitals and Power Utilities map layers on Digital Twin.',
-        status: 'COMPLETED',
-        result: step3Result,
-        durationMs: 150,
-      });
-      this.agents.gis.status = 'COMPLETED';
-      stateChanges.layersToEnable = ['hospitals', 'utilities', 'power'];
-
-      finalSummary = 'Audited healthcare grid status. Capital Hospital diesel generator DG-02 active (100% capacity). Substation MC-84 repair en route by TPCODL field crew.';
-      recommendations.push('Dispatch TPCODL emergency maintenance unit to Master Canteen Substation.');
-      recommendations.push('Verify fuel reserve levels for Capital Hospital DG-02.');
-
-    } else {
-      // General Autonomous Execution Workflow
-      supervisorPlan.push('1. Decompose prompt and assign specialized agents.');
-      supervisorPlan.push('2. Execute multi-agent tools and synthesize operational response.');
-
-      this.agents.intelligence.status = 'BUSY';
-      const step1Result = await this.toolRegistry.executeTool('intelligence_search_news', { query: userPrompt }, context);
-      steps.push({
-        id: 'step-1',
-        agentId: 'intelligence',
-        agentName: 'Intelligence Agent',
-        toolName: 'intelligence_search_news',
-        description: `Searched C2 intelligence registry for: "${userPrompt}".`,
-        status: 'COMPLETED',
-        result: step1Result,
-        durationMs: 200,
-      });
-      this.agents.intelligence.status = 'COMPLETED';
-
-      this.agents.gis.status = 'BUSY';
-      const step2Result = await this.toolRegistry.executeTool('gis_fly_to_location', { locationName: 'Bhubaneswar Command Center', lat: 20.2961, lng: 85.8245, zoom: 14 }, context);
-      steps.push({
-        id: 'step-2',
-        agentId: 'gis',
-        agentName: 'GIS & Map Agent',
-        toolName: 'gis_fly_to_location',
-        description: 'Centered map on Bhubaneswar Central Command Axis (20.2961, 85.8245).',
-        status: 'COMPLETED',
-        result: step2Result,
-        durationMs: 160,
-      });
-      this.agents.gis.status = 'COMPLETED';
-      stateChanges.targetLocation = { lat: 20.2961, lng: 85.8245, name: 'Bhubaneswar Central Command' };
-
-      this.agents.reporting.status = 'BUSY';
-      const step3Result = await this.toolRegistry.executeTool('analytics_generate_report', { title: `Autonomous Operations: ${userPrompt}` }, context);
-      steps.push({
-        id: 'step-3',
-        agentId: 'reporting',
-        agentName: 'Reporting & Analytics Agent',
-        toolName: 'analytics_generate_report',
-        description: 'Synthesized operational report and command summary.',
-        status: 'COMPLETED',
-        result: step3Result,
-        durationMs: 210,
-      });
-      this.agents.reporting.status = 'COMPLETED';
-
-      finalSummary = `OpenClaw executed autonomous command workflow for "${userPrompt}". All 7 specialized agents synchronized with C2 telemetry.`;
-      recommendations.push('Review active emergency dispatches on Incident Center dashboard.');
-      recommendations.push('Monitor live traffic corridors and Doppler weather radar overlays.');
     }
 
+    if (isTraffic || isIncidentQuery) {
+      this.agents.traffic.status = 'BUSY';
+      const trafficResult = await this.toolRegistry.executeTool('traffic_get_live', {}, context);
+      steps.push({
+        id: `step-${stepCount++}`,
+        agentId: 'traffic',
+        agentName: 'Traffic Operations Agent',
+        toolName: 'traffic_get_live',
+        description: `Evaluated traffic corridor speeds. Active bottlenecks: ${trafficResult.bottlenecks.length} corridors.`,
+        status: 'COMPLETED',
+        result: trafficResult,
+        durationMs: 190,
+      });
+      this.agents.traffic.status = 'COMPLETED';
+    }
+
+    if (isHospital || isPower) {
+      this.agents.infrastructure.status = 'BUSY';
+      const infraResult = await this.toolRegistry.executeTool(
+        isHospital ? 'infrastructure_query_hospitals' : 'infrastructure_query_utilities',
+        { area: targetLocation.name },
+        context
+      );
+      steps.push({
+        id: `step-${stepCount++}`,
+        agentId: 'infrastructure',
+        agentName: 'Infrastructure & Utility Agent',
+        toolName: isHospital ? 'infrastructure_query_hospitals' : 'infrastructure_query_utilities',
+        description: `Audited critical infrastructure around ${targetLocation.name}.`,
+        status: 'COMPLETED',
+        result: infraResult,
+        durationMs: 230,
+      });
+      this.agents.infrastructure.status = 'COMPLETED';
+    }
+
+    // 4. Reporting Agent Step
+    this.agents.reporting.status = 'BUSY';
+    const reportResult = await this.toolRegistry.executeTool('analytics_generate_report', { title: `Autonomous Task: ${userPrompt}` }, context);
+    steps.push({
+      id: `step-${stepCount++}`,
+      agentId: 'reporting',
+      agentName: 'Reporting & Analytics Agent',
+      toolName: 'analytics_generate_report',
+      description: 'Synthesized executive operational summary and C2 recommendations.',
+      status: 'COMPLETED',
+      result: reportResult,
+      durationMs: 200,
+    });
+    this.agents.reporting.status = 'COMPLETED';
+
     this.agents.supervisor.status = 'COMPLETED';
+
+    // Build Dynamic Summary & Recommendations
+    const finalSummary = `OpenClaw dynamically executed operational task for "${userPrompt}". Located target area: ${targetLocation.name}. Activated layers: [${layersToEnable.join(', ')}]. ${steps.length} MCP tool steps completed.`;
+
+    if (isFire) {
+      recommendations.push(`Deploy 2 Fire Tenders from nearest Fire Station to ${targetLocation.name}.`);
+      recommendations.push(`Isolate local electrical feeder grid near ${targetLocation.name}.`);
+    } else if (isFlood) {
+      recommendations.push(`Keep high-capacity dewatering pumps operational near ${targetLocation.name}.`);
+      recommendations.push(`Issue public SMS traffic diversion advisory for low-lying sectors.`);
+    } else if (isTraffic) {
+      recommendations.push(`Adjust adaptive traffic signal timings along ${targetLocation.name} corridor.`);
+    } else {
+      recommendations.push(`Maintain PCR cruisers and 108 ambulances on standby at ${targetLocation.name}.`);
+      recommendations.push(`Monitor real-time CCTV feeds and IoT speed sensors on Digital Twin.`);
+    }
 
     const agentStatuses: Record<OpenClawAgentId, OpenClawAgentStatus['status']> = {
       supervisor: this.agents.supervisor.status,
