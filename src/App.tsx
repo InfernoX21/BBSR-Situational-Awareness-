@@ -227,7 +227,19 @@ export default function App() {
     if (detailModalIncident && detailModalIncident.id === id) {
       setDetailModalIncident({ ...detailModalIncident, status: newStatus });
     }
-    addLog(`Incident #${id} status updated to ${newStatus}.`, 'SUCCESS');
+
+    const targetInc = incidents.find((i) => i.id === id);
+    const titleStr = targetInc ? `"${targetInc.title}"` : `#${id}`;
+
+    if (newStatus === 'RESOLVED') {
+      addLog(`[RESOLVED] Incident #${id} ${titleStr} marked as RESOLVED. Containment operations completed.`, 'SUCCESS');
+    } else if (newStatus === 'CONTAINED') {
+      addLog(`[CONTAINED] Incident #${id} ${titleStr} marked as CONTAINED. Perimeter secured.`, 'SUCCESS');
+    } else if (newStatus === 'DISPATCHED') {
+      addLog(`[DISPATCHED] Emergency field unit dispatched to Incident #${id} ${titleStr}.`, 'ALERT');
+    } else {
+      addLog(`Incident #${id} ${titleStr} status updated to ${newStatus}.`, 'INFO');
+    }
   };
 
   return (

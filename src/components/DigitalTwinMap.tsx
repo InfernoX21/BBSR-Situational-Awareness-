@@ -240,6 +240,17 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
     L.tileLayer(url, { maxZoom: 19, subdomains: 'abcd' }).addTo(map);
   }, [layersState.satellite, layersState.basemapStyle]);
 
+  // Smoothly fly and center map to selected incident position when selectedIncident changes
+  useEffect(() => {
+    if (selectedIncident && mapInstanceRef.current) {
+      mapInstanceRef.current.flyTo(
+        [selectedIncident.location.lat, selectedIncident.location.lng],
+        16,
+        { animate: true, duration: 1.5 }
+      );
+    }
+  }, [selectedIncident]);
+
   // Comprehensive Entity Rendering Engine for ALL 11 Layers
   useEffect(() => {
     const map = mapInstanceRef.current;
@@ -352,10 +363,15 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
             ? 'bg-yellow-500 border-yellow-200 text-yellow-950'
             : 'bg-emerald-500 border-emerald-300 text-emerald-950';
 
+        const ringHighlight = isSelected
+          ? '<span class="absolute inline-flex h-14 w-14 rounded-full border-2 border-[#06B6D4] animate-ping opacity-90"></span><span class="absolute inline-flex h-10 w-10 rounded-full bg-[#06B6D4]/30 border border-[#06B6D4]"></span>'
+          : '';
+
         const customIcon = L.divIcon({
           className: 'custom-incident-marker',
           html: `
             <div class="relative flex items-center justify-center cursor-pointer transform hover:scale-125 transition-transform">
+              ${ringHighlight}
               <span class="absolute inline-flex h-8 w-8 rounded-full ${
                 inc.priority === 'CRITICAL' ? 'bg-red-500 animate-ping opacity-75' : 'bg-amber-500 animate-pulse opacity-50'
               }"></span>
@@ -369,6 +385,24 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
         });
 
         const marker = L.marker([inc.location.lat, inc.location.lng], { icon: customIcon });
+
+        if (isSelected) {
+          marker.bindTooltip(
+            `
+            <div class="font-mono text-[10px] bg-[#0A0A0A] text-white p-2 border border-[#06B6D4] rounded shadow-2xl">
+              <div class="font-bold text-[#06B6D4] uppercase">TARGET INCIDENT #${inc.id}</div>
+              <div class="font-bold text-white text-xs">${inc.title}</div>
+              <div class="text-white/70 mt-0.5">${inc.location.name}</div>
+              <div class="mt-1 flex items-center justify-between text-[9px]">
+                <span class="text-red-400 font-bold">${inc.priority}</span>
+                <span class="text-emerald-400 font-bold">${inc.status}</span>
+              </div>
+            </div>
+            `,
+            { permanent: true, direction: 'top', className: 'bg-transparent border-0 p-0 shadow-none' }
+          );
+        }
+
         marker.on('click', () => onSelectIncident(inc));
         marker.addTo(group);
       });

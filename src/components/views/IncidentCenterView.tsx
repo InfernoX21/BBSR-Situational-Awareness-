@@ -72,16 +72,37 @@ export const IncidentCenterView: React.FC<IncidentCenterViewProps> = ({
     return () => clearInterval(interval);
   }, [isReplaying]);
 
-  const filteredIncidents = incidents.filter((inc) => {
-    const matchesCat = categoryFilter === 'ALL' || inc.category === categoryFilter;
-    const matchesPri = priorityFilter === 'ALL' || inc.priority === priorityFilter;
-    const matchesSta = statusFilter === 'ALL' || inc.status === statusFilter;
-    const matchesSearch =
-      inc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inc.location.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inc.agencyAssigned.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCat && matchesPri && matchesSta && matchesSearch;
-  });
+  const filteredIncidents = incidents
+    .filter((inc) => {
+      const matchesCat = categoryFilter === 'ALL' || inc.category === categoryFilter;
+      const matchesPri = priorityFilter === 'ALL' || inc.priority === priorityFilter;
+      const matchesSta = statusFilter === 'ALL' || inc.status === statusFilter;
+      const matchesSearch =
+        inc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        inc.location.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        inc.agencyAssigned.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesCat && matchesPri && matchesSta && matchesSearch;
+    })
+    .sort((a, b) => {
+      // Primary sort: Move ACTIVE (1) and DISPATCHED (2) to the top, CONTAINED (3) and RESOLVED (4) to the bottom
+      const statusOrder: Record<Incident['status'], number> = {
+        ACTIVE: 1,
+        DISPATCHED: 2,
+        CONTAINED: 3,
+        RESOLVED: 4,
+      };
+      const statusDiff = statusOrder[a.status] - statusOrder[b.status];
+      if (statusDiff !== 0) return statusDiff;
+
+      // Secondary sort: Priority (CRITICAL > HIGH > MEDIUM > LOW)
+      const priorityOrder: Record<Severity, number> = {
+        CRITICAL: 1,
+        HIGH: 2,
+        MEDIUM: 3,
+        LOW: 4,
+      };
+      return priorityOrder[a.priority] - priorityOrder[b.priority];
+    });
 
   const hasActiveFilters =
     categoryFilter !== 'ALL' || priorityFilter !== 'ALL' || statusFilter !== 'ALL' || searchQuery !== '';
