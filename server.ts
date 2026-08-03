@@ -990,10 +990,10 @@ app.post('/api/traffic-cameras/snapshot', (req, res) => {
   });
 });
 
-// Sadaksh Traffic Camera AI Microservice API
+// Semantic Edge 5G Traffic Camera AI Microservice API
 app.get('/api/camera-ai/status', (req, res) => {
   res.json({
-    modelName: 'Sadaksh YOLOv8 Vision Network',
+    modelName: 'Semantic Edge 5G Vision Network',
     repository: 'https://github.com/msVivekRanjan/Sadaksh.git',
     status: 'ONLINE',
     executionMode: 'GPU_ACCELERATED_WITH_CPU_FALLBACK',
@@ -1021,7 +1021,7 @@ app.get('/api/camera-ai/detections', (req, res) => {
     average_speed: 34,
     queue_length: 71,
     congestion_level: 'HIGH',
-    model_name: 'Sadaksh YOLOv8 Vision Network',
+    model_name: 'Semantic Edge 5G Vision Network',
     fps: 30,
     latency_ms: 14,
     detections: [
@@ -1034,10 +1034,10 @@ app.get('/api/camera-ai/detections', (req, res) => {
     ],
     alerts: [
       {
-        id: `alert-sadaksh-${Date.now()}`,
+        id: `alert-edge5g-${Date.now()}`,
         event_type: 'STOPPED_VEHICLE',
         severity: 'HIGH',
-        description: `Sadaksh AI flagged stationary vehicle on lane 2 of ${targetCam} for >180s.`,
+        description: `Semantic Edge 5G flagged stationary vehicle on lane 2 of ${targetCam} for >180s.`,
         confidence: 0.96,
       },
     ],

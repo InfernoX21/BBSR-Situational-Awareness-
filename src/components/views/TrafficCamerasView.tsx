@@ -259,9 +259,12 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
                 >
                   {/* Camera Video Stream Frame */}
                   <div className="relative flex-1 min-h-[140px] overflow-hidden bg-black">
-                    <img
+                    <video
                       src={cam.streamUrl}
-                      alt={cam.name}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
 
@@ -293,7 +296,7 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
                       <div className="flex justify-between items-start">
                         <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-black/80 text-[#06B6D4] border border-[#06B6D4]/40 flex items-center space-x-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-ping mr-1" />
-                          SADAKSH AI | {cam.status} {cam.resolution}
+                          SEMANTIC EDGE 5G | {cam.status} {cam.resolution}
                         </span>
                         <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-black/80 text-amber-400 border border-amber-500/40">
                           {cam.fps} FPS | {cam.latencyMs}ms
@@ -402,7 +405,7 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
                 <div className="flex items-center justify-between border-b border-white/10 pb-2">
                   <div className="text-white/60 font-bold text-[10px] uppercase tracking-wider flex items-center space-x-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-[#06B6D4]" />
-                    <span>Sadaksh AI Vision Telemetry</span>
+                    <span>Semantic Edge 5G Vision Telemetry</span>
                   </div>
                   <button
                     onClick={() => setShowAiOverlay(!showAiOverlay)}
@@ -542,9 +545,9 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
           </div>
 
           <div className="flex-1 mt-4 relative overflow-hidden rounded border border-white/20 bg-black flex items-center justify-center">
-            <img src={fullscreenCam.streamUrl} alt={fullscreenCam.name} className="w-full h-full object-cover" />
+            <video src={fullscreenCam.streamUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
             <div className="absolute top-4 left-4 bg-black/80 px-3 py-1.5 rounded border border-[#06B6D4]/40 text-[#06B6D4] font-bold text-xs">
-              LIVE 4K STREAM | {fullscreenCam.fps} FPS | Latency {fullscreenCam.latencyMs}ms
+              SEMANTIC EDGE 5G LIVE STREAM | {fullscreenCam.fps} FPS | Latency {fullscreenCam.latencyMs}ms
             </div>
           </div>
         </div>

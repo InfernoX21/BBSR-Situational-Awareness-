@@ -1,6 +1,6 @@
 import path from 'path';
 
-export interface SadakshDetectionResult {
+export interface SemanticEdge5GDetectionResult {
   camera_id: string;
   timestamp: string;
   vehicles: number;
@@ -45,7 +45,7 @@ export class CameraAIService {
 
   public getModelStatus() {
     return {
-      modelName: 'Sadaksh YOLOv8 Vision Network',
+      modelName: 'Semantic Edge 5G Vision Network',
       repository: 'https://github.com/msVivekRanjan/Sadaksh.git',
       localPath: this.repoPath,
       weightsFile: 'yolov8n.pt',
@@ -59,7 +59,7 @@ export class CameraAIService {
     };
   }
 
-  public runInferenceOnCamera(cameraId: string): SadakshDetectionResult {
+  public runInferenceOnCamera(cameraId: string): SemanticEdge5GDetectionResult {
     const timestamp = new Date().toISOString();
 
     const isHighTraffic = cameraId.includes('JV') || cameraId.includes('RAS') || cameraId.includes('MC');
@@ -75,7 +75,7 @@ export class CameraAIService {
     const avgSpeed = isHighTraffic ? 16 : isMediumTraffic ? 28 : 42;
     const queueLen = isHighTraffic ? 240 : isMediumTraffic ? 90 : 20;
 
-    const detections: SadakshDetectionResult['detections'] = [
+    const detections: SemanticEdge5GDetectionResult['detections'] = [
       { id: 'det-1', label: 'car', confidence: 0.98, bbox: [15, 20, 22, 18] },
       { id: 'det-2', label: 'car', confidence: 0.96, bbox: [40, 25, 25, 20] },
       { id: 'det-3', label: 'truck', confidence: 0.95, bbox: [68, 30, 28, 35] },
@@ -84,13 +84,13 @@ export class CameraAIService {
       { id: 'det-6', label: 'pedestrian', confidence: 0.94, bbox: [85, 70, 8, 16] },
     ];
 
-    const alerts: SadakshDetectionResult['alerts'] = isHighTraffic
+    const alerts: SemanticEdge5GDetectionResult['alerts'] = isHighTraffic
       ? [
           {
-            id: `alert-sadaksh-${Date.now()}`,
+            id: `alert-edge5g-${Date.now()}`,
             event_type: 'STOPPED_VEHICLE',
             severity: 'HIGH',
-            description: `Sadaksh AI flagged stationary vehicle on lane 2 of ${cameraId} for >180s.`,
+            description: `Semantic Edge 5G flagged stationary vehicle on lane 2 of ${cameraId} for >180s.`,
             confidence: 0.96,
           },
         ]
@@ -108,7 +108,7 @@ export class CameraAIService {
       average_speed: avgSpeed,
       queue_length: queueLen,
       congestion_level: isHighTraffic ? 'SEVERE' : isMediumTraffic ? 'MODERATE' : 'LOW',
-      model_name: 'Sadaksh YOLOv8 Vision Network',
+      model_name: 'Semantic Edge 5G Vision Network',
       fps: 30,
       latency_ms: 14,
       detections,

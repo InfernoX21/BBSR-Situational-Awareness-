@@ -80,10 +80,10 @@ function generateOperationalCard(userText, username) {
   if (promptLower.startsWith('/start')) {
     const code = Math.floor(100000 + Math.random() * 900000);
     replyText = `🛡 *ARKA OpenClaw Autonomous Command Center* (@Arkacmd_bot)\n\nWelcome, *${username}*!\n\nYour 6-digit dashboard linking code: \`${code}\`\n\nEnter this code inside ARKA Dashboard -> Settings -> Telegram Integration to pair your mobile session.\n\nTry sending natural questions:\n• *"Show camera AI results for Khandagiri"*\n• *"What is the traffic status at Khandagiri?"*\n• *"Show critical incidents"*\n• *"Display nearby hospitals"*`;
-  } else if (promptLower.includes('camera') || promptLower.includes('sadaksh') || promptLower.includes('vision') || promptLower.startsWith('/camera_ai')) {
-    replyText = `📹 *Sadaksh AI Traffic Vision Telemetry*
+  } else if (promptLower.includes('camera') || promptLower.includes('edge 5g') || promptLower.includes('semantic') || promptLower.includes('vision') || promptLower.startsWith('/camera_ai')) {
+    replyText = `📹 *Semantic Edge 5G Traffic Vision Telemetry*
 
-🤖 *Model*: Sadaksh YOLOv8 Vision Network (GitHub: msVivekRanjan/Sadaksh)
+🤖 *Model*: Semantic Edge 5G Vision Network (5G Ultra-Low Latency Inference)
 📍 *Active Feed*: Jayadev Vihar Overpass CCTV Alpha (CAM-JV-01)
 ⚡ *Status*: ONLINE | *Execution*: 30 FPS | *Latency*: 14ms
 
@@ -97,12 +97,12 @@ function generateOperationalCard(userText, username) {
 🚗 *Corridor Speed*: 16 km/h (SEVERE Congestion)
 📐 *Queue Length*: 240 meters
 
-⚠️ *Sadaksh AI Alert*:
+⚠️ *Semantic Edge 5G Alert*:
 🚨 Stationary vehicle detected on Jayadev Vihar overpass lane 2 (>180s)
 🎯 *Confidence*: 98% | *Updated*: 18:30 IST
 
 *Data Sources Used*:
-✓ Sadaksh YOLO AI  ✓ Traffic Cameras TMC  ✓ GIS Digital Twin`;
+✓ Semantic Edge 5G  ✓ Traffic Cameras TMC  ✓ GIS Digital Twin`;
   } else if (promptLower.includes('khandagiri') || (promptLower.includes('traffic') && !promptLower.includes('incidents'))) {
     replyText = `🚦 *Traffic Operational Status*
 

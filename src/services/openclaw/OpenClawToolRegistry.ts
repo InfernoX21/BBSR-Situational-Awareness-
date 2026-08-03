@@ -236,7 +236,7 @@ export class OpenClawToolRegistry {
         return {
           success: true,
           camera_id: camId,
-          model_name: 'Sadaksh YOLOv8 Vision Network',
+          model_name: 'Semantic Edge 5G Vision Network',
           timestamp: new Date().toISOString(),
           vehicles: 48,
           cars: 31,
@@ -251,10 +251,10 @@ export class OpenClawToolRegistry {
           latency_ms: 14,
           alerts: [
             {
-              id: `alert-sadaksh-${Date.now()}`,
+              id: `alert-edge5g-${Date.now()}`,
               event_type: 'STOPPED_VEHICLE',
               severity: 'HIGH',
-              description: `Sadaksh AI flagged stationary vehicle on lane 2 for >180s.`,
+              description: `Semantic Edge 5G flagged stationary vehicle on lane 2 for >180s.`,
               confidence: 0.96,
             },
           ],
