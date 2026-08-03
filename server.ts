@@ -993,7 +993,7 @@ app.post('/api/traffic-cameras/snapshot', (req, res) => {
 // Sadaksh YOLOv8 + ByteTrack Detection & Tracking Engine REST API Proxy
 app.get('/api/camera-ai/status', async (req, res) => {
   try {
-    const pyRes = await fetch('http://127.0.0.1:8000/status');
+    const pyRes = await fetch('http://127.0.0.1:8008/status');
     const data = await pyRes.json();
     return res.json(data);
   } catch (err) {
@@ -1001,7 +1001,7 @@ app.get('/api/camera-ai/status', async (req, res) => {
       status: 'OFFLINE',
       modelName: 'Semantic Edge 5G AI Engine (Sadaksh YOLOv8)',
       weightsFile: 'D:\\BBsr Twin\\SementicEdge\\Sadaksh-main\\yolov8n.pt',
-      error: 'Python Sadaksh Microservice Offline (http://127.0.0.1:8000)',
+      error: 'Python Sadaksh Microservice Offline (http://127.0.0.1:8008)',
       detections: [],
     });
   }
@@ -1009,7 +1009,7 @@ app.get('/api/camera-ai/status', async (req, res) => {
 
 app.post('/api/camera-ai/analyze-frame', async (req, res) => {
   try {
-    const pyRes = await fetch('http://127.0.0.1:8000/analyze-frame', {
+    const pyRes = await fetch('http://127.0.0.1:8008/analyze-frame', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(req.body || {}),
@@ -1019,10 +1019,9 @@ app.post('/api/camera-ai/analyze-frame', async (req, res) => {
   } catch (err) {
     return res.json({
       status: 'OFFLINE',
-      camera_id: req.body?.cameraId || 'CAM-JV-01',
-      timestamp: new Date().toISOString(),
-      vehicle_count: 0,
-      person_count: 0,
+      camera: req.body?.cameraId || 'CAM-LAPTOP-01',
+      fps: 0,
+      latency: 0,
       detections: [],
       error: 'AI Inference Service Offline',
     });

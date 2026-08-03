@@ -93,11 +93,11 @@ const PureSadakshAiCanvas: React.FC<{
             })
               .then((res) => res.json())
               .then((data) => {
-                if (data && data.status === 'ONLINE') {
+                if (data && (data.status === 'READY' || data.status === 'ONLINE')) {
                   setAiStatus('ONLINE');
                   setModelDetections(data.detections || []);
                   setFps(data.fps || 30);
-                  setLatency(data.latency_ms || 12);
+                  setLatency(data.latency || 12);
                 } else {
                   setAiStatus('OFFLINE');
                   setModelDetections([]);
@@ -130,7 +130,7 @@ const PureSadakshAiCanvas: React.FC<{
     if (aiStatus === 'OFFLINE' || !modelDetections || modelDetections.length === 0) return;
 
     modelDetections.forEach((det) => {
-      const [xPct, yPct, wPct, hPct] = det.bbox_pct || [0, 0, 0, 0];
+      const [xPct, yPct, wPct, hPct] = det.bbox || det.bbox_pct || [0, 0, 0, 0];
       const x = (xPct / 100) * width;
       const y = (yPct / 100) * height;
       const w = (wPct / 100) * width;
@@ -183,8 +183,9 @@ const PureSadakshAiCanvas: React.FC<{
         className="absolute inset-0 w-full h-full pointer-events-none z-10"
       />
       {aiStatus === 'OFFLINE' && (
-        <div className="absolute top-2 right-2 bg-rose-950/90 border border-rose-500 text-rose-300 text-[9px] font-bold px-2 py-0.5 rounded shadow z-20">
-          AI Inference Offline
+        <div className="absolute top-2 right-2 bg-rose-950/90 border border-rose-500 text-rose-300 text-[9px] font-bold px-2.5 py-1 rounded shadow z-20 flex items-center space-x-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
+          <span>Sadaksh AI Offline</span>
         </div>
       )}
     </div>
