@@ -991,6 +991,23 @@ app.post('/api/traffic-cameras/snapshot', (req, res) => {
 });
 
 // Sadaksh YOLOv8 + ByteTrack Detection & Tracking Engine REST API Proxy
+app.get('/api/camera-ai/health', async (req, res) => {
+  try {
+    const pyRes = await fetch('http://127.0.0.1:8008/health');
+    const data = await pyRes.json();
+    return res.json(data);
+  } catch (err) {
+    return res.json({
+      status: 'offline',
+      model_loaded: false,
+      tracker_loaded: false,
+      gpu: false,
+      active_streams: 0,
+      error: 'Python Sadaksh Microservice Offline (http://127.0.0.1:8008)',
+    });
+  }
+});
+
 app.get('/api/camera-ai/status', async (req, res) => {
   try {
     const pyRes = await fetch('http://127.0.0.1:8008/status');

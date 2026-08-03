@@ -86,26 +86,35 @@ const PureSadakshAiCanvas: React.FC<{
           if (capCtx) {
             capCtx.drawImage(videoRef.current, 0, 0, 320, 240);
             const frameData = capCanvas.toDataURL('image/jpeg', 0.5);
-            fetch('/api/camera-ai/analyze-frame', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ cameraId: camId, frame: frameData }),
-            })
-              .then((res) => res.json())
-              .then((data) => {
-                if (data && (data.status === 'READY' || data.status === 'ONLINE')) {
-                  setAiStatus('ONLINE');
-                  setModelDetections(data.detections || []);
-                  setFps(data.fps || 30);
-                  setLatency(data.latency || 12);
-                } else {
-                  setAiStatus('OFFLINE');
-                  setModelDetections([]);
-                }
-              })
-              .catch(() => {
+            
+            // Try proxy endpoint first, fallback to direct localhost http://127.0.0.1:8008
+            const payload = JSON.stringify({ cameraId: camId, frame: frameData });
+            const headers = { 'Content-Type': 'application/json' };
+
+            const handleSuccess = (data: any) => {
+              if (data && (data.status === 'READY' || data.status === 'ONLINE' || data.status === 'online')) {
+                setAiStatus('ONLINE');
+                setModelDetections(data.detections || []);
+                setFps(data.fps || 30);
+                setLatency(data.latency || 12);
+              } else {
                 setAiStatus('OFFLINE');
                 setModelDetections([]);
+              }
+            };
+
+            fetch('/api/camera-ai/analyze-frame', { method: 'POST', headers, body: payload })
+              .then((res) => res.json())
+              .then(handleSuccess)
+              .catch(() => {
+                // Direct localhost fallback for standalone/GitHub Pages client environment
+                fetch('http://127.0.0.1:8008/analyze-frame', { method: 'POST', headers, body: payload })
+                  .then((res) => res.json())
+                  .then(handleSuccess)
+                  .catch(() => {
+                    setAiStatus('OFFLINE');
+                    setModelDetections([]);
+                  });
               });
           }
         } catch (e) {
@@ -569,33 +578,30 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
                       />
                     )}
 
-                    <div className="absolute inset-0 border border-cyan-500/20 pointer-events-none p-2 flex flex-col justify-between z-20">
-                      <div className="flex justify-between items-start">
-                        <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-black/80 text-[#06B6D4] border border-[#06B6D4]/40 flex items-center space-x-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-ping mr-1" />
-                          SADAKSH AI MODEL | {isWebcamActive ? 'WEBCAM 60 FPS' : cam.status} {cam.resolution}
-                        </span>
-                        <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-black/80 text-amber-400 border border-amber-500/40">
-                          {isWebcamActive ? 60 : cam.fps} FPS | {isWebcamActive ? 4 : cam.latencyMs}ms
-                        </span>
-                      </div>
-
-                      <div className="flex justify-between items-end bg-black/75 p-1.5 rounded backdrop-blur border border-white/10">
-                        <div>
-                          <div className="font-bold text-white text-[10px] truncate">{cam.name}</div>
-                          <div className="text-white/50 text-[8px]">{cam.junction}</div>
+                        <div className="absolute inset-0 border border-cyan-500/20 pointer-events-none p-2 flex flex-col justify-between z-20">
+                        <div className="flex justify-between items-start">
+                          <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-black/80 text-[#06B6D4] border border-[#06B6D4]/40 flex items-center space-x-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-ping mr-1" />
+                            SADAKSH AI MODEL | {cam.resolution || '1080p'}
+                          </span>
+                          <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-black/80 text-emerald-400 border border-emerald-500/40">
+                            LIVE STREAM
+                          </span>
                         </div>
 
-                        <div className="text-right">
-                          <span className="text-[#06B6D4] font-bold text-[10px]">
-                            🚗 {cam.aiAnalytics.vehicleCount} Vehicles
-                          </span>
-                          <div className="text-white/40 text-[8px]">
-                            {cam.aiAnalytics.avgSpeedKmh} km/h avg
+                        <div className="flex justify-between items-end bg-black/75 p-1.5 rounded backdrop-blur border border-white/10">
+                          <div>
+                            <div className="font-bold text-white text-[10px] truncate">{cam.name}</div>
+                            <div className="text-white/50 text-[8px]">{cam.junction}</div>
+                          </div>
+
+                          <div className="text-right">
+                            <span className="text-[#06B6D4] font-bold text-[9px]">
+                              {cam.status}
+                            </span>
                           </div>
                         </div>
                       </div>
-                    </div>
                   </div>
 
                   {/* Card Bottom Quick Actions */}
@@ -800,10 +806,11 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
                 <div className="flex justify-between items-start">
                   <div className="bg-black/85 px-3 py-2 rounded border border-[#06B6D4]/40 text-[#06B6D4] font-bold text-xs shadow-xl backdrop-blur flex items-center space-x-2">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                    <span>SADAKSH YOLOv8 + BYTETRACK ENGINE | 60 FPS | LATENCY 4ms</span>
+                    <span>SADAKSH PYTORCH ENGINE | REAL-TIME TELEMETRY</span>
                   </div>
-                  <div className="bg-emerald-950/90 border border-emerald-400 text-emerald-300 px-3.5 py-2 rounded font-mono font-bold text-xs animate-pulse shadow-xl backdrop-blur">
-                    LIVE DYNAMIC FRAME TRACKING ACTIVE (Track #106)
+                  <div className="bg-black/90 border border-emerald-500/40 text-emerald-400 px-3.5 py-2 rounded font-mono font-bold text-xs shadow-xl backdrop-blur flex items-center space-x-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>Sadaksh AI Engine Active</span>
                   </div>
                 </div>
 
@@ -812,14 +819,12 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
                   <div className="flex items-center space-x-4">
                     <span className="text-white font-bold">Cam ID: {fullscreenCam.id}</span>
                     <span className="text-white/40">|</span>
-                    <span className="text-[#06B6D4] font-bold">Tracked Targets: 6 Active</span>
+                    <span className="text-[#06B6D4] font-bold">Live PyTorch Inference Stream</span>
                   </div>
 
                   <div className="flex items-center space-x-4 font-mono font-bold">
-                    <span className="text-emerald-400">🚗 14 Vehicles</span>
-                    <span className="text-purple-400">👤 2 Pedestrians</span>
-                    <span className="text-amber-400">⏱ Avg Speed: 35 km/h</span>
-                    <span className="text-cyan-300">📊 Density: HIGH</span>
+                    <span className="text-emerald-400">⚡ PyTorch YOLOv8 + ByteTrack</span>
+                    <span className="text-cyan-300">🌐 Endpoint: http://127.0.0.1:8008/infer</span>
                   </div>
                 </div>
               </div>

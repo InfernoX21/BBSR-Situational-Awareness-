@@ -74,23 +74,23 @@ class FrameRequest(BaseModel):
 
 @app.get("/health")
 @app.get("/status")
-def get_status():
-    if tracker_instance is not None:
-        return {
-            "status": "READY",
-            "model_name": "Sadaksh YOLOv8 + ByteTrack Engine",
-            "weights": "yolov8n.pt",
-            "device": tracker_instance.device,
-            "tracker": "bytetrack",
-            "timestamp": time.time(),
-        }
+def get_health():
+    is_online = tracker_instance is not None
+    gpu_available = torch.cuda.is_available() if HAS_DEPENDENCIES else False
     return {
-        "status": "OFFLINE",
-        "error": "Sadaksh AI Model Instance Offline",
-        "timestamp": time.time(),
+        "status": "online" if is_online else "offline",
+        "model_loaded": is_online,
+        "tracker_loaded": is_online,
+        "gpu": gpu_available,
+        "active_streams": 1,
+        "model_name": "Sadaksh YOLOv8 + ByteTrack Engine",
+        "weights": "yolov8n.pt",
+        "device": tracker_instance.device if is_online else "none",
+        "timestamp": time.time()
     }
 
 @app.post("/analyze-frame")
+@app.post("/infer")
 def analyze_frame(req: FrameRequest):
     if tracker_instance is None:
         print("[-] Stage 1 FAILED: Sadaksh AI Model Instance is Offline")
@@ -104,7 +104,6 @@ def analyze_frame(req: FrameRequest):
         }
 
     if not req.frame:
-        print(f"[+] Stage 1: Frame Check for camera {req.cameraId} - Empty frame payload")
         return {
             "status": "READY",
             "camera": req.cameraId or "CAM-LAPTOP-01",
@@ -115,7 +114,6 @@ def analyze_frame(req: FrameRequest):
 
     try:
         t0 = time.time()
-        print(f"[+] Stage 1: Frame Received for Camera {req.cameraId}")
 
         # Clean base64 frame string
         raw_b64 = req.frame
@@ -132,19 +130,15 @@ def analyze_frame(req: FrameRequest):
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
         if img is None or img.size == 0:
-            print(f"[-] Stage 2 FAILED: OpenCV Failed to Decode Image Bytes for {req.cameraId}")
             return {"status": "ERROR", "camera": req.cameraId, "detections": []}
 
         h, w, _ = img.shape
-        print(f"[+] Stage 2 SUCCESS: OpenCV Frame Decoded ({w}x{h} px)")
 
         # Run PyTorch YOLOv8 + ByteTrack Tracker using tracker.track() method
-        print("[+] Stage 3: Executing PyTorch YOLOv8 Predict() + ByteTrack Track()...")
         raw_detections = tracker_instance.track(img)
         t1 = time.time()
         latency_ms = round((t1 - t0) * 1000, 1)
         fps = round(1000 / max(latency_ms, 1), 1)
-        print(f"[+] Stage 3 SUCCESS: Inference Completed in {latency_ms}ms ({fps} FPS)")
 
         processed_detections = []
         for d in raw_detections:
@@ -173,13 +167,6 @@ def analyze_frame(req: FrameRequest):
                 "bbox_pixels": [int(x1), int(y1), int(x2), int(y2)]
             })
 
-        if len(processed_detections) == 0:
-            print(f"[+] Stage 4: No detections returned by model for frame {req.cameraId}")
-        else:
-            print(f"[+] Stage 4 SUCCESS: {len(processed_detections)} Objects Detected ({[d['class'] for d in processed_detections]})")
-
-        print(f"[+] Stage 5 SUCCESS: Sending Detection JSON to Frontend")
-
         return {
             "status": "READY",
             "camera": req.cameraId or "CAM-LAPTOP-01",
@@ -189,7 +176,6 @@ def analyze_frame(req: FrameRequest):
         }
 
     except Exception as ex:
-        print(f"[-] Pipeline Failure Stage Exception: {ex}")
         import traceback
         traceback.print_exc()
         return {
@@ -201,4 +187,4 @@ def analyze_frame(req: FrameRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8008)
+    uvicorn.run(app, host="0.0.0.0", port=8008)
