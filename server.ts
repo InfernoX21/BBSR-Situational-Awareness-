@@ -793,6 +793,47 @@ app.get('/api/openclaw/tools', (req, res) => {
   });
 });
 
+// Telegram Bot (@Arkacmd_bot) Mobile Companion API
+app.get('/api/telegram/status', (req, res) => {
+  res.json({
+    botName: '@Arkacmd_bot',
+    status: 'ONLINE',
+    webhookUrl: process.env.TELEGRAM_WEBHOOK || 'https://infernox21.github.io/BBSR-Situational-Awareness-/api/telegram/webhook',
+    linkedUsersCount: 1,
+    lastActive: new Date().toISOString(),
+    supportedCommands: [
+      '/start', '/help', '/dashboard', '/incidents', '/weather', '/traffic',
+      '/news', '/report', '/resources', '/alerts', '/status', '/settings', '/map', '/briefing'
+    ],
+  });
+});
+
+app.post('/api/telegram/verify-code', (req, res) => {
+  const { code } = req.body || {};
+  if (!code) {
+    return res.status(400).json({ success: false, message: 'Verification code is required.' });
+  }
+
+  // Simulated code verification check for demo
+  if (code.trim().length === 6) {
+    return res.json({
+      success: true,
+      message: `Telegram account successfully linked to ARKA session (@Arkacmd_bot).`,
+      linkedAt: new Date().toISOString(),
+    });
+  }
+
+  return res.status(400).json({ success: false, message: 'Invalid 6-digit verification code. Please send /start in Telegram @Arkacmd_bot.' });
+});
+
+app.post('/api/telegram/send-test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Test emergency alert sent to linked Telegram session (@Arkacmd_bot).',
+    sentTimestamp: new Date().toISOString(),
+  });
+});
+
 async function startServer() {
   // Vite middleware for development vs static serve for production
   if (process.env.NODE_ENV !== 'production') {

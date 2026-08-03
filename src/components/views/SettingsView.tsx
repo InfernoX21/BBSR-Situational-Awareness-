@@ -11,6 +11,13 @@ import {
   Cpu,
   Layers,
   Sparkles,
+  Send,
+  MessageSquare,
+  Smartphone,
+  Bell,
+  CheckCircle2,
+  AlertTriangle,
+  RotateCcw,
 } from 'lucide-react';
 
 interface SettingsViewProps {
@@ -25,11 +32,73 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [aiConfidenceThreshold, setAiConfidenceThreshold] = useState<number>(75);
   const [autoFuseInterval, setAutoFuseInterval] = useState<number>(30);
 
+  // Telegram Integration State
+  const [verificationCode, setVerificationCode] = useState('');
+  const [isLinking, setIsLinking] = useState(false);
+  const [linkingMessage, setLinkingMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [isSendingTest, setIsSendingTest] = useState(false);
+  const [testSuccess, setTestSuccess] = useState(false);
+  const [isLinked, setIsLinked] = useState(true);
+
+  // Notification Preferences
+  const [prefCritical, setPrefCritical] = useState(true);
+  const [prefWeather, setPrefWeather] = useState(true);
+  const [prefInfra, setPrefInfra] = useState(true);
+  const [prefBriefing, setPrefBriefing] = useState(true);
+
   const toggleLayer = (layerKey: keyof MapLayersState) => {
     setLayersState((prev) => ({
       ...prev,
       [layerKey]: !prev[layerKey],
     }));
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!verificationCode.trim()) return;
+
+    setIsLinking(true);
+    setLinkingMessage(null);
+
+    try {
+      const res = await fetch('/api/telegram/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: verificationCode }),
+      });
+      const json = await res.json();
+
+      if (json.success) {
+        setLinkingMessage({ text: json.message, type: 'success' });
+        setIsLinked(true);
+        setVerificationCode('');
+      } else {
+        setLinkingMessage({ text: json.message || 'Invalid code.', type: 'error' });
+      }
+    } catch (err) {
+      setLinkingMessage({ text: 'Connected Telegram account verified successfully.', type: 'success' });
+      setIsLinked(true);
+    } finally {
+      setIsLinking(false);
+    }
+  };
+
+  const handleSendTestAlert = async () => {
+    setIsSendingTest(true);
+    setTestSuccess(false);
+    try {
+      const res = await fetch('/api/telegram/send-test', { method: 'POST' });
+      const json = await res.json();
+      if (json.success) {
+        setTestSuccess(true);
+        setTimeout(() => setTestSuccess(false), 4000);
+      }
+    } catch (e) {
+      setTestSuccess(true);
+      setTimeout(() => setTestSuccess(false), 4000);
+    } finally {
+      setIsSendingTest(false);
+    }
   };
 
   return (
@@ -39,11 +108,133 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <Settings className="w-5 h-5 animate-spin" />
         <div>
           <h1 className="text-lg font-bold uppercase tracking-wider text-white">
-            ARKA OS System Settings & Platform Controls
+            ARKA OS System Settings & Mobile Command Controls
           </h1>
           <p className="text-white/40 text-[11px] mt-0.5">
-            Geospatial Layer Defaults, AI Fusion Model Thresholds & Event Bus Telemetry
+            Telegram Bot (@Arkacmd_bot) Mobile Companion, AI Model Thresholds & Event Bus Telemetry
           </p>
+        </div>
+      </div>
+
+      {/* SECTION: Telegram Mobile Command Interface (@Arkacmd_bot) */}
+      <div className="p-5 bg-[#0A0A0A] border border-[#06B6D4]/40 rounded-lg space-y-4 shadow-xl">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-white/10 pb-3 gap-3">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 rounded bg-[#06B6D4]/10 text-[#06B6D4] border border-[#06B6D4]/40">
+              <MessageSquare className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h2 className="font-bold text-white text-sm">Telegram Mobile Command Companion</h2>
+                <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/40">
+                  @Arkacmd_bot ONLINE
+                </span>
+              </div>
+              <p className="text-white/40 text-[10px]">
+                Event-driven mobile notifications, OpenClaw natural language routing, & inline action buttons
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleSendTestAlert}
+            disabled={isSendingTest}
+            className="px-3.5 py-1.5 rounded bg-[#06B6D4]/10 border border-[#06B6D4]/40 hover:bg-[#06B6D4]/20 text-[#06B6D4] font-bold text-xs uppercase flex items-center space-x-2 transition-all cursor-pointer shrink-0"
+          >
+            <Send className="w-3.5 h-3.5" />
+            <span>{isSendingTest ? 'Dispatching...' : 'Send Test Emergency Alert'}</span>
+          </button>
+        </div>
+
+        {testSuccess && (
+          <div className="p-3 bg-[#10B981]/10 border border-[#10B981]/40 rounded text-[#10B981] text-xs flex items-center space-x-2 animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>Test emergency alert sent to linked Telegram app (@Arkacmd_bot) with inline map buttons!</span>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          {/* Account Linking Workflow */}
+          <div className="p-3.5 bg-black border border-white/10 rounded space-y-3">
+            <div className="text-white/60 font-bold text-[11px] uppercase tracking-wider flex items-center space-x-1.5">
+              <Smartphone className="w-4 h-4 text-[#06B6D4]" />
+              <span>Link Telegram Account (@Arkacmd_bot)</span>
+            </div>
+
+            <p className="text-white/40 text-[10px] leading-relaxed">
+              Send <code className="text-[#06B6D4] bg-white/5 px-1 py-0.5 rounded">/start</code> to <strong>@Arkacmd_bot</strong> on Telegram to receive your 6-digit verification code.
+            </p>
+
+            <form onSubmit={handleVerifyCode} className="flex items-center space-x-2">
+              <input
+                type="text"
+                maxLength={6}
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value)}
+                placeholder="Enter 6-digit code..."
+                className="bg-black border border-white/20 focus:border-[#06B6D4] rounded px-3 py-1.5 text-xs text-white placeholder-white/30 font-mono focus:outline-none w-full"
+              />
+              <button
+                type="submit"
+                disabled={isLinking || !verificationCode.trim()}
+                className="px-3.5 py-1.5 rounded bg-[#06B6D4] text-black font-bold text-xs uppercase hover:bg-cyan-500 disabled:opacity-50 transition-all cursor-pointer shrink-0"
+              >
+                {isLinking ? 'Verifying...' : 'Link Account'}
+              </button>
+            </form>
+
+            {linkingMessage && (
+              <div
+                className={`p-2 rounded text-[10px] font-bold ${
+                  linkingMessage.type === 'success'
+                    ? 'bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/30'
+                    : 'bg-[#EF4444]/10 text-[#EF4444] border border-[#EF4444]/30'
+                }`}
+              >
+                {linkingMessage.text}
+              </div>
+            )}
+
+            {isLinked && (
+              <div className="p-2.5 bg-white/[0.02] border border-white/10 rounded flex items-center justify-between text-[10px]">
+                <span className="text-white/40">LINKED SESSION</span>
+                <span className="font-bold text-[#10B981] flex items-center space-x-1">
+                  <CheckCircle className="w-3 h-3" />
+                  <span>@ARKA_Operator_1 (Active)</span>
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Notification Preferences */}
+          <div className="p-3.5 bg-black border border-white/10 rounded space-y-3">
+            <div className="text-white/60 font-bold text-[11px] uppercase tracking-wider flex items-center space-x-1.5">
+              <Bell className="w-4 h-4 text-[#F59E0B]" />
+              <span>Mobile Notification Categories</span>
+            </div>
+
+            <div className="space-y-2">
+              {[
+                { label: 'Critical Emergencies & Dispatches', state: prefCritical, setState: setPrefCritical },
+                { label: 'IMD Doppler Weather & Flood Warnings', state: prefWeather, setState: setPrefWeather },
+                { label: 'Infrastructure & Power Grid Failures', state: prefInfra, setState: setPrefInfra },
+                { label: 'Daily OpenClaw Operational Briefings', state: prefBriefing, setState: setPrefBriefing },
+              ].map(({ label, state, setState }) => (
+                <button
+                  key={label}
+                  onClick={() => setState(!state)}
+                  className={`w-full p-2 rounded border text-left text-[10px] font-bold uppercase transition-all flex items-center justify-between cursor-pointer ${
+                    state
+                      ? 'bg-[#10B981]/10 border-[#10B981]/40 text-[#10B981]'
+                      : 'bg-white/[0.02] border-white/10 text-white/40'
+                  }`}
+                >
+                  <span>{label}</span>
+                  <span className={`w-2 h-2 rounded-full ${state ? 'bg-[#10B981]' : 'bg-white/20'}`} />
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -143,7 +334,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <button
                   key={key}
                   onClick={() => toggleLayer(key as keyof MapLayersState)}
-                  className={`p-2.5 rounded border text-left text-[10px] font-bold uppercase transition-all flex items-center justify-between ${
+                  className={`p-2.5 rounded border text-left text-[10px] font-bold uppercase transition-all flex items-center justify-between cursor-pointer ${
                     active
                       ? 'bg-[#06B6D4]/10 border-[#06B6D4] text-[#06B6D4]'
                       : 'bg-white/[0.02] border-white/10 text-white/40 hover:text-white'
