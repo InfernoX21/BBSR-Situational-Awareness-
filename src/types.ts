@@ -43,6 +43,7 @@ export type NavItem =
   | 'Intelligence Feed'
   | 'Incident Center'
   | 'Traffic Management'
+  | 'Traffic Cameras'
   | 'Weather & Disaster'
   | 'Infrastructure'
   | 'Utilities'
@@ -51,6 +52,39 @@ export type NavItem =
   | 'Analytics'
   | 'Reports'
   | 'Settings';
+
+export interface TrafficCameraFeed {
+  id: string;
+  name: string;
+  road: string;
+  junction: string;
+  zone: string;
+  lat: number;
+  lng: number;
+  directionDeg: number;
+  status: 'ONLINE' | 'OFFLINE' | 'WARNING';
+  streamUrl: string;
+  fps: number;
+  resolution: string;
+  latencyMs: number;
+  recordingAvailable: boolean;
+  aiEnabled: boolean;
+  healthScore: number;
+  installedDate: string;
+  owner: string;
+  aiAnalytics: {
+    vehicleCount: number;
+    congestionLevel: 'LOW' | 'MODERATE' | 'HEAVY' | 'SEVERE';
+    pedestrianCount: number;
+    avgSpeedKmh: number;
+    queueLengthMeters: number;
+    stoppedVehicles: number;
+    confidencePct: number;
+  };
+  nearestJunction: string;
+  nearestPoliceStation: string;
+  nearestHospital: string;
+}
 
 export interface Agency {
   id: string;

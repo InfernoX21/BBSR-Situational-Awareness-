@@ -35,6 +35,7 @@ const NAV_ITEMS: { label: NavItem; icon: React.ReactNode }[] = [
   { label: 'Intelligence Feed', icon: <Rss className="w-4 h-4" /> },
   { label: 'Incident Center', icon: <AlertTriangle className="w-4 h-4" /> },
   { label: 'Traffic Management', icon: <Car className="w-4 h-4" /> },
+  { label: 'Traffic Cameras', icon: <Video className="w-4 h-4 text-[#06B6D4]" /> },
   { label: 'Weather & Disaster', icon: <CloudRain className="w-4 h-4" /> },
   { label: 'Infrastructure', icon: <Building2 className="w-4 h-4" /> },
   { label: 'Utilities', icon: <Zap className="w-4 h-4" /> },

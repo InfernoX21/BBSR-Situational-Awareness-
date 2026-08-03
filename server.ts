@@ -945,6 +945,51 @@ app.post('/api/telegram/test-chat', (req, res) => {
   });
 });
 
+// Traffic Cameras TMC Service API
+app.get('/api/traffic-cameras', (req, res) => {
+  res.json({
+    totalCameras: 8,
+    status: 'OPERATIONAL',
+    provider: 'Bhubaneswar Smart City Ltd (BSCL) & Odisha Police',
+    cameras: [
+      { id: 'CAM-JV-01', name: 'Jayadev Vihar Overpass CCTV Alpha', road: 'Janpath Boulevard Axis', status: 'ONLINE', resolution: '1080p Full HD', fps: 30, vehicleCount: 64, avgSpeedKmh: 16 },
+      { id: 'CAM-PAT-02', name: 'Patia Infocity Junction Surveillance', road: 'Nandankanan Road', status: 'ONLINE', resolution: '4K Ultra HD', fps: 30, vehicleCount: 42, avgSpeedKmh: 28 },
+      { id: 'CAM-MC-03', name: 'Master Canteen Station Plaza Cam', road: 'Janpath Commercial Corridor', status: 'ONLINE', resolution: '1080p Full HD', fps: 25, vehicleCount: 78, avgSpeedKmh: 21 },
+      { id: 'CAM-RAS-04', name: 'Rasulgarh NH-16 Interchange PTZ', road: 'NH-16 Express Highway', status: 'ONLINE', resolution: '4K Ultra HD', fps: 30, vehicleCount: 112, avgSpeedKmh: 12 },
+      { id: 'CAM-KHD-05', name: 'Khandagiri Caves Square Dome Cam', road: 'Khandagiri-Chandaka Arterial', status: 'ONLINE', resolution: '1080p Full HD', fps: 30, vehicleCount: 38, avgSpeedKmh: 34 },
+      { id: 'CAM-AIIMS-06', name: 'AIIMS Emergency Gate Optical Cam', road: 'Sijua Medical Access Road', status: 'ONLINE', resolution: '1080p Full HD', fps: 30, vehicleCount: 22, avgSpeedKmh: 38 },
+      { id: 'CAM-BPIA-07', name: 'BPIA Airport Approach Road Cam', road: 'Aerodrome Access Road', status: 'ONLINE', resolution: '4K Ultra HD', fps: 30, vehicleCount: 29, avgSpeedKmh: 42 },
+      { id: 'CAM-AG-08', name: 'AG Square Administrative Node', road: 'Sachivalaya Marg', status: 'ONLINE', resolution: '1080p Full HD', fps: 30, vehicleCount: 45, avgSpeedKmh: 35 },
+    ],
+  });
+});
+
+app.get('/api/traffic-cameras/nearby', (req, res) => {
+  const { lat, lng, radiusKm } = req.query;
+  res.json({
+    queryLat: Number(lat) || 20.3023,
+    queryLng: Number(lng) || 85.8252,
+    radiusKm: Number(radiusKm) || 5,
+    matchedCamerasCount: 3,
+    cameras: [
+      { id: 'CAM-JV-01', name: 'Jayadev Vihar Overpass CCTV Alpha', distanceMeters: 250, status: 'ONLINE' },
+      { id: 'CAM-AG-08', name: 'AG Square Administrative Node', distanceMeters: 1400, status: 'ONLINE' },
+      { id: 'CAM-MC-03', name: 'Master Canteen Station Plaza Cam', distanceMeters: 2100, status: 'ONLINE' },
+    ],
+  });
+});
+
+app.post('/api/traffic-cameras/snapshot', (req, res) => {
+  const { cameraId } = req.body || {};
+  res.json({
+    success: true,
+    cameraId: cameraId || 'CAM-JV-01',
+    snapshotUrl: 'https://images.unsplash.com/photo-1573152958734-1922c188fba3?auto=format&fit=crop&w=800&q=80',
+    capturedAt: new Date().toISOString(),
+    resolution: '1920x1080',
+  });
+});
+
 let isPollingActive = false;
 
 // Active Telegram Long-Polling Loop for @Arkacmd_bot

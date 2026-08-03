@@ -54,6 +54,7 @@ import { AnalyticsView } from './components/views/AnalyticsView';
 import { ReportsView } from './components/views/ReportsView';
 import { SettingsView } from './components/views/SettingsView';
 import { AIOperationsView } from './components/views/AIOperationsView';
+import { TrafficCamerasView } from './components/views/TrafficCamerasView';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<NavItem>('Dashboard');
@@ -398,6 +399,24 @@ export default function App() {
             sensors={trafficSensors}
             summary={trafficSummary}
             onSelectCorridor={(corridor) => setSelectedCorridor(corridor)}
+            onJumpToMap={() => setActiveTab('Dashboard')}
+          />
+        ) : activeTab === 'Traffic Cameras' ? (
+          <TrafficCamerasView
+            incidents={incidents}
+            landmarks={landmarks}
+            onSelectCameraOnMap={(cam) => {
+              setSelectedLandmark({
+                id: cam.id,
+                name: cam.name,
+                type: 'CAMERA' as any,
+                lat: cam.lat,
+                lng: cam.lng,
+                status: cam.status === 'ONLINE' ? 'OPERATIONAL' : 'ALERT',
+                details: `Traffic CCTV Feed: ${cam.name} (${cam.resolution}, ${cam.fps} FPS, Direction: ${cam.directionDeg}°).`,
+              });
+              addLog(`CCTV Feed Selected: ${cam.name} (${cam.junction}).`, 'INFO');
+            }}
             onJumpToMap={() => setActiveTab('Dashboard')}
           />
         ) : activeTab === 'Weather & Disaster' ? (
