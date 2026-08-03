@@ -53,6 +53,7 @@ import { DroneFeedView } from './components/views/DroneFeedView';
 import { AnalyticsView } from './components/views/AnalyticsView';
 import { ReportsView } from './components/views/ReportsView';
 import { SettingsView } from './components/views/SettingsView';
+import { AIOperationsView } from './components/views/AIOperationsView';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<NavItem>('Dashboard');
@@ -330,6 +331,50 @@ export default function App() {
               />
             )}
           </>
+        ) : activeTab === 'AI Operations' ? (
+          <AIOperationsView
+            incidents={incidents}
+            landmarks={landmarks}
+            drones={drones}
+            weather={weather}
+            trafficCorridors={trafficCorridors}
+            intelligenceItems={intelligenceItems}
+            onApplyStateChanges={(changes) => {
+              if (changes?.targetLocation) {
+                setSelectedIncident({
+                  id: `TARGET-OPENCLAW-${Date.now()}`,
+                  title: changes.targetLocation.name,
+                  category: 'FLOOD',
+                  priority: 'CRITICAL',
+                  status: 'ACTIVE',
+                  description: `Target location selected by OpenClaw Autonomous Operations: ${changes.targetLocation.name}`,
+                  location: {
+                    name: changes.targetLocation.name,
+                    lat: changes.targetLocation.lat,
+                    lng: changes.targetLocation.lng,
+                    address: `${changes.targetLocation.name}, Bhubaneswar`,
+                  },
+                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  agencyAssigned: 'OpenClaw Autonomous Task Force',
+                  aiConfidence: 98,
+                  recommendedAction: 'Execute multi-agent response protocol.',
+                  affectedRoads: ['Central Corridor'],
+                  estimatedImpact: 'High Priority Target',
+                });
+              }
+              if (changes?.layersToEnable) {
+                setLayersState((prev) => {
+                  const next = { ...prev };
+                  changes.layersToEnable?.forEach((lId) => {
+                    if (lId in next) (next as any)[lId] = true;
+                  });
+                  return next;
+                });
+              }
+              addLog(`OpenClaw Autonomous Operations executed multi-agent task workflow.`, 'SUCCESS');
+            }}
+            onJumpToMap={() => setActiveTab('Dashboard')}
+          />
         ) : activeTab === 'Intelligence Feed' ? (
           <IntelligenceFeedView
             intelligenceItems={intelligenceItems}

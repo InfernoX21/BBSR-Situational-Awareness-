@@ -38,6 +38,7 @@ export interface FlightNode {
 
 export type NavItem =
   | 'Dashboard'
+  | 'AI Operations'
   | 'Live Map'
   | 'Intelligence Feed'
   | 'Incident Center'
@@ -316,4 +317,65 @@ export interface TrafficSummary {
   congestionTrend: 'IMPROVING' | 'STABLE' | 'WORSENING';
   highestCongestionCorridor: string;
 }
+
+// OpenClaw Autonomous Operations Framework Types
+export type OpenClawAgentId =
+  | 'supervisor'
+  | 'gis'
+  | 'intelligence'
+  | 'traffic'
+  | 'disaster'
+  | 'infrastructure'
+  | 'reporting';
+
+export interface OpenClawAgentStatus {
+  id: OpenClawAgentId;
+  name: string;
+  role: string;
+  status: 'IDLE' | 'BUSY' | 'WAITING' | 'COMPLETED' | 'ERROR';
+  currentTask?: string;
+  iconName: string;
+}
+
+export interface OpenClawToolSchema {
+  name: string;
+  category: 'GIS' | 'INCIDENT' | 'TRAFFIC' | 'WEATHER' | 'INTELLIGENCE' | 'INFRASTRUCTURE' | 'ANALYTICS' | 'RESOURCE' | 'NOTIFICATION';
+  description: string;
+  inputSchema: Record<string, any>;
+  outputSchema: Record<string, any>;
+  requiresPermission: boolean;
+}
+
+export interface OpenClawWorkflowStep {
+  id: string;
+  agentId: OpenClawAgentId;
+  agentName: string;
+  toolName: string;
+  description: string;
+  status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'AWAITING_CONFIRMATION';
+  params?: Record<string, any>;
+  result?: any;
+  durationMs?: number;
+}
+
+export interface OpenClawExecutionResult {
+  executionId: string;
+  userPrompt: string;
+  timestamp: string;
+  supervisorPlan: string[];
+  steps: OpenClawWorkflowStep[];
+  agentStatuses: Record<OpenClawAgentId, OpenClawAgentStatus['status']>;
+  finalSummary: string;
+  recommendations: string[];
+  requiresConfirmation?: {
+    action: string;
+    details: string;
+  };
+  stateChanges?: {
+    targetLocation?: { lat: number; lng: number; name: string };
+    layersToEnable?: string[];
+    selectedIncidentId?: string;
+  };
+}
+
 

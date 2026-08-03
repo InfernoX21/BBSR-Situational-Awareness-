@@ -755,6 +755,44 @@ Return ONLY a JSON object with this exact structure:
   }
 });
 
+// OpenClaw Autonomous Operations Framework API
+app.get('/api/openclaw/status', (req, res) => {
+  res.json({
+    framework: 'OpenClaw Autonomous Operations Framework',
+    version: '2026.7.1-2',
+    status: 'ACTIVE',
+    mode: 'MCP_TOOL_ORCHESTRATOR',
+    agents: [
+      { id: 'supervisor', name: 'Supervisor Agent', role: 'Command & Workflow Orchestration' },
+      { id: 'gis', name: 'GIS & Map Agent', role: 'Cesium/Leaflet Spatial Controls' },
+      { id: 'intelligence', name: 'Intelligence Agent', role: 'Live News & Advisory Synthesis' },
+      { id: 'traffic', name: 'Traffic Operations Agent', role: 'Corridor Speeds & Routing' },
+      { id: 'disaster', name: 'Disaster & Weather Agent', role: 'Doppler Radar & Flood Inundation' },
+      { id: 'infrastructure', name: 'Infrastructure Agent', role: 'Hospitals & TPCODL Grid' },
+      { id: 'reporting', name: 'Reporting Agent', role: 'Executive Summaries & Briefings' },
+    ],
+  });
+});
+
+app.get('/api/openclaw/tools', (req, res) => {
+  res.json({
+    totalTools: 20,
+    categories: ['GIS', 'INCIDENT', 'TRAFFIC', 'WEATHER', 'INTELLIGENCE', 'INFRASTRUCTURE', 'ANALYTICS', 'RESOURCE', 'NOTIFICATION'],
+    tools: [
+      { name: 'gis_fly_to_location', category: 'GIS', description: 'Fly Digital Twin camera to coordinates.' },
+      { name: 'gis_toggle_map_layer', category: 'GIS', description: 'Enable/disable map layers.' },
+      { name: 'gis_query_nearby_assets', category: 'GIS', description: 'Spatial radius query for critical assets.' },
+      { name: 'incident_get_active', category: 'INCIDENT', description: 'Retrieve active emergency registry.' },
+      { name: 'incident_update_status', category: 'INCIDENT', description: 'Update status of open incident.' },
+      { name: 'traffic_get_live', category: 'TRAFFIC', description: 'Fetch live traffic corridor speeds.' },
+      { name: 'weather_get_current', category: 'WEATHER', description: 'Retrieve IMD Doppler radar metrics.' },
+      { name: 'intelligence_search_news', category: 'INTELLIGENCE', description: 'Search live news & RSS feeds.' },
+      { name: 'infrastructure_query_hospitals', category: 'INFRASTRUCTURE', description: 'Query hospitals and ICU bed capacity.' },
+      { name: 'analytics_generate_report', category: 'ANALYTICS', description: 'Generate executive situational report.' },
+    ],
+  });
+});
+
 async function startServer() {
   // Vite middleware for development vs static serve for production
   if (process.env.NODE_ENV !== 'production') {

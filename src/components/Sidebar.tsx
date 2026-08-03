@@ -2,6 +2,7 @@ import React from 'react';
 import { NavItem, Agency } from '../types';
 import {
   Activity,
+  Bot,
   Map,
   Rss,
   AlertTriangle,
@@ -29,6 +30,7 @@ interface SidebarProps {
 
 const NAV_ITEMS: { label: NavItem; icon: React.ReactNode }[] = [
   { label: 'Dashboard', icon: <Activity className="w-4 h-4" /> },
+  { label: 'AI Operations', icon: <Bot className="w-4 h-4 text-[#06B6D4]" /> },
   { label: 'Live Map', icon: <Map className="w-4 h-4" /> },
   { label: 'Intelligence Feed', icon: <Rss className="w-4 h-4" /> },
   { label: 'Incident Center', icon: <AlertTriangle className="w-4 h-4" /> },
