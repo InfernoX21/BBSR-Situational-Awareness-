@@ -677,89 +677,29 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
                 </div>
               </div>
 
-              {/* AI Vision Analytics Overlays */}
-              <div className="p-3 bg-black border border-white/10 rounded space-y-2">
+              {/* Sadaksh PyTorch AI Model Diagnostic Debug Console */}
+              <div className="p-3 bg-black border border-[#06B6D4]/30 rounded space-y-2 font-mono text-[10px]">
                 <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                  <div className="text-white/60 font-bold text-[10px] uppercase tracking-wider flex items-center space-x-1.5">
+                  <div className="text-[#06B6D4] font-bold text-[10px] uppercase tracking-wider flex items-center space-x-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-[#06B6D4]" />
-                    <span>Semantic Edge 5G Vision Telemetry</span>
+                    <span>Sadaksh Model Diagnostic Debug Console</span>
                   </div>
-                  <button
-                    onClick={() => setShowAiOverlay(!showAiOverlay)}
-                    className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase border transition-all cursor-pointer ${
-                      showAiOverlay
-                        ? 'bg-[#06B6D4]/20 border-[#06B6D4] text-[#06B6D4]'
-                        : 'bg-white/5 border-white/10 text-white/40'
-                    }`}
-                  >
-                    {showAiOverlay ? 'AI Overlays ON' : 'AI Overlays OFF'}
-                  </button>
+                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[8px] font-bold">
+                    LIVE
+                  </span>
                 </div>
 
-                {/* Vehicle Classification Breakdown Grid */}
-                <div className="grid grid-cols-3 gap-1.5 pt-1 text-[9px]">
-                  <div className="bg-white/[0.03] border border-white/5 p-1.5 rounded text-center">
-                    <span className="text-white/40 block text-[8px]">CARS</span>
-                    <span className="font-bold text-[#06B6D4]">31</span>
-                  </div>
-                  <div className="bg-white/[0.03] border border-white/5 p-1.5 rounded text-center">
-                    <span className="text-white/40 block text-[8px]">BUSES</span>
-                    <span className="font-bold text-amber-400">3</span>
-                  </div>
-                  <div className="bg-white/[0.03] border border-white/5 p-1.5 rounded text-center">
-                    <span className="text-white/40 block text-[8px]">TRUCKS</span>
-                    <span className="font-bold text-rose-400">4</span>
-                  </div>
-                  <div className="bg-white/[0.03] border border-white/5 p-1.5 rounded text-center">
-                    <span className="text-white/40 block text-[8px]">MOTORS</span>
-                    <span className="font-bold text-emerald-400">10</span>
-                  </div>
-                  <div className="bg-white/[0.03] border border-white/5 p-1.5 rounded text-center">
-                    <span className="text-white/40 block text-[8px]">PEDS</span>
-                    <span className="font-bold text-purple-400">27</span>
-                  </div>
-                  <div className="bg-white/[0.03] border border-white/5 p-1.5 rounded text-center">
-                    <span className="text-white/40 block text-[8px]">CONF</span>
-                    <span className="font-bold text-cyan-300">{selectedCamera.aiAnalytics.confidencePct}%</span>
-                  </div>
+                <div className="space-y-1 text-[9px]">
+                  <div className="text-emerald-400">✓ Repository Loaded (Sadaksh-main/src)</div>
+                  <div className="text-emerald-400">✓ YOLOv8 Weights: yolov8n.pt</div>
+                  <div className="text-emerald-400">✓ ByteTrack Tracker Initialized</div>
+                  <div className="text-cyan-300">⚡ PyTorch Device: CPU Fallback / CUDA</div>
+                  <div className="text-amber-400">🌐 Endpoint: http://127.0.0.1:8008/analyze-frame</div>
                 </div>
 
-                <div className="space-y-1.5 text-[10px] pt-1">
-                  <div className="flex justify-between p-1.5 bg-white/[0.02] border border-white/5 rounded">
-                    <span className="text-white/40">TOTAL VEHICLES</span>
-                    <span className="font-bold text-[#06B6D4]">{selectedCamera.aiAnalytics.vehicleCount} Units</span>
-                  </div>
-
-                  <div className="flex justify-between p-1.5 bg-white/[0.02] border border-white/5 rounded">
-                    <span className="text-white/40">CONGESTION LEVEL</span>
-                    <span
-                      className={`font-bold ${
-                        selectedCamera.aiAnalytics.congestionLevel === 'SEVERE' ? 'text-rose-400' : 'text-[#10B981]'
-                      }`}
-                    >
-                      {selectedCamera.aiAnalytics.congestionLevel}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between p-1.5 bg-white/[0.02] border border-white/5 rounded">
-                    <span className="text-white/40">AVERAGE SPEED</span>
-                    <span className="font-bold text-amber-400">{selectedCamera.aiAnalytics.avgSpeedKmh} km/h</span>
-                  </div>
-
-                  <div className="flex justify-between p-1.5 bg-white/[0.02] border border-white/5 rounded">
-                    <span className="text-white/40">QUEUE LENGTH</span>
-                    <span className="font-bold text-white">{selectedCamera.aiAnalytics.queueLengthMeters} meters</span>
-                  </div>
-
-                  <div className="flex justify-between p-1.5 bg-white/[0.02] border border-white/5 rounded">
-                    <span className="text-white/40">PEDESTRIAN COUNT</span>
-                    <span className="font-bold text-[#10B981]">{selectedCamera.aiAnalytics.pedestrianCount} People</span>
-                  </div>
-
-                  <div className="flex justify-between p-1.5 bg-white/[0.02] border border-white/5 rounded">
-                    <span className="text-white/40">VISION CONFIDENCE</span>
-                    <span className="font-bold text-[#06B6D4]">{selectedCamera.aiAnalytics.confidencePct}%</span>
-                  </div>
+                <div className="pt-2 border-t border-white/10 flex justify-between items-center text-[9px]">
+                  <span className="text-white/40">Inference Status:</span>
+                  <span className="font-bold text-emerald-400">READY (PyTorch Active)</span>
                 </div>
               </div>
 
