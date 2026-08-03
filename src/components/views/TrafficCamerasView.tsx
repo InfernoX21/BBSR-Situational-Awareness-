@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { TrafficCameraFeed, Incident, LandmarkNode } from '../../types';
 import { INITIAL_TRAFFIC_CAMERAS } from '../../data/bhubaneswarData';
 import {
@@ -52,13 +52,45 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
   const [fullscreenCam, setFullscreenCam] = useState<TrafficCameraFeed | null>(null);
   const [showAiOverlay, setShowAiOverlay] = useState(true);
 
+  // Laptop Camera State
+  const [isWebcamActive, setIsWebcamActive] = useState(false);
+  const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null);
+  const webcamRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    if (webcamRef.current && webcamStream) {
+      webcamRef.current.srcObject = webcamStream;
+    }
+  }, [webcamStream, isWebcamActive]);
+
+  const toggleWebcam = async () => {
+    if (isWebcamActive) {
+      if (webcamStream) {
+        webcamStream.getTracks().forEach((track) => track.stop());
+      }
+      setWebcamStream(null);
+      setIsWebcamActive(false);
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+        });
+        setWebcamStream(stream);
+        setIsWebcamActive(true);
+        setSelectedCameraId('CAM-LAPTOP-01');
+      } catch (err) {
+        alert('Could not access laptop camera. Please grant camera permissions in your browser.');
+      }
+    }
+  };
+
   const selectedCamera = useMemo(
     () => cameras.find((c) => c.id === selectedCameraId) || cameras[0],
     [cameras, selectedCameraId]
   );
 
   const filteredCameras = useMemo(() => {
-    return cameras.filter((cam) => {
+    const list = cameras.filter((cam) => {
       const matchQuery =
         cam.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         cam.road.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -71,7 +103,45 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
       if (statusFilter === 'SEVERE') return cam.aiAnalytics.congestionLevel === 'SEVERE';
       return true;
     });
-  }, [cameras, searchQuery, statusFilter]);
+
+    if (isWebcamActive) {
+      const laptopCam: TrafficCameraFeed = {
+        id: 'CAM-LAPTOP-01',
+        name: 'Local Operator Laptop Camera (Live Webcam)',
+        road: 'Command Workstation Axis',
+        junction: 'Operator Control Desk 1',
+        zone: 'Central Command Zone',
+        lat: 20.2961,
+        lng: 85.8245,
+        directionDeg: 0,
+        status: 'ONLINE',
+        streamUrl: 'webcam',
+        fps: 60,
+        resolution: '720p HD WebRTC',
+        latencyMs: 4,
+        recordingAvailable: true,
+        aiEnabled: true,
+        healthScore: 100,
+        installedDate: '2026-08-04',
+        owner: 'Local Operator Console',
+        aiAnalytics: {
+          vehicleCount: 14,
+          congestionLevel: 'MODERATE',
+          pedestrianCount: 2,
+          avgSpeedKmh: 35,
+          queueLengthMeters: 10,
+          stoppedVehicles: 0,
+          confidencePct: 99,
+        },
+        nearestJunction: 'Operator Desk (0m)',
+        nearestPoliceStation: 'Capital PS (500m)',
+        nearestHospital: 'Capital Hospital (800m)',
+      };
+      return [laptopCam, ...list];
+    }
+
+    return list;
+  }, [cameras, searchQuery, statusFilter, isWebcamActive]);
 
   const toggleFavorite = (id: string) => {
     setFavorites((prev) =>
@@ -104,9 +174,21 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
           </div>
         </div>
 
-        {/* Dynamic Grid Count Controls */}
+        {/* Dynamic Grid Count & Laptop Camera Controls */}
         <div className="flex items-center space-x-2">
-          <span className="text-white/40 text-[10px] uppercase font-bold mr-1">Grid Layout:</span>
+          <button
+            onClick={toggleWebcam}
+            className={`px-3 py-1 rounded text-[10px] font-bold border transition-all cursor-pointer flex items-center space-x-1.5 ${
+              isWebcamActive
+                ? 'bg-rose-600 text-white border-rose-400 animate-pulse shadow-[0_0_12px_rgba(244,63,94,0.4)]'
+                : 'bg-[#06B6D4]/20 border-[#06B6D4] text-[#06B6D4] hover:bg-[#06B6D4]/30'
+            }`}
+          >
+            <CameraIcon className="w-3.5 h-3.5" />
+            <span>{isWebcamActive ? 'Disconnect Laptop Cam' : 'Connect Laptop Cam'}</span>
+          </button>
+
+          <span className="text-white/40 text-[10px] uppercase font-bold ml-2 mr-1">Grid Layout:</span>
           {[1, 2, 4, 6, 9, 12, 16].map((num) => (
             <button
               key={num}
@@ -259,14 +341,24 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
                 >
                   {/* Camera Video Stream Frame */}
                   <div className="relative flex-1 min-h-[140px] overflow-hidden bg-black">
-                    <video
-                      src={cam.streamUrl}
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
+                    {cam.id === 'CAM-LAPTOP-01' ? (
+                      <video
+                        ref={webcamRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <video
+                        src={cam.streamUrl}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    )}
 
                     {/* AI Computer Vision Bounding Box Overlay */}
                     {showAiOverlay && (
