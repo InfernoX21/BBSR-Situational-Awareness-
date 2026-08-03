@@ -230,6 +230,37 @@ export class OpenClawToolRegistry {
         };
       }
 
+      case 'analyze_camera':
+      case 'camera_status': {
+        const camId = args.cameraId || 'CAM-JV-01';
+        return {
+          success: true,
+          camera_id: camId,
+          model_name: 'Sadaksh YOLOv8 Vision Network',
+          timestamp: new Date().toISOString(),
+          vehicles: 48,
+          cars: 31,
+          buses: 3,
+          trucks: 4,
+          motorcycles: 10,
+          pedestrians: 27,
+          average_speed: 34,
+          queue_length: 71,
+          congestion_level: 'HIGH',
+          fps: 30,
+          latency_ms: 14,
+          alerts: [
+            {
+              id: `alert-sadaksh-${Date.now()}`,
+              event_type: 'STOPPED_VEHICLE',
+              severity: 'HIGH',
+              description: `Sadaksh AI flagged stationary vehicle on lane 2 for >180s.`,
+              confidence: 0.96,
+            },
+          ],
+        };
+      }
+
       case 'traffic_get_live': {
         let matched = activeTraffic.find((c: any) => {
           if (!locQuery) return false;

@@ -50,6 +50,7 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
   const [isPlayingRecording, setIsPlayingRecording] = useState(false);
   const [playbackTime, setPlaybackTime] = useState('17:45:00');
   const [fullscreenCam, setFullscreenCam] = useState<TrafficCameraFeed | null>(null);
+  const [showAiOverlay, setShowAiOverlay] = useState(true);
 
   const selectedCamera = useMemo(
     () => cameras.find((c) => c.id === selectedCameraId) || cameras[0],
@@ -265,11 +266,34 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
                     />
 
                     {/* AI Computer Vision Bounding Box Overlay */}
-                    <div className="absolute inset-0 border border-cyan-500/20 pointer-events-none p-2 flex flex-col justify-between">
+                    {showAiOverlay && (
+                      <div className="absolute inset-0 pointer-events-none p-2 z-10">
+                        {/* Box 1: Car */}
+                        <div className="absolute top-[20%] left-[15%] w-[25%] h-[28%] border-2 border-[#06B6D4] bg-[#06B6D4]/10 rounded flex items-start p-1 shadow-[0_0_10px_rgba(6,182,212,0.3)]">
+                          <span className="bg-[#06B6D4] text-black font-extrabold text-[8px] px-1 rounded">
+                            CAR #14 [98%]
+                          </span>
+                        </div>
+                        {/* Box 2: Truck */}
+                        <div className="absolute top-[35%] right-[10%] w-[32%] h-[40%] border-2 border-amber-400 bg-amber-500/10 rounded flex items-start p-1 shadow-[0_0_10px_rgba(245,158,11,0.3)]">
+                          <span className="bg-amber-400 text-black font-extrabold text-[8px] px-1 rounded">
+                            TRUCK #02 [95%]
+                          </span>
+                        </div>
+                        {/* Box 3: Pedestrian */}
+                        <div className="absolute bottom-[25%] left-[45%] w-[12%] h-[22%] border-2 border-emerald-400 bg-emerald-500/10 rounded flex items-start p-1 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+                          <span className="bg-emerald-400 text-black font-extrabold text-[7px] px-1 rounded">
+                            PED #08 [97%]
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="absolute inset-0 border border-cyan-500/20 pointer-events-none p-2 flex flex-col justify-between z-20">
                       <div className="flex justify-between items-start">
                         <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-black/80 text-[#06B6D4] border border-[#06B6D4]/40 flex items-center space-x-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-ping mr-1" />
-                          {cam.status} {cam.resolution}
+                          SADAKSH AI | {cam.status} {cam.resolution}
                         </span>
                         <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-black/80 text-amber-400 border border-amber-500/40">
                           {cam.fps} FPS | {cam.latencyMs}ms
@@ -375,15 +399,55 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
 
               {/* AI Vision Analytics Overlays */}
               <div className="p-3 bg-black border border-white/10 rounded space-y-2">
-                <div className="text-white/60 font-bold text-[10px] uppercase tracking-wider flex items-center space-x-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-[#06B6D4]" />
-                  <span>AI Computer Vision Analytics</span>
+                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                  <div className="text-white/60 font-bold text-[10px] uppercase tracking-wider flex items-center space-x-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[#06B6D4]" />
+                    <span>Sadaksh AI Vision Telemetry</span>
+                  </div>
+                  <button
+                    onClick={() => setShowAiOverlay(!showAiOverlay)}
+                    className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase border transition-all cursor-pointer ${
+                      showAiOverlay
+                        ? 'bg-[#06B6D4]/20 border-[#06B6D4] text-[#06B6D4]'
+                        : 'bg-white/5 border-white/10 text-white/40'
+                    }`}
+                  >
+                    {showAiOverlay ? 'AI Overlays ON' : 'AI Overlays OFF'}
+                  </button>
                 </div>
 
-                <div className="space-y-1.5 text-[10px]">
+                {/* Vehicle Classification Breakdown Grid */}
+                <div className="grid grid-cols-3 gap-1.5 pt-1 text-[9px]">
+                  <div className="bg-white/[0.03] border border-white/5 p-1.5 rounded text-center">
+                    <span className="text-white/40 block text-[8px]">CARS</span>
+                    <span className="font-bold text-[#06B6D4]">31</span>
+                  </div>
+                  <div className="bg-white/[0.03] border border-white/5 p-1.5 rounded text-center">
+                    <span className="text-white/40 block text-[8px]">BUSES</span>
+                    <span className="font-bold text-amber-400">3</span>
+                  </div>
+                  <div className="bg-white/[0.03] border border-white/5 p-1.5 rounded text-center">
+                    <span className="text-white/40 block text-[8px]">TRUCKS</span>
+                    <span className="font-bold text-rose-400">4</span>
+                  </div>
+                  <div className="bg-white/[0.03] border border-white/5 p-1.5 rounded text-center">
+                    <span className="text-white/40 block text-[8px]">MOTORS</span>
+                    <span className="font-bold text-emerald-400">10</span>
+                  </div>
+                  <div className="bg-white/[0.03] border border-white/5 p-1.5 rounded text-center">
+                    <span className="text-white/40 block text-[8px]">PEDS</span>
+                    <span className="font-bold text-purple-400">27</span>
+                  </div>
+                  <div className="bg-white/[0.03] border border-white/5 p-1.5 rounded text-center">
+                    <span className="text-white/40 block text-[8px]">CONF</span>
+                    <span className="font-bold text-cyan-300">{selectedCamera.aiAnalytics.confidencePct}%</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 text-[10px] pt-1">
                   <div className="flex justify-between p-1.5 bg-white/[0.02] border border-white/5 rounded">
-                    <span className="text-white/40">VEHICLE COUNT</span>
-                    <span className="font-bold text-[#06B6D4]">{selectedCamera.aiAnalytics.vehicleCount} Vehicles</span>
+                    <span className="text-white/40">TOTAL VEHICLES</span>
+                    <span className="font-bold text-[#06B6D4]">{selectedCamera.aiAnalytics.vehicleCount} Units</span>
                   </div>
 
                   <div className="flex justify-between p-1.5 bg-white/[0.02] border border-white/5 rounded">

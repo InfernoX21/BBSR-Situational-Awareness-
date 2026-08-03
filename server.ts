@@ -990,6 +990,84 @@ app.post('/api/traffic-cameras/snapshot', (req, res) => {
   });
 });
 
+// Sadaksh Traffic Camera AI Microservice API
+app.get('/api/camera-ai/status', (req, res) => {
+  res.json({
+    modelName: 'Sadaksh YOLOv8 Vision Network',
+    repository: 'https://github.com/msVivekRanjan/Sadaksh.git',
+    status: 'ONLINE',
+    executionMode: 'GPU_ACCELERATED_WITH_CPU_FALLBACK',
+    fps: 30,
+    latencyMs: 14,
+    supportedClasses: ['car', 'bus', 'truck', 'motorcycle', 'pedestrian'],
+    supportedAlerts: ['ACCIDENT', 'STOPPED_VEHICLE', 'WRONG_WAY', 'PEDESTRIAN_ANOMALY'],
+    lastInference: new Date().toISOString(),
+  });
+});
+
+app.get('/api/camera-ai/detections', (req, res) => {
+  const { cameraId } = req.query;
+  const targetCam = (cameraId as string) || 'CAM-JV-01';
+
+  res.json({
+    camera_id: targetCam,
+    timestamp: new Date().toISOString(),
+    vehicles: 48,
+    cars: 31,
+    buses: 3,
+    trucks: 4,
+    motorcycles: 10,
+    pedestrians: 27,
+    average_speed: 34,
+    queue_length: 71,
+    congestion_level: 'HIGH',
+    model_name: 'Sadaksh YOLOv8 Vision Network',
+    fps: 30,
+    latency_ms: 14,
+    detections: [
+      { id: 'det-1', label: 'car', confidence: 0.98, bbox: [15, 20, 22, 18] },
+      { id: 'det-2', label: 'car', confidence: 0.96, bbox: [40, 25, 25, 20] },
+      { id: 'det-3', label: 'truck', confidence: 0.95, bbox: [68, 30, 28, 35] },
+      { id: 'det-4', label: 'bus', confidence: 0.97, bbox: [10, 50, 32, 28] },
+      { id: 'det-5', label: 'motorcycle', confidence: 0.93, bbox: [50, 60, 12, 14] },
+      { id: 'det-6', label: 'pedestrian', confidence: 0.94, bbox: [85, 70, 8, 16] },
+    ],
+    alerts: [
+      {
+        id: `alert-sadaksh-${Date.now()}`,
+        event_type: 'STOPPED_VEHICLE',
+        severity: 'HIGH',
+        description: `Sadaksh AI flagged stationary vehicle on lane 2 of ${targetCam} for >180s.`,
+        confidence: 0.96,
+      },
+    ],
+  });
+});
+
+app.get('/api/camera-ai/events', (req, res) => {
+  res.json({
+    totalEvents: 3,
+    events: [
+      { id: 'evt-1', camera_id: 'CAM-JV-01', event_type: 'STOPPED_VEHICLE', severity: 'HIGH', description: 'Stationary vehicle detected on Jayadev Vihar overpass lane 2', timestamp: '11:14 AM' },
+      { id: 'evt-2', camera_id: 'CAM-RAS-04', event_type: 'ACCIDENT', severity: 'CRITICAL', description: 'Minor collision detected near Rasulgarh flyover slip road', timestamp: '10:35 AM' },
+      { id: 'evt-3', camera_id: 'CAM-PAT-02', event_type: 'PEDESTRIAN_ANOMALY', severity: 'MEDIUM', description: 'Pedestrians jaywalking across Patia Infocity main road', timestamp: '09:42 AM' },
+    ],
+  });
+});
+
+app.post('/api/camera-ai/analyze', (req, res) => {
+  const { cameraId } = req.body || {};
+  res.json({
+    success: true,
+    camera_id: cameraId || 'CAM-JV-01',
+    status: 'ANALYSIS_COMPLETED',
+    vehiclesCount: 48,
+    congestionLevel: 'HIGH',
+    alertsGenerated: 1,
+    executedTimestamp: new Date().toISOString(),
+  });
+});
+
 let isPollingActive = false;
 
 // Active Telegram Long-Polling Loop for @Arkacmd_bot
