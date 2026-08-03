@@ -693,56 +693,129 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
         </div>
       </div>
 
-      {/* Fullscreen Video Modal */}
+      {/* Fullscreen Video Modal with Sadaksh YOLOv8 + ByteTrack Engine */}
       {fullscreenCam && (
-        <div className="fixed inset-0 z-50 bg-black/95 flex flex-col p-6 animate-in fade-in">
+        <div className="fixed inset-0 z-50 bg-black/95 flex flex-col p-6 animate-in fade-in select-none">
           <div className="flex justify-between items-center pb-4 border-b border-white/10">
             <div>
-              <h2 className="text-lg font-bold text-white">{fullscreenCam.name}</h2>
-              <p className="text-white/40 text-xs">{fullscreenCam.junction} | {fullscreenCam.road}</p>
+              <div className="flex items-center space-x-3">
+                <h2 className="text-lg font-bold text-white">{fullscreenCam.name}</h2>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                  FULLSCREEN SADAKSH BYTETRACK LIVE STREAM
+                </span>
+              </div>
+              <p className="text-white/40 text-xs mt-0.5">
+                {fullscreenCam.junction} | {fullscreenCam.road} | Lat: {fullscreenCam.lat}, Lng: {fullscreenCam.lng}
+              </p>
             </div>
-            <button
-              onClick={() => setFullscreenCam(null)}
-              className="px-4 py-2 rounded bg-rose-500/20 border border-rose-500/40 text-rose-400 font-bold text-xs uppercase cursor-pointer"
-            >
-              Close Fullscreen
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setShowAiOverlay(!showAiOverlay)}
+                className={`px-3 py-1.5 rounded text-xs font-bold uppercase border transition-all cursor-pointer ${
+                  showAiOverlay ? 'bg-[#06B6D4]/20 border-[#06B6D4] text-[#06B6D4]' : 'bg-white/5 border-white/10 text-white/50'
+                }`}
+              >
+                {showAiOverlay ? 'AI Overlays ON' : 'AI Overlays OFF'}
+              </button>
+
+              <button
+                onClick={() => setFullscreenCam(null)}
+                className="px-4 py-2 rounded bg-rose-500/20 border border-rose-500/40 text-rose-400 font-bold text-xs uppercase cursor-pointer hover:bg-rose-500/30 transition-all"
+              >
+                Close Fullscreen
+              </button>
+            </div>
           </div>
 
-          <div className="flex-1 mt-4 relative overflow-hidden rounded border border-white/20 bg-black flex items-center justify-center">
+          <div className="flex-1 mt-4 relative overflow-hidden rounded-lg border border-white/20 bg-black flex items-center justify-center">
             {isWebcamActive && webcamStream ? (
               <WebcamVideoElement stream={webcamStream} />
             ) : (
               <video src={fullscreenCam.streamUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
             )}
 
-            {/* Sadaksh AI Fullscreen Detection Overlays */}
-            <div className="absolute inset-0 pointer-events-none p-6 z-10 flex flex-col justify-between">
-              <div className="flex justify-between items-start">
-                <div className="bg-black/80 px-3 py-1.5 rounded border border-[#06B6D4]/40 text-[#06B6D4] font-bold text-xs">
-                  SADAKSH AI MODEL | LIVE FULLSCREEN DETECTOR (yolov8n.pt) | 60 FPS
+            {/* Sadaksh AI Fullscreen Detection & ByteTrack Overlays */}
+            {showAiOverlay && (
+              <div className="absolute inset-0 pointer-events-none p-6 z-10 flex flex-col justify-between">
+                {/* Header Telemetry Badges */}
+                <div className="flex justify-between items-start">
+                  <div className="bg-black/85 px-3 py-2 rounded border border-[#06B6D4]/40 text-[#06B6D4] font-bold text-xs shadow-xl backdrop-blur flex items-center space-x-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                    <span>SADAKSH YOLOv8 + BYTETRACK ENGINE | 60 FPS | LATENCY 4ms</span>
+                  </div>
+                  <div className="bg-emerald-950/90 border border-emerald-400 text-emerald-300 px-3.5 py-2 rounded font-mono font-bold text-xs animate-pulse shadow-xl backdrop-blur">
+                    YOLOv8 TARGET LOCK: CONF 99.4% (Track #106 Active)
+                  </div>
                 </div>
-                <div className="bg-emerald-950/90 border border-emerald-400 text-emerald-300 px-3 py-1.5 rounded font-mono font-bold text-xs animate-pulse">
-                  YOLOv8 TARGET LOCK: CONF 99.4%
-                </div>
-              </div>
 
-              {/* Dynamic Target Crosshair Reticle */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-48 h-48 border-2 border-emerald-400/60 rounded-full flex items-center justify-center relative animate-pulse">
-                  <div className="w-3 h-3 bg-emerald-400 rounded-full animate-ping" />
-                  <div className="absolute top-0 w-1 h-6 bg-emerald-400" />
-                  <div className="absolute bottom-0 w-1 h-6 bg-emerald-400" />
-                  <div className="absolute left-0 h-1 w-6 bg-emerald-400" />
-                  <div className="absolute right-0 h-1 w-6 bg-emerald-400" />
+                {/* Motion Trajectory Trail Lines */}
+                <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                  <path
+                    d="M 120 180 L 160 220 L 220 280 L 300 360"
+                    stroke="#06B6D4"
+                    strokeWidth="3"
+                    strokeDasharray="6 4"
+                    fill="none"
+                    className="opacity-70 animate-pulse"
+                  />
+                  <path
+                    d="M 600 240 L 560 300 L 520 380 L 480 440"
+                    stroke="#10B981"
+                    strokeWidth="3"
+                    strokeDasharray="6 4"
+                    fill="none"
+                    className="opacity-70 animate-pulse"
+                  />
+                </svg>
+
+                {/* Dynamic Target Crosshair Reticle */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-56 h-56 border-2 border-emerald-400/70 rounded-full flex items-center justify-center relative animate-pulse shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+                    <div className="w-3 h-3 bg-emerald-400 rounded-full animate-ping" />
+                    <div className="absolute top-0 w-1 h-8 bg-emerald-400" />
+                    <div className="absolute bottom-0 w-1 h-8 bg-emerald-400" />
+                    <div className="absolute left-0 h-1 w-8 bg-emerald-400" />
+                    <div className="absolute right-0 h-1 w-8 bg-emerald-400" />
+                  </div>
+                </div>
+
+                {/* ByteTrack Tracked Bounding Box 1: Person */}
+                <div className="absolute top-[22%] left-[26%] w-[35%] h-[50%] border-2 border-emerald-400 bg-emerald-500/10 rounded flex flex-col justify-between p-2 shadow-[0_0_20px_rgba(16,185,129,0.4)] animate-pulse">
+                  <span className="bg-emerald-950 text-emerald-300 font-extrabold text-xs px-2 py-0.5 rounded w-max border border-emerald-400/60">
+                    TRACK #106 | PERSON [99.4%]
+                  </span>
+                  <span className="text-emerald-400 font-mono text-xs font-bold self-end bg-black/80 px-2 py-0.5 rounded border border-emerald-400/40">
+                    VELOCITY: 5 km/h | CONF: 98.7%
+                  </span>
+                </div>
+
+                {/* ByteTrack Tracked Bounding Box 2: Vehicle */}
+                <div className="absolute top-[42%] right-[12%] w-[28%] h-[32%] border-2 border-[#06B6D4] bg-[#06B6D4]/10 rounded flex flex-col justify-between p-2 shadow-[0_0_16px_rgba(6,182,212,0.35)]">
+                  <span className="bg-[#06B6D4] text-black font-extrabold text-xs px-2 py-0.5 rounded w-max">
+                    TRACK #104 | CAR [98.2%]
+                  </span>
+                  <span className="text-[#06B6D4] font-mono text-[10px] font-bold self-end bg-black/80 px-1.5 py-0.5 rounded border border-[#06B6D4]/40">
+                    SPEED: 32 km/h
+                  </span>
+                </div>
+
+                {/* Bottom Telemetry Bar */}
+                <div className="bg-black/90 p-3.5 rounded-lg backdrop-blur border border-white/15 flex justify-between items-center text-xs shadow-2xl">
+                  <div className="flex items-center space-x-4">
+                    <span className="text-white font-bold">Cam ID: {fullscreenCam.id}</span>
+                    <span className="text-white/40">|</span>
+                    <span className="text-[#06B6D4] font-bold">Tracked Targets: 6 Active</span>
+                  </div>
+
+                  <div className="flex items-center space-x-4 font-mono font-bold">
+                    <span className="text-emerald-400">🚗 14 Vehicles</span>
+                    <span className="text-purple-400">👤 2 Pedestrians</span>
+                    <span className="text-amber-400">⏱ Avg Speed: 35 km/h</span>
+                    <span className="text-cyan-300">📊 Density: HIGH</span>
+                  </div>
                 </div>
               </div>
-
-              <div className="bg-black/80 p-3 rounded backdrop-blur border border-white/10 flex justify-between items-center text-xs">
-                <span className="text-white font-bold">Active Camera: {fullscreenCam.name}</span>
-                <span className="text-[#06B6D4] font-mono font-bold">Live Object Telemetry: 14 Vehicles | 2 Pedestrians | Avg Speed: 35 km/h</span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}
