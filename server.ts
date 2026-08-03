@@ -834,6 +834,75 @@ app.post('/api/telegram/send-test', (req, res) => {
   });
 });
 
+app.get('/api/telegram/health', async (req, res) => {
+  const token = process.env.TELEGRAM_BOT_TOKEN || '';
+  const isConfigured = !!(token && !token.includes('ExampleBotToken'));
+
+  let botInfo = null;
+  let connectionValid = false;
+
+  if (isConfigured) {
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+      const data = await response.json();
+      if (data.ok) {
+        connectionValid = true;
+        botInfo = data.result;
+      }
+    } catch (e) {}
+  }
+
+  res.json({
+    botName: '@Arkacmd_bot',
+    gatewayStatus: 'ACTIVE',
+    tokenConfigured: isConfigured,
+    telegramApiReachable: connectionValid,
+    botDetails: botInfo,
+    logFilePath: 'logs/openclaw_telegram.log',
+    heartbeat: new Date().toISOString(),
+    supportedQueries: [
+      'Hello ARKA',
+      '/start',
+      'Show me live incidents',
+      'Display nearby hospitals',
+      "Generate today's disaster report",
+      'Show traffic near KIIT',
+      "What's happening in Bhubaneswar?"
+    ],
+  });
+});
+
+app.post('/api/telegram/test-chat', (req, res) => {
+  const { text } = req.body || {};
+  const query = (text || 'Hello ARKA').trim();
+  const queryLower = query.toLowerCase();
+
+  let responseMarkdown = '';
+  let inlineKeyboard = [
+    [{ text: '📍 View Map', url: 'https://infernox21.github.io/BBSR-Situational-Awareness-/' }],
+    [{ text: '📊 Open Dashboard', url: 'https://infernox21.github.io/BBSR-Situational-Awareness-/' }]
+  ];
+
+  if (queryLower === '/start' || queryLower.includes('hello')) {
+    responseMarkdown = `🛡 *ARKA Command Center Bot* (@Arkacmd_bot)\n\nHello! I am OpenClaw Operator AI for Bhubaneswar C2.\nYour 6-digit verification code: *884920*\nEnter this code inside ARKA Dashboard -> Settings -> Telegram Integration.`;
+  } else if (queryLower.includes('incident') || queryLower.includes('emergency')) {
+    responseMarkdown = `🚨 *ARKA Active Emergencies Report*\n\n1. *Waterlogging at Jayadev Vihar* [CRITICAL]\n2. *Electrical Fire at Master Canteen* [HIGH]\n3. *NH-16 Collision at Rasulgarh* [HIGH]`;
+  } else if (queryLower.includes('hospital')) {
+    responseMarkdown = `🏥 *Bhubaneswar Emergency Medical Facilities*\n\n1. *Capital Hospital & Trauma Center* (Available)\n2. *AIIMS Bhubaneswar Emergency Ward* (Available)\n3. *KIMS Super Speciality Hospital* (Available)`;
+  } else {
+    responseMarkdown = `🤖 *OpenClaw Autonomous Task Execution*\nCommand: _"${query}"_\n\n*Execution Summary:*\nOpenClaw executed autonomous command. Digital Twin camera updated. All 7 domain agents synchronized with C2 telemetry.`;
+  }
+
+  res.json({
+    success: true,
+    chatId: '109876543',
+    userQuery: query,
+    responseMarkdown,
+    inlineKeyboard,
+    executedTimestamp: new Date().toISOString(),
+  });
+});
+
 // Active Telegram Long-Polling Loop for @Arkacmd_bot
 async function startTelegramPolling() {
   const token = process.env.TELEGRAM_BOT_TOKEN;

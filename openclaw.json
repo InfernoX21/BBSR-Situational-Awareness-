@@ -1,0 +1,28 @@
+{
+  "name": "ARKA-OpenClaw-Framework",
+  "version": "2026.7.1-2",
+  "description": "ARKA Geospatial Command Engine & Autonomous Multi-Agent Operations Framework",
+  "bot": {
+    "username": "@Arkacmd_bot",
+    "tokenEnvVar": "TELEGRAM_BOT_TOKEN",
+    "webhookEnvVar": "TELEGRAM_WEBHOOK",
+    "adminChatEnvVar": "TELEGRAM_ADMIN_CHAT"
+  },
+  "runtime": {
+    "mode": "MCP_TOOL_ORCHESTRATOR",
+    "pollIntervalMs": 1000,
+    "timeoutMs": 30000,
+    "autoReconnect": true,
+    "heartbeatIntervalMs": 15000,
+    "logFilePath": "logs/openclaw_telegram.log"
+  },
+  "agents": [
+    { "id": "supervisor", "name": "Supervisor Agent", "role": "Workflow Orchestrator" },
+    { "id": "gis", "name": "GIS Agent", "role": "Cesium/Leaflet Spatial Navigation" },
+    { "id": "intelligence", "name": "Intelligence Agent", "role": "News & Advisory Synthesis" },
+    { "id": "traffic", "name": "Traffic Agent", "role": "Corridor Speeds & Routing" },
+    { "id": "disaster", "name": "Disaster Agent", "role": "Doppler Radar & Flood Inundation" },
+    { "id": "infrastructure", "name": "Infrastructure Agent", "role": "Hospitals & TPCODL Grid" },
+    { "id": "reporting", "name": "Reporting Agent", "role": "Executive Summaries & Briefings" }
+  ]
+}
