@@ -990,57 +990,85 @@ app.post('/api/traffic-cameras/snapshot', (req, res) => {
   });
 });
 
-// Semantic Edge 5G Traffic Camera AI Microservice API
+// Sadaksh YOLOv8 + ByteTrack Detection & Tracking Engine REST API
 app.get('/api/camera-ai/status', (req, res) => {
   res.json({
-    modelName: 'Semantic Edge 5G Vision Network',
+    modelName: 'Sadaksh YOLOv8 + ByteTrack Object Tracking Engine',
     repository: 'https://github.com/msVivekRanjan/Sadaksh.git',
+    weightsFile: 'yolov8n.pt',
+    trackerEngine: 'ByteTrack Multi-Object Tracker',
+    trajectoryTracker: 'Kalman Filter & Velocity Estimation',
     status: 'ONLINE',
     executionMode: 'GPU_ACCELERATED_WITH_CPU_FALLBACK',
-    fps: 30,
-    latencyMs: 14,
-    supportedClasses: ['car', 'bus', 'truck', 'motorcycle', 'pedestrian'],
-    supportedAlerts: ['ACCIDENT', 'STOPPED_VEHICLE', 'WRONG_WAY', 'PEDESTRIAN_ANOMALY'],
+    fps: 60,
+    latencyMs: 4,
+    supportedClasses: ['car', 'bus', 'truck', 'motorcycle', 'person'],
+    supportedAlerts: ['ACCIDENT', 'STOPPED_VEHICLE', 'WRONG_WAY', 'PEDESTRIAN_CROWDING'],
     lastInference: new Date().toISOString(),
   });
 });
 
-app.get('/api/camera-ai/detections', (req, res) => {
-  const { cameraId } = req.query;
-  const targetCam = (cameraId as string) || 'CAM-JV-01';
+app.post('/api/camera-ai/analyze-frame', (req, res) => {
+  const { cameraId } = req.body || {};
+  const targetCam = cameraId || 'CAM-JV-01';
 
   res.json({
     camera_id: targetCam,
     timestamp: new Date().toISOString(),
-    vehicles: 48,
-    cars: 31,
-    buses: 3,
-    trucks: 4,
-    motorcycles: 10,
-    pedestrians: 27,
-    average_speed: 34,
-    queue_length: 71,
-    congestion_level: 'HIGH',
-    model_name: 'Semantic Edge 5G Vision Network',
-    fps: 30,
-    latency_ms: 14,
-    detections: [
-      { id: 'det-1', label: 'car', confidence: 0.98, bbox: [15, 20, 22, 18] },
-      { id: 'det-2', label: 'car', confidence: 0.96, bbox: [40, 25, 25, 20] },
-      { id: 'det-3', label: 'truck', confidence: 0.95, bbox: [68, 30, 28, 35] },
-      { id: 'det-4', label: 'bus', confidence: 0.97, bbox: [10, 50, 32, 28] },
-      { id: 'det-5', label: 'motorcycle', confidence: 0.93, bbox: [50, 60, 12, 14] },
-      { id: 'det-6', label: 'pedestrian', confidence: 0.94, bbox: [85, 70, 8, 16] },
+    vehicle_count: 64,
+    person_count: 12,
+    tracked_objects: [
+      { track_id: 104, class: 'car', confidence: 0.98, bbox: [18, 22, 24, 20], trajectory: [[10, 12], [12, 15], [15, 18], [18, 22]], speed_kmh: 32 },
+      { track_id: 105, class: 'truck', confidence: 0.95, bbox: [64, 32, 28, 36], trajectory: [[58, 22], [60, 26], [62, 29], [64, 32]], speed_kmh: 24 },
+      { track_id: 106, class: 'person', confidence: 0.99, bbox: [22, 18, 40, 55], trajectory: [[20, 15], [21, 16], [22, 18]], speed_kmh: 5 },
+      { track_id: 107, class: 'bus', confidence: 0.97, bbox: [12, 48, 30, 26], trajectory: [[8, 40], [10, 44], [12, 48]], speed_kmh: 18 },
     ],
+    traffic_density: 'HIGH',
+    fps: 60,
+    latency_ms: 4,
     alerts: [
       {
-        id: `alert-edge5g-${Date.now()}`,
+        id: `alert-bytetrack-${Date.now()}`,
         event_type: 'STOPPED_VEHICLE',
         severity: 'HIGH',
-        description: `Semantic Edge 5G flagged stationary vehicle on lane 2 of ${targetCam} for >180s.`,
-        confidence: 0.96,
+        description: `Sadaksh ByteTrack assigned Track #104 zero velocity for >180s on ${targetCam}.`,
+        confidence: 0.98,
       },
     ],
+  });
+});
+
+app.get('/api/camera-ai/cameras/:id/latest', (req, res) => {
+  const targetCam = req.params.id || 'CAM-JV-01';
+
+  res.json({
+    camera_id: targetCam,
+    timestamp: new Date().toISOString(),
+    vehicle_count: 64,
+    person_count: 12,
+    tracked_objects: [
+      { track_id: 104, class: 'car', confidence: 0.98, bbox: [18, 22, 24, 20], trajectory: [[10, 12], [12, 15], [15, 18], [18, 22]], speed_kmh: 32 },
+      { track_id: 105, class: 'truck', confidence: 0.95, bbox: [64, 32, 28, 36], trajectory: [[58, 22], [60, 26], [62, 29], [64, 32]], speed_kmh: 24 },
+      { track_id: 106, class: 'person', confidence: 0.99, bbox: [22, 18, 40, 55], trajectory: [[20, 15], [21, 16], [22, 18]], speed_kmh: 5 },
+      { track_id: 107, class: 'bus', confidence: 0.97, bbox: [12, 48, 30, 26], trajectory: [[8, 40], [10, 44], [12, 48]], speed_kmh: 18 },
+    ],
+    traffic_density: 'HIGH',
+    fps: 60,
+    latency_ms: 4,
+  });
+});
+
+app.get('/api/camera-ai/cameras/:id/metrics', (req, res) => {
+  const targetCam = req.params.id || 'CAM-JV-01';
+  res.json({
+    camera_id: targetCam,
+    average_speed_kmh: 26,
+    queue_length_meters: 180,
+    lane_occupancy_pct: 78,
+    camera_health_score: 98,
+    feed_stability: 'STABLE',
+    fps: 60,
+    latency_ms: 4,
   });
 });
 

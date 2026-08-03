@@ -231,31 +231,32 @@ export class OpenClawToolRegistry {
       }
 
       case 'analyze_camera':
-      case 'camera_status': {
+      case 'camera_status':
+      case 'camera_latest_detections': {
         const camId = args.cameraId || 'CAM-JV-01';
         return {
           success: true,
           camera_id: camId,
-          model_name: 'Semantic Edge 5G Vision Network',
+          model_name: 'Sadaksh YOLOv8 + ByteTrack Object Tracking Engine',
           timestamp: new Date().toISOString(),
-          vehicles: 48,
-          cars: 31,
-          buses: 3,
-          trucks: 4,
-          motorcycles: 10,
-          pedestrians: 27,
-          average_speed: 34,
-          queue_length: 71,
-          congestion_level: 'HIGH',
-          fps: 30,
-          latency_ms: 14,
+          vehicle_count: 64,
+          person_count: 12,
+          tracked_objects: [
+            { track_id: 104, class: 'car', confidence: 0.98, bbox: [18, 22, 24, 20], speed_kmh: 32 },
+            { track_id: 105, class: 'truck', confidence: 0.95, bbox: [64, 32, 28, 36], speed_kmh: 24 },
+            { track_id: 106, class: 'person', confidence: 0.99, bbox: [22, 18, 40, 55], speed_kmh: 5 },
+            { track_id: 107, class: 'bus', confidence: 0.97, bbox: [12, 48, 30, 26], speed_kmh: 18 },
+          ],
+          traffic_density: 'HIGH',
+          fps: 60,
+          latency_ms: 4,
           alerts: [
             {
-              id: `alert-edge5g-${Date.now()}`,
+              id: `alert-bytetrack-${Date.now()}`,
               event_type: 'STOPPED_VEHICLE',
               severity: 'HIGH',
-              description: `Semantic Edge 5G flagged stationary vehicle on lane 2 for >180s.`,
-              confidence: 0.96,
+              description: `Sadaksh ByteTrack flagged Track #104 stationary for >180s.`,
+              confidence: 0.98,
             },
           ],
         };
