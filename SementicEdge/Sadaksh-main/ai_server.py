@@ -50,7 +50,7 @@ if HAS_DEPENDENCIES:
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
         print(f"[+] Step 2: Loading YOLOv8 Weights from {weights_path}...")
         print(f"[+] Step 2: Initializing ByteTrack Tracker on Device {device}...")
-        tracker_instance = Tracker(model_path=weights_path, conf_threshold=0.30, device=device)
+        tracker_instance = Tracker(model_path=weights_path, conf_threshold=0.25, device=device)
         trajectory_instance = TrajectoryStore(max_len=15)
         print("[+] Step 2 SUCCESS: PyTorch YOLOv8 + ByteTrack Model Loaded & Ready!")
     except Exception as err:
@@ -138,9 +138,9 @@ def analyze_frame(req: FrameRequest):
         h, w, _ = img.shape
         print(f"[+] Stage 2 SUCCESS: OpenCV Frame Decoded ({w}x{h} px)")
 
-        # Run PyTorch YOLOv8 + ByteTrack Tracker
+        # Run PyTorch YOLOv8 + ByteTrack Tracker using tracker.track() method
         print("[+] Stage 3: Executing PyTorch YOLOv8 Predict() + ByteTrack Track()...")
-        raw_detections = tracker_instance.update(img)
+        raw_detections = tracker_instance.track(img)
         t1 = time.time()
         latency_ms = round((t1 - t0) * 1000, 1)
         fps = round(1000 / max(latency_ms, 1), 1)
