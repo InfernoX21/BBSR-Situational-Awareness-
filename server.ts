@@ -990,52 +990,43 @@ app.post('/api/traffic-cameras/snapshot', (req, res) => {
   });
 });
 
-// Sadaksh YOLOv8 + ByteTrack Detection & Tracking Engine REST API
-app.get('/api/camera-ai/status', (req, res) => {
-  res.json({
-    modelName: 'Semantic Edge 5G AI Engine (Sadaksh YOLOv8)',
-    modelDirectory: 'D:\\BBsr Twin\\SementicEdge\\Sadaksh-main',
-    weightsFile: 'D:\\BBsr Twin\\SementicEdge\\Sadaksh-main\\yolov8n.pt',
-    trackerEngine: 'ByteTrack Multi-Object Tracker',
-    trajectoryTracker: 'Kalman Filter & Velocity Estimation',
-    status: 'ONLINE',
-    executionMode: 'GPU_ACCELERATED_WITH_CPU_FALLBACK',
-    fps: 60,
-    latencyMs: 4,
-    supportedClasses: ['car', 'bus', 'truck', 'motorcycle', 'person'],
-    supportedAlerts: ['ACCIDENT', 'STOPPED_VEHICLE', 'WRONG_WAY', 'PEDESTRIAN_CROWDING'],
-    lastInference: new Date().toISOString(),
-  });
+// Sadaksh YOLOv8 + ByteTrack Detection & Tracking Engine REST API Proxy
+app.get('/api/camera-ai/status', async (req, res) => {
+  try {
+    const pyRes = await fetch('http://127.0.0.1:8000/status');
+    const data = await pyRes.json();
+    return res.json(data);
+  } catch (err) {
+    return res.json({
+      status: 'OFFLINE',
+      modelName: 'Semantic Edge 5G AI Engine (Sadaksh YOLOv8)',
+      weightsFile: 'D:\\BBsr Twin\\SementicEdge\\Sadaksh-main\\yolov8n.pt',
+      error: 'Python Sadaksh Microservice Offline (http://127.0.0.1:8000)',
+      detections: [],
+    });
+  }
 });
 
-app.post('/api/camera-ai/analyze-frame', (req, res) => {
-  const { cameraId } = req.body || {};
-  const targetCam = cameraId || 'CAM-JV-01';
-
-  res.json({
-    camera_id: targetCam,
-    timestamp: new Date().toISOString(),
-    vehicle_count: 64,
-    person_count: 12,
-    tracked_objects: [
-      { track_id: 104, class: 'car', confidence: 0.98, bbox: [18, 22, 24, 20], trajectory: [[10, 12], [12, 15], [15, 18], [18, 22]], speed_kmh: 32 },
-      { track_id: 105, class: 'truck', confidence: 0.95, bbox: [64, 32, 28, 36], trajectory: [[58, 22], [60, 26], [62, 29], [64, 32]], speed_kmh: 24 },
-      { track_id: 106, class: 'person', confidence: 0.99, bbox: [22, 18, 40, 55], trajectory: [[20, 15], [21, 16], [22, 18]], speed_kmh: 5 },
-      { track_id: 107, class: 'bus', confidence: 0.97, bbox: [12, 48, 30, 26], trajectory: [[8, 40], [10, 44], [12, 48]], speed_kmh: 18 },
-    ],
-    traffic_density: 'HIGH',
-    fps: 60,
-    latency_ms: 4,
-    alerts: [
-      {
-        id: `alert-bytetrack-${Date.now()}`,
-        event_type: 'STOPPED_VEHICLE',
-        severity: 'HIGH',
-        description: `Sadaksh ByteTrack assigned Track #104 zero velocity for >180s on ${targetCam}.`,
-        confidence: 0.98,
-      },
-    ],
-  });
+app.post('/api/camera-ai/analyze-frame', async (req, res) => {
+  try {
+    const pyRes = await fetch('http://127.0.0.1:8000/analyze-frame', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body || {}),
+    });
+    const data = await pyRes.json();
+    return res.json(data);
+  } catch (err) {
+    return res.json({
+      status: 'OFFLINE',
+      camera_id: req.body?.cameraId || 'CAM-JV-01',
+      timestamp: new Date().toISOString(),
+      vehicle_count: 0,
+      person_count: 0,
+      detections: [],
+      error: 'AI Inference Service Offline',
+    });
+  }
 });
 
 app.get('/api/camera-ai/cameras/:id/latest', (req, res) => {
