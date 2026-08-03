@@ -834,6 +834,58 @@ app.post('/api/telegram/send-test', (req, res) => {
   });
 });
 
+// Active Telegram Long-Polling Loop for @Arkacmd_bot
+async function startTelegramPolling() {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token || token.includes('ExampleBotToken')) {
+    console.log('[Telegram Bot] TELEGRAM_BOT_TOKEN not configured in .env. Waiting for Bot Token...');
+    return;
+  }
+
+  console.log('[Telegram Bot] Starting live Telegram long-polling for @Arkacmd_bot...');
+  let lastUpdateId = 0;
+
+  while (true) {
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${token}/getUpdates?offset=${lastUpdateId + 1}&timeout=30`);
+      const data = await res.json();
+
+      if (data.ok && Array.isArray(data.result)) {
+        for (const update of data.result) {
+          lastUpdateId = update.update_id;
+          if (update.message) {
+            const chatId = update.message.chat.id;
+            const text = update.message.text || '';
+            console.log(`[Telegram Bot] Message from ${chatId}: ${text}`);
+
+            let replyText = `🛡 *ARKA Command Center* (@Arkacmd_bot)\nReceived: _${text}_`;
+            if (text.startsWith('/start')) {
+              const code = Math.floor(100000 + Math.random() * 900000);
+              replyText = `🛡 *ARKA Command Center* (@Arkacmd_bot)\n\nWelcome to ARKA!\nYour 6-digit verification code: *${code}*\n\nEnter this code inside ARKA Dashboard -> Settings -> Telegram Integration.`;
+            } else if (text.startsWith('/incidents')) {
+              replyText = `🚨 *ARKA Active Emergencies Report*\n\n1. *Waterlogging at Jayadev Vihar* [CRITICAL]\n2. *Electrical Fire at Master Canteen* [HIGH]\n3. *NH-16 Collision at Rasulgarh* [HIGH]`;
+            } else if (text.startsWith('/weather')) {
+              replyText = `🌦 *IMD Doppler Weather Radar*\nRainfall: 45 mm/hr | Flood Risk: SEVERE\nHotspots: Jayadev Vihar & Acharya Vihar`;
+            }
+
+            await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                text: replyText,
+                parse_mode: 'Markdown',
+              }),
+            });
+          }
+        }
+      }
+    } catch (err) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+  }
+}
+
 async function startServer() {
   // Vite middleware for development vs static serve for production
   if (process.env.NODE_ENV !== 'production') {
@@ -852,6 +904,7 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`ARKA C2 Command Server listening on http://0.0.0.0:${PORT}`);
+    startTelegramPolling();
   });
 }
 
