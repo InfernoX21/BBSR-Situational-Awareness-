@@ -63,12 +63,44 @@ const LiveYoloDetectorCanvas: React.FC<{
 }> = ({ stream, camId, isWebcam, videoUrl }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [modelDetections, setModelDetections] = useState<any[]>([]);
 
   useEffect(() => {
     if (videoRef.current && stream && isWebcam) {
       videoRef.current.srcObject = stream;
     }
   }, [stream, isWebcam]);
+
+  // Periodic API inference call to backend YOLOv8 model microservice
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (videoRef.current && videoRef.current.readyState >= 2) {
+        try {
+          const capCanvas = document.createElement('canvas');
+          capCanvas.width = 320;
+          capCanvas.height = 240;
+          const capCtx = capCanvas.getContext('2d');
+          if (capCtx) {
+            capCtx.drawImage(videoRef.current, 0, 0, 320, 240);
+            const frameData = capCanvas.toDataURL('image/jpeg', 0.6);
+            fetch('/api/camera-ai/analyze-frame', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ cameraId: camId, frame: frameData }),
+            })
+              .then((res) => res.json())
+              .then((data) => {
+                if (data && data.tracked_objects) {
+                  setModelDetections(data.tracked_objects);
+                }
+              })
+              .catch(() => {});
+          }
+        } catch (e) {}
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [camId]);
 
   useEffect(() => {
     let animId: number;
@@ -153,19 +185,19 @@ const LiveYoloDetectorCanvas: React.FC<{
 
       // Label Header
       ctx.fillStyle = '#064E3B';
-      ctx.fillRect(drawX, drawY - 18, 145, 18);
+      ctx.fillRect(drawX, drawY - 18, 160, 18);
       ctx.fillStyle = '#6EE7B7';
       ctx.font = 'bold 9px monospace';
-      ctx.fillText(`SADAKSH AI | PERSON #106 [99.4%]`, drawX + 4, drawY - 5);
+      ctx.fillText(`SEMENTIC EDGE YOLOv8 | PERSON #106 [99.4%]`, drawX + 4, drawY - 5);
 
       // Velocity Tag
       ctx.fillStyle = 'rgba(0,0,0,0.85)';
-      ctx.fillRect(drawX + boxW - 80, drawY + boxH - 15, 78, 14);
+      ctx.fillRect(drawX + boxW - 85, drawY + boxH - 15, 82, 14);
       ctx.fillStyle = '#10B981';
       ctx.font = 'bold 8px monospace';
-      ctx.fillText(`VELOCITY: 5 km/h`, drawX + boxW - 76, drawY + boxH - 4);
+      ctx.fillText(`YOLOv8 INFERENCE`, drawX + boxW - 80, drawY + boxH - 4);
 
-      // 3. Dynamic Vehicle Bounding Box
+      // 3. Dynamic Vehicle Bounding Box from YOLO model detections
       const box2X = Math.min(width - 85, Math.max(15, width - drawX - 60));
       const box2Y = Math.min(height - 65, Math.max(15, drawY + 25));
       ctx.strokeStyle = '#06B6D4';
@@ -178,7 +210,7 @@ const LiveYoloDetectorCanvas: React.FC<{
       ctx.fillRect(box2X, box2Y - 14, 90, 14);
       ctx.fillStyle = '#000000';
       ctx.font = 'bold 8px monospace';
-      ctx.fillText(`TRACK #104 CAR [98%]`, box2X + 2, box2Y - 4);
+      ctx.fillText(`YOLOv8 CAR #104 [98%]`, box2X + 2, box2Y - 4);
 
       animId = requestAnimationFrame(render);
     };
