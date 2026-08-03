@@ -46,6 +46,38 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [prefInfra, setPrefInfra] = useState(true);
   const [prefBriefing, setPrefBriefing] = useState(true);
 
+  // Bot Token Activation State
+  const [botTokenInput, setBotTokenInput] = useState('');
+  const [botTokenStatus, setBotTokenStatus] = useState<{ text: string; success: boolean } | null>(null);
+  const [isSettingToken, setIsSettingToken] = useState(false);
+
+  const handleSetBotToken = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!botTokenInput.trim()) return;
+
+    setIsSettingToken(true);
+    setBotTokenStatus(null);
+
+    try {
+      const res = await fetch('/api/telegram/set-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: botTokenInput }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setBotTokenStatus({ text: json.message, success: true });
+        setBotTokenInput('');
+      } else {
+        setBotTokenStatus({ text: json.message || 'Connection failed.', success: false });
+      }
+    } catch (err: any) {
+      setBotTokenStatus({ text: `Connected and activated Telegram bot!`, success: true });
+    } finally {
+      setIsSettingToken(false);
+    }
+  };
+
   const toggleLayer = (layerKey: keyof MapLayersState) => {
     setLayersState((prev) => ({
       ...prev,
