@@ -30,7 +30,7 @@ export interface SadakshByteTrackResponse {
 
 export class CameraAIService {
   private static instance: CameraAIService;
-  private repoPath = path.join(process.cwd(), 'ai', 'traffic-camera-ai');
+  private repoPath = path.join(process.cwd(), 'SementicEdge', 'Sadaksh-main');
 
   private constructor() {}
 
@@ -43,10 +43,9 @@ export class CameraAIService {
 
   public getModelStatus() {
     return {
-      modelName: 'Sadaksh YOLOv8 + ByteTrack Object Tracking Engine',
-      repository: 'https://github.com/msVivekRanjan/Sadaksh.git',
-      localPath: this.repoPath,
-      weightsFile: 'yolov8n.pt',
+      modelName: 'Semantic Edge 5G AI Engine (Sadaksh YOLOv8)',
+      localModelPath: this.repoPath,
+      weightsFile: path.join(this.repoPath, 'yolov8n.pt'),
       trackerEngine: 'ByteTrack Multi-Object Tracker',
       trajectoryTracker: 'Kalman Filter & Velocity Estimation',
       status: 'ONLINE',

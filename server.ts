@@ -993,9 +993,9 @@ app.post('/api/traffic-cameras/snapshot', (req, res) => {
 // Sadaksh YOLOv8 + ByteTrack Detection & Tracking Engine REST API
 app.get('/api/camera-ai/status', (req, res) => {
   res.json({
-    modelName: 'Sadaksh YOLOv8 + ByteTrack Object Tracking Engine',
-    repository: 'https://github.com/msVivekRanjan/Sadaksh.git',
-    weightsFile: 'yolov8n.pt',
+    modelName: 'Semantic Edge 5G AI Engine (Sadaksh YOLOv8)',
+    modelDirectory: 'D:\\BBsr Twin\\SementicEdge\\Sadaksh-main',
+    weightsFile: 'D:\\BBsr Twin\\SementicEdge\\Sadaksh-main\\yolov8n.pt',
     trackerEngine: 'ByteTrack Multi-Object Tracker',
     trajectoryTracker: 'Kalman Filter & Velocity Estimation',
     status: 'ONLINE',
