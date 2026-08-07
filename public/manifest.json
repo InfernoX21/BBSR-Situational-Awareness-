@@ -1,0 +1,22 @@
+{
+  "name": "ARKA Emergency Operations Center",
+  "short_name": "ARKA EOC",
+  "description": "Smart City Emergency Command & Control Platform for Bhubaneswar",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

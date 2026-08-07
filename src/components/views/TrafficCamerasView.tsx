@@ -576,10 +576,10 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
               gridCount === 1
                 ? 'grid-cols-1'
                 : gridCount <= 4
-                ? 'grid-cols-2'
+                ? 'grid-cols-1 sm:grid-cols-2'
                 : gridCount <= 9
-                ? 'grid-cols-3'
-                : 'grid-cols-4'
+                ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3'
+                : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-4'
             }`}
           >
             {visibleGridCameras.map((cam) => {

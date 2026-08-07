@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   RotateCw,
+  Menu,
 } from 'lucide-react';
 
 interface TopStatusBarProps {
@@ -20,6 +21,7 @@ interface TopStatusBarProps {
   onFuseIntelligence: () => void;
   isFusing: boolean;
   onRefreshAll: () => void;
+  onOpenMobileMenu?: () => void;
 }
 
 export const TopStatusBar: React.FC<TopStatusBarProps> = ({
@@ -77,18 +79,28 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
   const totalStreamsCount = Object.keys(healthMap).length;
 
   return (
-    <header className="h-10 border-b border-white/10 bg-[#0A0A0A] flex items-center px-4 justify-between shrink-0 select-none overflow-x-auto text-[11px] font-mono relative">
-      {/* Left System Status & Threat Level */}
-      <div className="flex items-center gap-6">
+    <header className="h-12 md:h-10 border-b border-white/10 bg-[#0A0A0A] flex items-center px-3 md:px-4 justify-between shrink-0 select-none overflow-x-auto text-[11px] font-mono relative">
+      {/* Left System Status & Mobile Drawer Toggle */}
+      <div className="flex items-center gap-3 md:gap-6">
+        {onOpenMobileMenu && (
+          <button
+            onClick={onOpenMobileMenu}
+            aria-label="Open mobile navigation drawer"
+            className="md:hidden w-10 h-10 rounded bg-white/10 flex items-center justify-center text-white active:bg-white/20 transition-colors shrink-0"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
+
         <button
           onClick={() => setShowHealthModal(!showHealthModal)}
-          className="flex items-center gap-2 px-2 py-0.5 rounded bg-white/[0.03] border border-white/10 hover:border-[#10B981]/40 transition-all cursor-pointer"
+          className="flex items-center gap-2 px-2 py-1 rounded bg-white/[0.03] border border-white/10 hover:border-[#10B981]/40 transition-all cursor-pointer"
         >
           <div className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse shadow-[0_0_8px_#10B981]" />
-          <span className="text-[10px] font-bold tracking-[0.15em] text-[#10B981] uppercase">
-            LIVE TELEMETRY ({activeConnectedCount}/{totalStreamsCount})
+          <span className="text-[10px] font-bold tracking-[0.15em] text-[#10B981] uppercase truncate">
+            TELEMETRY ({activeConnectedCount}/{totalStreamsCount})
           </span>
-          <Wifi className="w-3 h-3 text-[#10B981]" />
+          <Wifi className="w-3 h-3 text-[#10B981] shrink-0" />
         </button>
 
         <div className="h-4 w-[1px] bg-white/10" />

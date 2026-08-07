@@ -66,7 +66,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <aside className="w-60 flex-shrink-0 h-full bg-[#0A0A0A] border-r border-white/10 flex flex-col p-4 shrink-0 select-none">
+    <aside className="hidden md:flex md:w-60 flex-shrink-0 h-full bg-[#0A0A0A] border-r border-white/10 flex-col p-4 shrink-0 select-none">
       {/* Top Header: Branding */}
       <div className="mb-6">
         <h1 className="text-xl font-bold tracking-tighter text-white">

@@ -199,21 +199,32 @@ export const ResourceTrackerView: React.FC<ResourceTrackerViewProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-1 text-[9px] text-white/40">
+            <div className="flex flex-wrap items-center justify-between pt-2 border-t border-white/5 text-[10px] text-white/40 gap-2">
               <span>LAT: {unit.lat.toFixed(4)} | LNG: {unit.lng.toFixed(4)}</span>
-              {unit.status === 'AVAILABLE' && (
-                <button
-                  onClick={() => {
-                    if (onDispatchUnit && incidents.length > 0) {
-                      onDispatchUnit(unit.id, incidents[0].id);
-                    }
-                  }}
-                  className="px-2 py-1 rounded bg-[#10B981]/20 text-[#10B981] font-bold uppercase hover:bg-[#10B981]/30 transition-all flex items-center space-x-1"
-                >
-                  <Send className="w-3 h-3" />
-                  <span>Quick Dispatch</span>
-                </button>
-              )}
+              <div className="flex items-center space-x-2">
+                {onJumpToMap && (
+                  <button
+                    onClick={onJumpToMap}
+                    className="min-h-[44px] px-3 py-2 rounded bg-white/10 text-white font-bold uppercase hover:bg-white/20 transition-all flex items-center space-x-1 cursor-pointer active:scale-95"
+                  >
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>Map Jump</span>
+                  </button>
+                )}
+                {unit.status === 'AVAILABLE' && (
+                  <button
+                    onClick={() => {
+                      if (onDispatchUnit && incidents.length > 0) {
+                        onDispatchUnit(unit.id, incidents[0].id);
+                      }
+                    }}
+                    className="min-h-[44px] px-3 py-2 rounded bg-[#10B981]/20 text-[#10B981] font-bold uppercase hover:bg-[#10B981]/30 transition-all flex items-center space-x-1 cursor-pointer active:scale-95 border border-[#10B981]/40"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Dispatch</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         ))}

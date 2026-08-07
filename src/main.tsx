@@ -8,3 +8,12 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 );
+
+if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((reg) => console.log('[ARKA PWA] Service Worker registered:', reg.scope))
+      .catch((err) => console.warn('[ARKA PWA] Service Worker registration failed:', err));
+  });
+}

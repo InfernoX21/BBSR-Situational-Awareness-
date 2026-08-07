@@ -70,20 +70,20 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => handleDownload('TXT')}
-            className="px-3 py-1.5 rounded bg-[#10B981]/10 border border-[#10B981]/40 hover:bg-[#10B981]/20 text-[#10B981] font-bold text-xs uppercase flex items-center space-x-1.5 transition-all"
+            className="min-h-[44px] px-3.5 py-2.5 rounded bg-[#10B981]/20 border border-[#10B981]/40 hover:bg-[#10B981]/30 text-[#10B981] font-bold text-xs uppercase flex items-center space-x-2 transition-all cursor-pointer active:scale-95"
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-4 h-4" />
             <span>Export Report File</span>
           </button>
 
           <button
             onClick={() => window.print()}
-            className="px-3 py-1.5 rounded bg-white/5 border border-white/20 hover:bg-white/10 text-white/80 font-bold text-xs uppercase flex items-center space-x-1.5 transition-all"
+            className="min-h-[44px] px-3.5 py-2.5 rounded bg-white/10 border border-white/20 hover:bg-white/20 text-white font-bold text-xs uppercase flex items-center space-x-2 transition-all cursor-pointer active:scale-95"
           >
-            <Printer className="w-3.5 h-3.5" />
+            <Printer className="w-4 h-4" />
             <span>Print Report</span>
           </button>
         </div>

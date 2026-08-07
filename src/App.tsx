@@ -32,6 +32,9 @@ import {
 } from './data/bhubaneswarData';
 import { Sidebar } from './components/Sidebar';
 import { TopStatusBar } from './components/TopStatusBar';
+import { MobileNavDrawer } from './components/MobileNavDrawer';
+import { MobileAIBottomSheet } from './components/ai/MobileAIBottomSheet';
+import { offlineManager } from './services/offline/OfflineManager';
 import { DigitalTwinMap } from './components/DigitalTwinMap';
 import { IncidentPopup } from './components/IncidentPopup';
 import { RightIntelligenceCenter } from './components/RightIntelligenceCenter';
@@ -58,6 +61,14 @@ import { TrafficCamerasView } from './components/views/TrafficCamerasView';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<NavItem>('Dashboard');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const [isOffline, setIsOffline] = useState<boolean>(!navigator.onLine);
+
+  useEffect(() => {
+    const unsub = offlineManager.subscribe((online) => setIsOffline(!online));
+    return () => unsub();
+  }, []);
+
   const [agencies, setAgencies] = useState<Agency[]>(AGENCIES);
   const [incidents, setIncidents] = useState<Incident[]>(INITIAL_INCIDENTS);
   const [intelligenceItems, setIntelligenceItems] = useState<IntelligenceItem[]>(INITIAL_INTELLIGENCE);
@@ -246,6 +257,13 @@ export default function App() {
 
   return (
     <div className="w-screen h-screen bg-[#050505] flex flex-col overflow-hidden text-[#D1D5DB] font-sans">
+      {/* Offline Alert Banner */}
+      {isOffline && (
+        <div className="bg-amber-500 text-black px-3 py-1 font-mono text-[10px] font-bold text-center flex items-center justify-center space-x-2 shrink-0 animate-pulse z-50">
+          <span>⚠️ NETWORK OFFLINE — ARKA running on cached field shell & draft queue mode</span>
+        </div>
+      )}
+
       {/* LAYER 2: TOP STATUS BAR */}
       <TopStatusBar
         weather={weather}
@@ -254,7 +272,20 @@ export default function App() {
         onFuseIntelligence={handleFuseIntelligence}
         isFusing={isFusing}
         onRefreshAll={handleRefreshAll}
+        onOpenMobileMenu={() => setMobileMenuOpen(true)}
       />
+
+      {/* Mobile Navigation Drawer Overlay (< md) */}
+      <MobileNavDrawer
+        isOpen={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        agencies={agencies}
+      />
+
+      {/* Mobile Floating OpenClaw AI Assistant (FAB & Bottom Sheet) */}
+      <MobileAIBottomSheet />
 
       {/* MAIN CONTAINER: SIDEBAR + DIGITAL TWIN + INTELLIGENCE CENTER */}
       <div className="flex-1 flex overflow-hidden relative">
