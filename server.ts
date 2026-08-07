@@ -43,6 +43,138 @@ app.get('/api/health', (req, res) => {
     city: 'Bhubaneswar',
     timestamp: new Date().toISOString(),
     aiEngine: process.env.GEMINI_API_KEY ? 'ONLINE' : 'STANDBY',
+    workflowEngine: 'ONLINE_ACTIVE',
+  });
+});
+
+// ARKA Incident Response Workflow Engine APIs
+const inMemoryWorkflows = new Map<string, any>();
+
+app.get('/api/workflow/incident/:id', (req, res) => {
+  const incId = req.params.id;
+  if (!inMemoryWorkflows.has(incId)) {
+    // Generate default workflow state machine payload
+    inMemoryWorkflows.set(incId, {
+      incidentId: incId,
+      workflowStage: 'NOTIFY_AGENCIES',
+      bufferRadiusMeters: 500,
+      escalationRisk: 'MODERATE',
+      estimatedResolutionMin: 25,
+      contextData: {
+        gps: { lat: 20.2961, lng: 85.8245, address: 'Jayadev Vihar Overbridge, Bhubaneswar' },
+        camerasNearby: [
+          { id: 'cam-101', name: 'Jayadev Vihar Junction', road: 'Nandan Kanan Rd', status: 'ONLINE' },
+          { id: 'cam-102', name: 'Acharya Vihar Square', road: 'NH-16', status: 'ONLINE' },
+        ],
+        trafficConditions: { congestionLevel: 'HEAVY', avgSpeedKmh: 14.5, affectedRoads: ['Janpath Road', 'NH-16'] },
+        weatherConditions: { tempC: 31.4, condition: 'Heavy Rainfall Alert', windKmh: 26.0, rainMm: 42.5 },
+        nearbyHospitals: [
+          { name: 'AIIMS Bhubaneswar', distKm: 3.2, bedsAvailable: 14 },
+          { name: 'Capital Hospital Unit 6', distKm: 1.8, bedsAvailable: 8 },
+        ],
+        policeStations: [{ name: 'Jayadev Vihar Outpost', distKm: 0.4 }],
+        fireStations: [{ name: 'Unit-1 Fire Station', distKm: 2.1 }],
+        infrastructureStatus: {
+          powerGrid: 'Substation 3 Trip Warning',
+          drainage: 'Pumping Station 4 Active',
+          bridgeStatus: 'Janpath Underpass Waterlogged (30cm)',
+        },
+        relatedNews: [
+          { headline: 'OSDMA Mobilizes Relief Squads', publisher: 'Odisha Disaster Cell', time: '10m ago' },
+        ],
+        historicalIncidentsCount: 4,
+      },
+      resourceRecommendations: [
+        { unitId: 'FIRE-101', unitName: 'Bhubaneswar Water Tender Unit 1', unitType: 'Fire Engines', distanceKm: 1.2, etaMinutes: 4, capabilityMatchPct: 98, rank: 1, status: 'AVAILABLE', baseStation: 'Unit-1 Fire Station' },
+        { unitId: 'POLICE-204', unitName: 'PCR Squad Delta 4', unitType: 'Police Vehicles', distanceKm: 0.5, etaMinutes: 2, capabilityMatchPct: 95, rank: 2, status: 'AVAILABLE', baseStation: 'Jayadev Vihar Outpost' },
+        { unitId: 'AMB-302', unitName: '108 ALS Ambulance Squad 2', unitType: 'Ambulances', distanceKm: 1.8, etaMinutes: 6, capabilityMatchPct: 92, rank: 3, status: 'AVAILABLE', baseStation: 'Capital Hospital Base' },
+      ],
+      agenciesWorkflow: [
+        { agencyId: 'AG-POLICE', agencyName: 'Commissionerate Police', role: 'Perimeter Security & Traffic Control', notificationStatus: 'NOTIFIED', dispatchStatus: 'DISPATCHED', unitsAssigned: 2, etaMinutes: 3, currentActivity: 'En route to secure perimeter.', lastUpdated: new Date().toLocaleTimeString() },
+        { agencyId: 'AG-FIRE', agencyName: 'Fire & Rescue Services', role: 'Hazmat & Emergency Containment', notificationStatus: 'ACKNOWLEDGED', dispatchStatus: 'EN_ROUTE', unitsAssigned: 1, etaMinutes: 5, currentActivity: 'Mobilizing water tender squad.', lastUpdated: new Date().toLocaleTimeString() },
+        { agencyId: 'AG-AMBULANCE', agencyName: '108 Emergency Medical Services', role: 'Trauma & Medical Support', notificationStatus: 'NOTIFIED', dispatchStatus: 'DISPATCHED', unitsAssigned: 1, etaMinutes: 6, currentActivity: 'Standby at Capital Hospital.', lastUpdated: new Date().toLocaleTimeString() },
+        { agencyId: 'AG-BMC', agencyName: 'Bhubaneswar Municipal Corp', role: 'Civic Works & Drainage', notificationStatus: 'NOTIFIED', dispatchStatus: 'UNASSIGNED', unitsAssigned: 0, etaMinutes: 15, currentActivity: 'Monitoring pump deployments.', lastUpdated: new Date().toLocaleTimeString() },
+      ],
+      timeline: [
+        { id: 't1', timestamp: '12:31 PM', stage: 'DETECTED', label: 'Incident Detected', description: 'Triggered by AI surveillance sensor stream.', actor: 'AI_ENGINE' },
+        { id: 't2', timestamp: '12:32 PM', stage: 'VALIDATE', label: 'Incident Validated', description: 'Multi-camera triangulation confirmed event active.', actor: 'AI_ENGINE' },
+        { id: 't3', timestamp: '12:33 PM', stage: 'SEVERITY', label: 'Severity Assessed', description: 'AI calculated escalation risk: MODERATE.', actor: 'AI_ENGINE' },
+        { id: 't4', timestamp: '12:34 PM', stage: 'BUFFER_ZONE', label: 'Response Buffer Zone Created', description: '500m perimeter established around site.', actor: 'WORKFLOW_ENGINE' },
+        { id: 't5', timestamp: '12:35 PM', stage: 'NOTIFY_AGENCIES', label: 'Agencies Notified & Telegram Alert Issued', description: 'Multi-agency dispatch request broadcasted.', actor: 'TELEGRAM_BOT' },
+      ],
+      analytics: {
+        responseTimeSec: 42,
+        dispatchTimeSec: 110,
+        travelTimeSec: 280,
+        arrivalTimeSec: 390,
+        totalResolutionTimeMin: 25,
+        slaCompliant: true,
+        resourceUtilizationPct: 88,
+        agencyPerformanceScore: 96,
+      },
+    });
+  }
+
+  res.json({ success: true, data: inMemoryWorkflows.get(incId) });
+});
+
+app.post('/api/workflow/incident/:id/transition', (req, res) => {
+  const incId = req.params.id;
+  const { newStage, actor, note } = req.body;
+  
+  const existing = inMemoryWorkflows.get(incId) || {};
+  existing.workflowStage = newStage || 'MONITOR_PROGRESS';
+  existing.timeline = existing.timeline || [];
+  existing.timeline.push({
+    id: `t-${Date.now()}`,
+    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    stage: newStage,
+    label: `Stage -> ${newStage}`,
+    description: note || `State transitioned by ${actor || 'OPERATOR'}`,
+    actor: actor || 'OPERATOR',
+  });
+  
+  inMemoryWorkflows.set(incId, existing);
+  res.json({ success: true, data: existing });
+});
+
+app.post('/api/workflow/incident/:id/buffer', (req, res) => {
+  const incId = req.params.id;
+  const { radiusMeters } = req.body;
+  
+  const existing = inMemoryWorkflows.get(incId) || {};
+  existing.bufferRadiusMeters = Number(radiusMeters) || 500;
+  existing.timeline = existing.timeline || [];
+  existing.timeline.push({
+    id: `t-${Date.now()}`,
+    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    stage: existing.workflowStage || 'BUFFER_ZONE',
+    label: `Buffer Adjusted to ${radiusMeters}m`,
+    description: `Geospatial response perimeter updated to ${radiusMeters}m.`,
+    actor: 'OPERATOR',
+  });
+  
+  inMemoryWorkflows.set(incId, existing);
+  res.json({ success: true, data: existing });
+});
+
+app.get('/api/workflow/analytics', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      averageResponseTimeSec: 48,
+      averageDispatchTimeSec: 105,
+      averageResolutionTimeMin: 22.4,
+      totalIncidentsProcessed: 142,
+      slaCompliancePct: 94.8,
+      agencyPerformanceScores: {
+        'Commissionerate Police': 96.2,
+        'Fire Services': 98.0,
+        '108 Medical': 95.4,
+        'OSDMA Relief': 97.1,
+        'TPCODL Grid': 92.8,
+      },
+    },
   });
 });
 

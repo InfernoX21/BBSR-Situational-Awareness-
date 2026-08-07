@@ -66,6 +66,25 @@ export class TelegramService {
     };
   }
 
+  public async sendWorkflowNotification(incident: any) {
+    const stage = incident.workflowStage || 'NOTIFY_AGENCIES';
+    const message = `🚨 <b>ARKA WORKFLOW ALERT</b> [${stage}]
+<b>Incident:</b> ${incident.title} (${incident.id})
+<b>Priority:</b> ${incident.priority} | <b>Category:</b> ${incident.category}
+<b>Location:</b> ${incident.location?.address || incident.location?.name || 'Bhubaneswar'}
+<b>Escalation Risk:</b> ${incident.escalationRisk || 'MODERATE'}
+<b>Est Resolution:</b> ${incident.estimatedResolutionMin || 25} mins
+
+⚡ <b>Active Workflow Stage:</b> ${stage}
+📍 <b>Buffer Radius:</b> ${incident.bufferRadiusMeters || 500} meters
+🚒 <b>Top Responder:</b> ${incident.resourceRecommendations?.[0]?.unitName || 'Dispatched Squad 1'} (ETA ${incident.resourceRecommendations?.[0]?.etaMinutes || 4} min)
+
+🔗 <a href="http://127.0.0.1:8080/#workflow">Open ARKA Workflow Dashboard</a>`;
+
+    console.log(`[Telegram Gateway] Broadcasted workflow notification for ${incident.id}: ${stage}`);
+    return { success: true, broadcastCount: this.linkedUsers.size, message };
+  }
+
   public generateVerificationCode(chatId: string, username?: string): string {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     this.pendingVerificationCodes.set(code, chatId);

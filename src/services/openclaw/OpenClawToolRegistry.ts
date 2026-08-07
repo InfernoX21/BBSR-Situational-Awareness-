@@ -232,33 +232,46 @@ export class OpenClawToolRegistry {
 
       case 'analyze_camera':
       case 'camera_status':
-      case 'camera_latest_detections': {
-        const camId = args.cameraId || 'CAM-JV-01';
+      case 'camera_latest_detections':
+      case 'get_camera_statistics':
+      case 'get_live_detections':
+      case 'get_congestion':
+      case 'search_tracked_objects':
+      case 'summarize_camera_activity': {
+        // Attempt to fetch live statistics from the Sadaksh Python AI server
+        try {
+          const endpoints = ['/api/camera-ai/statistics', 'http://127.0.0.1:8008/statistics'];
+          let stats: any = null;
+          for (const url of endpoints) {
+            try {
+              const res = await fetch(url);
+              if (res.ok) { stats = await res.json(); break; }
+            } catch { /* try next */ }
+          }
+          if (stats && stats.status === 'READY') {
+            return {
+              engine: stats.engine,
+              model_weights: stats.model_weights,
+              device: stats.device,
+              status: 'online',
+              frames_processed: stats.frames_processed,
+              total_detections: stats.total_detections,
+              class_totals: stats.class_totals,
+              active_tracks: stats.active_tracks,
+              congestion_history: stats.congestion_history?.slice(-5) ?? [],
+              recent_events: stats.event_log?.slice(-5) ?? [],
+              uptime_seconds: stats.uptime_seconds,
+              last_inference_ts: stats.last_inference_ts,
+              timestamp: stats.timestamp,
+              dataConnected: true,
+            };
+          }
+        } catch { /* fall through to offline response */ }
         return {
-          success: true,
-          camera_id: camId,
-          model_name: 'Sadaksh YOLOv8 + ByteTrack Object Tracking Engine',
-          timestamp: new Date().toISOString(),
-          vehicle_count: 64,
-          person_count: 12,
-          tracked_objects: [
-            { track_id: 104, class: 'car', confidence: 0.98, bbox: [18, 22, 24, 20], speed_kmh: 32 },
-            { track_id: 105, class: 'truck', confidence: 0.95, bbox: [64, 32, 28, 36], speed_kmh: 24 },
-            { track_id: 106, class: 'person', confidence: 0.99, bbox: [22, 18, 40, 55], speed_kmh: 5 },
-            { track_id: 107, class: 'bus', confidence: 0.97, bbox: [12, 48, 30, 26], speed_kmh: 18 },
-          ],
-          traffic_density: 'HIGH',
-          fps: 60,
-          latency_ms: 4,
-          alerts: [
-            {
-              id: `alert-bytetrack-${Date.now()}`,
-              event_type: 'STOPPED_VEHICLE',
-              severity: 'HIGH',
-              description: `Sadaksh ByteTrack flagged Track #104 stationary for >180s.`,
-              confidence: 0.98,
-            },
-          ],
+          engine: 'Sadaksh PyTorch YOLOv8 + ByteTrack',
+          status: 'offline',
+          message: 'Sadaksh AI server not reachable. Start ai_server.py on port 8008.',
+          dataConnected: false,
         };
       }
 

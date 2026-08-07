@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { TrafficCameraFeed, Incident, LandmarkNode } from '../../types';
 import { INITIAL_TRAFFIC_CAMERAS } from '../../data/bhubaneswarData';
 import {
@@ -9,25 +9,28 @@ import {
   Camera as CameraIcon,
   Navigation,
   Activity,
-  ShieldAlert,
   Car,
   Users,
   Clock,
-  Radio,
   Building2,
-  CheckCircle2,
   AlertTriangle,
   Play,
   Pause,
   SkipBack,
   SkipForward,
   Bookmark,
-  Layers,
   Sparkles,
-  Compass,
   Grid,
-  Crosshair,
 } from 'lucide-react';
+import {
+  CameraAIService,
+  SadakshFrameResponse,
+  SadakshEvent,
+  SadakshAnalytics,
+} from '../../services/ai/cameraAIService';
+import { SadakshDiagnosticsPanel } from '../ai/SadakshDiagnosticsPanel';
+
+const ai = CameraAIService.getInstance();
 
 interface WebcamVideoElementProps {
   stream: MediaStream;
@@ -54,19 +57,28 @@ const WebcamVideoElement: React.FC<WebcamVideoElementProps> = ({ stream, classNa
   );
 };
 
-// Pure Sadaksh YOLOv8 + ByteTrack AI Model Overlay Canvas (Zero hardcoded or mock detections)
+/** Class-specific colors matching Sadaksh draw_utils.py palette */
+const CLASS_COLORS: Record<string, string> = {
+  person:     '#56A8FF',
+  bicycle:    '#FFC83C',
+  car:        '#3CFFA0',
+  motorcycle: '#FF50C8',
+  bus:        '#50C8FF',
+  truck:      '#FF8250',
+};
+
+// PureSadakshAiCanvas — submits frames to the real Python AI server and renders live detections + trajectories
 const PureSadakshAiCanvas: React.FC<{
   stream?: MediaStream | null;
   camId: string;
   isWebcam: boolean;
   videoUrl?: string;
-}> = ({ stream, camId, isWebcam, videoUrl }) => {
+  onFrameResult?: (result: SadakshFrameResponse) => void;
+}> = ({ stream, camId, isWebcam, videoUrl, onFrameResult }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [modelDetections, setModelDetections] = useState<any[]>([]);
   const [aiStatus, setAiStatus] = useState<'ONLINE' | 'OFFLINE'>('ONLINE');
-  const [fps, setFps] = useState<number>(30);
-  const [latency, setLatency] = useState<number>(12);
 
   useEffect(() => {
     if (videoRef.current && stream && isWebcam) {
@@ -74,94 +86,108 @@ const PureSadakshAiCanvas: React.FC<{
     }
   }, [stream, isWebcam]);
 
-  // Periodic API inference call to backend Sadaksh Python model microservice
+  // Periodic AI inference — submits real frames to Sadaksh Python server
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (videoRef.current && videoRef.current.readyState >= 2) {
-        try {
-          const capCanvas = document.createElement('canvas');
-          capCanvas.width = 320;
-          capCanvas.height = 240;
-          const capCtx = capCanvas.getContext('2d');
-          if (capCtx) {
-            capCtx.drawImage(videoRef.current, 0, 0, 320, 240);
-            const frameData = capCanvas.toDataURL('image/jpeg', 0.5);
-            
-            // Try proxy endpoint first, fallback to direct localhost http://127.0.0.1:8008
-            const payload = JSON.stringify({ cameraId: camId, frame: frameData });
-            const headers = { 'Content-Type': 'application/json' };
-
-            const handleSuccess = (data: any) => {
-              if (data && (data.status === 'READY' || data.status === 'ONLINE' || data.status === 'online')) {
-                setAiStatus('ONLINE');
-                setModelDetections(data.detections || []);
-                setFps(data.fps || 30);
-                setLatency(data.latency || 12);
-              } else {
-                setAiStatus('OFFLINE');
-                setModelDetections([]);
-              }
-            };
-
-            fetch('/api/camera-ai/analyze-frame', { method: 'POST', headers, body: payload })
-              .then((res) => res.json())
-              .then(handleSuccess)
-              .catch(() => {
-                // Direct localhost fallback for standalone/GitHub Pages client environment
-                fetch('http://127.0.0.1:8008/analyze-frame', { method: 'POST', headers, body: payload })
-                  .then((res) => res.json())
-                  .then(handleSuccess)
-                  .catch(() => {
-                    setAiStatus('OFFLINE');
-                    setModelDetections([]);
-                  });
-              });
-          }
-        } catch (e) {
+    const interval = setInterval(async () => {
+      const vid = videoRef.current;
+      if (!vid || vid.readyState < 2) return;
+      try {
+        const capCanvas = document.createElement('canvas');
+        capCanvas.width = 320;
+        capCanvas.height = 240;
+        const capCtx = capCanvas.getContext('2d');
+        if (!capCtx) return;
+        capCtx.drawImage(vid, 0, 0, 320, 240);
+        const frameData = capCanvas.toDataURL('image/jpeg', 0.5);
+        const result = await ai.analyzeFrame(camId, frameData);
+        if (result && result.status === 'READY') {
+          setAiStatus('ONLINE');
+          setModelDetections(result.detections || []);
+          if (onFrameResult) onFrameResult(result);
+        } else {
           setAiStatus('OFFLINE');
+          setModelDetections([]);
         }
+      } catch {
+        setAiStatus('OFFLINE');
+        setModelDetections([]);
       }
     }, 500);
     return () => clearInterval(interval);
-  }, [camId]);
+  }, [camId, onFrameResult]);
 
-  // Render ONLY real detections produced by the Sadaksh YOLOv8 model
+  // Render live Sadaksh detections: bounding boxes + class labels + trajectory polylines
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const width = canvas.width || 360;
-    const height = canvas.height || 240;
-    ctx.clearRect(0, 0, width, height);
+    const W = canvas.width || 360;
+    const H = canvas.height || 240;
+    ctx.clearRect(0, 0, W, H);
 
     if (aiStatus === 'OFFLINE' || !modelDetections || modelDetections.length === 0) return;
 
     modelDetections.forEach((det) => {
-      const [xPct, yPct, wPct, hPct] = det.bbox || det.bbox_pct || [0, 0, 0, 0];
-      const x = (xPct / 100) * width;
-      const y = (yPct / 100) * height;
-      const w = (wPct / 100) * width;
-      const h = (hPct / 100) * height;
+      const [xPct, yPct, wPct, hPct] = det.bbox ?? [0, 0, 0, 0];
+      const x = (xPct / 100) * W;
+      const y = (yPct / 100) * H;
+      const w = (wPct / 100) * W;
+      const h = (hPct / 100) * H;
+      const color = CLASS_COLORS[det.class] ?? '#9CA3AF';
 
-      const isPerson = det.class === 'person';
-      const strokeColor = isPerson ? '#10B981' : '#06B6D4';
-      const fillColor = isPerson ? 'rgba(16, 185, 129, 0.12)' : 'rgba(6, 182, 212, 0.1)';
-
-      ctx.strokeStyle = strokeColor;
-      ctx.lineWidth = 2;
-      ctx.fillStyle = fillColor;
+      // Bounding box fill + stroke
+      ctx.fillStyle = `${color}18`;
       ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
       ctx.strokeRect(x, y, w, h);
 
-      // Detection Tag Header
-      const labelText = `#${det.track_id || 0} ${det.class.toUpperCase()} [${Math.round((det.confidence || 0) * 100)}%]`;
-      ctx.fillStyle = strokeColor;
-      ctx.fillRect(x, Math.max(0, y - 16), ctx.measureText(labelText).width + 10, 16);
-      ctx.fillStyle = '#000000';
-      ctx.font = 'bold 9px monospace';
-      ctx.fillText(labelText, x + 4, Math.max(10, y - 4));
+      // Corner accent marks
+      const mark = 6;
+      ctx.lineWidth = 2.5;
+      [[x, y], [x + w, y], [x, y + h], [x + w, y + h]].forEach(([cx, cy], i) => {
+        ctx.beginPath();
+        ctx.moveTo(cx + (i % 2 === 0 ? mark : -mark), cy);
+        ctx.lineTo(cx, cy);
+        ctx.lineTo(cx, cy + (i < 2 ? mark : -mark));
+        ctx.stroke();
+      });
+
+      // Label
+      const conf = Math.round((det.confidence ?? 0) * 100);
+      const spd = det.speed_kmh > 0 ? ` ${det.speed_kmh}km/h` : '';
+      const label = `#${det.track_id} ${det.class.toUpperCase()} ${conf}%${spd}`;
+      ctx.font = 'bold 8px monospace';
+      const tw = ctx.measureText(label).width;
+      const lx = x;
+      const ly = Math.max(0, y - 14);
+      ctx.fillStyle = color;
+      ctx.fillRect(lx, ly, tw + 8, 13);
+      ctx.fillStyle = '#000';
+      ctx.fillText(label, lx + 4, ly + 9);
+
+      // Trajectory polyline
+      const traj: Array<[number, number]> = det.trajectory ?? [];
+      if (traj.length >= 2) {
+        ctx.beginPath();
+        traj.forEach(([px, py], i) => {
+          const rx = (px / 100) * W;
+          const ry = (py / 100) * H;
+          if (i === 0) ctx.moveTo(rx, ry);
+          else ctx.lineTo(rx, ry);
+        });
+        ctx.strokeStyle = `${color}90`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        // Trajectory end dot
+        const last = traj[traj.length - 1];
+        ctx.beginPath();
+        ctx.arc((last[0] / 100) * W, (last[1] / 100) * H, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+      }
     });
   }, [modelDetections, aiStatus]);
 
@@ -170,25 +196,18 @@ const PureSadakshAiCanvas: React.FC<{
       {isWebcam && stream ? (
         <video
           ref={videoRef}
-          autoPlay
-          playsInline
-          muted
+          autoPlay playsInline muted
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
       ) : (
         <video
-          src={videoUrl}
-          autoPlay
-          loop
-          muted
-          playsInline
+          src={videoUrl} autoPlay loop muted playsInline
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
       )}
       <canvas
         ref={canvasRef}
-        width={360}
-        height={240}
+        width={360} height={240}
         className="absolute inset-0 w-full h-full pointer-events-none z-10"
       />
       {aiStatus === 'OFFLINE' && (
@@ -224,6 +243,26 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
   const [playbackTime, setPlaybackTime] = useState('17:45:00');
   const [fullscreenCam, setFullscreenCam] = useState<TrafficCameraFeed | null>(null);
   const [showAiOverlay, setShowAiOverlay] = useState(true);
+
+  // Live Sadaksh AI inference state — populated by real model callbacks
+  const [liveAnalytics, setLiveAnalytics] = useState<SadakshAnalytics | null>(null);
+  const [liveFps, setLiveFps] = useState<number | null>(null);
+  const [liveLatency, setLiveLatency] = useState<number | null>(null);
+  const [liveEvents, setLiveEvents] = useState<SadakshEvent[]>([]);
+  const [inspectorTab, setInspectorTab] = useState<'camera' | 'ai' | 'events'>('ai');
+
+  // Callback fired by PureSadakshAiCanvas each time a real inference frame returns
+  const handleFrameResult = useCallback((result: SadakshFrameResponse) => {
+    setLiveAnalytics(result.analytics);
+    setLiveFps(result.fps);
+    setLiveLatency(result.latency);
+    if (result.events && result.events.length > 0) {
+      setLiveEvents((prev) => {
+        const combined = [...result.events, ...prev].slice(0, 20);
+        return combined;
+      });
+    }
+  }, []);
 
   // Laptop Camera State
   const [isWebcamActive, setIsWebcamActive] = useState(false);
@@ -560,48 +599,62 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
                   <div className="relative flex-1 min-h-[140px] overflow-hidden bg-black">
                     {showAiOverlay ? (
                       <PureSadakshAiCanvas
-                        stream={webcamStream}
+                        stream={isWebcamActive ? webcamStream : null}
                         camId={cam.id}
                         isWebcam={isWebcamActive}
                         videoUrl={cam.streamUrl}
+                        onFrameResult={cam.id === selectedCameraId ? handleFrameResult : undefined}
                       />
                     ) : isWebcamActive && webcamStream ? (
                       <WebcamVideoElement stream={webcamStream} />
                     ) : (
                       <video
                         src={cam.streamUrl}
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
+                        autoPlay loop muted playsInline
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     )}
 
-                        <div className="absolute inset-0 border border-cyan-500/20 pointer-events-none p-2 flex flex-col justify-between z-20">
-                        <div className="flex justify-between items-start">
-                          <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-black/80 text-[#06B6D4] border border-[#06B6D4]/40 flex items-center space-x-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-ping mr-1" />
-                            SADAKSH AI MODEL | {cam.resolution || '1080p'}
+                    <div className="absolute inset-0 border border-cyan-500/20 pointer-events-none p-2 flex flex-col justify-between z-20">
+                      <div className="flex justify-between items-start">
+                        <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-black/80 text-[#06B6D4] border border-[#06B6D4]/40 flex items-center space-x-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-ping mr-1" />
+                          SADAKSH AI | {cam.resolution || '1080p'}
+                        </span>
+                        {/* Live AI quick counts badge for selected camera */}
+                        {cam.id === selectedCameraId && liveAnalytics ? (
+                          <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-black/80 border flex items-center space-x-1.5"
+                            style={{
+                              color: CameraAIService.congestionColor(liveAnalytics.congestionLevel),
+                              borderColor: `${CameraAIService.congestionColor(liveAnalytics.congestionLevel)}50`,
+                            }}
+                          >
+                            <Car className="w-2.5 h-2.5" />
+                            <span>{liveAnalytics.vehicleCount}</span>
+                            <Users className="w-2.5 h-2.5 ml-1" />
+                            <span>{liveAnalytics.pedestrianCount}</span>
                           </span>
+                        ) : (
                           <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-black/80 text-emerald-400 border border-emerald-500/40">
                             LIVE STREAM
                           </span>
+                        )}
+                      </div>
+
+                      <div className="flex justify-between items-end bg-black/75 p-1.5 rounded backdrop-blur border border-white/10">
+                        <div>
+                          <div className="font-bold text-white text-[10px] truncate">{cam.name}</div>
+                          <div className="text-white/50 text-[8px]">{cam.junction}</div>
                         </div>
-
-                        <div className="flex justify-between items-end bg-black/75 p-1.5 rounded backdrop-blur border border-white/10">
-                          <div>
-                            <div className="font-bold text-white text-[10px] truncate">{cam.name}</div>
-                            <div className="text-white/50 text-[8px]">{cam.junction}</div>
-                          </div>
-
-                          <div className="text-right">
-                            <span className="text-[#06B6D4] font-bold text-[9px]">
-                              {cam.status}
-                            </span>
-                          </div>
+                        <div className="text-right">
+                          {cam.id === selectedCameraId && liveFps !== null ? (
+                            <span className="text-amber-400 font-bold text-[9px]">{liveFps} fps</span>
+                          ) : (
+                            <span className="text-[#06B6D4] font-bold text-[9px]">{cam.status}</span>
+                          )}
                         </div>
                       </div>
+                    </div>
                   </div>
 
                   {/* Card Bottom Quick Actions */}
@@ -642,114 +695,201 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Selected Camera Inspector & AI Vision Analytics (3 cols) */}
-        <div className="lg:col-span-3 bg-[#0A0A0A] border border-white/10 rounded-lg p-3 flex flex-col space-y-3 min-h-0 overflow-y-auto">
-          <div className="text-white/70 font-bold text-[11px] uppercase tracking-wider border-b border-white/10 pb-2 flex items-center space-x-1.5">
-            <Activity className="w-3.5 h-3.5 text-[#06B6D4]" />
-            <span>Camera Inspector & Vision Telemetry</span>
+        {/* RIGHT COLUMN: Camera Inspector & Live AI Vision Intelligence (3 cols) */}
+        <div className="lg:col-span-3 bg-[#0A0A0A] border border-white/10 rounded-lg flex flex-col min-h-0 overflow-hidden">
+          {/* Tab Bar */}
+          <div className="flex border-b border-white/10 shrink-0">
+            {(['camera', 'ai', 'events'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setInspectorTab(tab)}
+                className={`flex-1 py-2 text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                  inspectorTab === tab
+                    ? 'text-[#06B6D4] bg-[#06B6D4]/10 border-b-2 border-[#06B6D4]'
+                    : 'text-white/40 hover:text-white'
+                }`}
+              >
+                {tab === 'camera' ? '📷 Camera' : tab === 'ai' ? '🤖 AI Engine' : `⚡ Events${liveEvents.length > 0 ? ` (${liveEvents.length})` : ''}`}
+              </button>
+            ))}
           </div>
 
-          {selectedCamera && (
-            <div className="space-y-3">
-              {/* Selected Camera Overview */}
-              <div className="p-3 bg-black border border-white/10 rounded space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-white text-xs">{selectedCamera.name}</span>
-                  <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/40">
-                    {selectedCamera.status}
-                  </span>
-                </div>
-                <div className="text-white/40 text-[10px]">{selectedCamera.road}</div>
+          <div className="flex-1 overflow-y-auto p-3 min-h-0">
 
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10 text-[10px]">
-                  <div>
-                    <span className="text-white/40 block">CAMERA ID</span>
-                    <span className="font-bold text-white">{selectedCamera.id}</span>
-                  </div>
-                  <div>
-                    <span className="text-white/40 block">LAT / LNG</span>
-                    <span className="font-bold text-[#06B6D4]">
-                      {selectedCamera.lat.toFixed(4)}, {selectedCamera.lng.toFixed(4)}
+            {/* CAMERA TAB */}
+            {inspectorTab === 'camera' && selectedCamera && (
+              <div className="space-y-3">
+                <div className="p-3 bg-black border border-white/10 rounded space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-white text-xs">{selectedCamera.name}</span>
+                    <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/40">
+                      {selectedCamera.status}
                     </span>
                   </div>
-                  <div>
-                    <span className="text-white/40 block">DIRECTION</span>
-                    <span className="font-bold text-amber-400">{selectedCamera.directionDeg}° SW</span>
+                  <div className="text-white/40 text-[10px]">{selectedCamera.road}</div>
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10 text-[10px]">
+                    <div>
+                      <span className="text-white/40 block">CAMERA ID</span>
+                      <span className="font-bold text-white">{selectedCamera.id}</span>
+                    </div>
+                    <div>
+                      <span className="text-white/40 block">LAT / LNG</span>
+                      <span className="font-bold text-[#06B6D4]">
+                        {selectedCamera.lat.toFixed(4)}, {selectedCamera.lng.toFixed(4)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-white/40 block">DIRECTION</span>
+                      <span className="font-bold text-amber-400">{selectedCamera.directionDeg}° SW</span>
+                    </div>
+                    <div>
+                      <span className="text-white/40 block">HEALTH SCORE</span>
+                      <span className="font-bold text-[#10B981]">{selectedCamera.healthScore}%</span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-white/40 block">HEALTH SCORE</span>
-                    <span className="font-bold text-[#10B981]">{selectedCamera.healthScore}%</span>
+                </div>
+
+                {/* Live AI Quick Stats */}
+                {liveAnalytics && (
+                  <div className="p-3 bg-black border border-[#06B6D4]/20 rounded space-y-2 font-mono text-[10px]">
+                    <div className="text-[#06B6D4] font-bold uppercase tracking-wider text-[9px] border-b border-white/10 pb-1">
+                      Live AI Output — This Frame
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5 text-[9px]">
+                      <div className="bg-white/5 p-1.5 rounded">
+                        <div className="text-white/40">Vehicles</div>
+                        <div className="font-bold text-[#06B6D4] text-sm">{liveAnalytics.vehicleCount}</div>
+                      </div>
+                      <div className="bg-white/5 p-1.5 rounded">
+                        <div className="text-white/40">Pedestrians</div>
+                        <div className="font-bold text-[#10B981] text-sm">{liveAnalytics.pedestrianCount}</div>
+                      </div>
+                      <div className="bg-white/5 p-1.5 rounded">
+                        <div className="text-white/40">FPS</div>
+                        <div className="font-bold text-amber-400 text-sm">{liveFps ?? '—'}</div>
+                      </div>
+                      <div className="bg-white/5 p-1.5 rounded">
+                        <div className="text-white/40">Latency</div>
+                        <div className="font-bold text-white text-sm">{liveLatency ? `${liveLatency}ms` : '—'}</div>
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-[9px]">
+                      <span className="text-white/40">Congestion:</span>
+                      <span
+                        className="font-bold px-1.5 py-0.5 rounded"
+                        style={{
+                          color: CameraAIService.congestionColor(liveAnalytics.congestionLevel),
+                          backgroundColor: `${CameraAIService.congestionColor(liveAnalytics.congestionLevel)}20`,
+                        }}
+                      >
+                        {liveAnalytics.congestionLevel}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-[9px]">
+                      <span className="text-white/40">Active Tracks:</span>
+                      <span className="font-bold text-white">{liveAnalytics.activeTracks ?? liveAnalytics.totalTargets}</span>
+                    </div>
+                    <div className="flex justify-between text-[9px]">
+                      <span className="text-white/40">Flow Rate:</span>
+                      <span className="font-bold text-cyan-400">{liveAnalytics.flowRate}/min</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Playback Controls */}
+                <div className="p-3 bg-black border border-white/10 rounded space-y-2">
+                  <div className="text-white/60 font-bold text-[10px] uppercase tracking-wider flex items-center space-x-1.5">
+                    <Clock className="w-3.5 h-3.5 text-[#F59E0B]" />
+                    <span>Timeline Recording Playback</span>
+                  </div>
+                  <div className="flex items-center justify-between bg-white/[0.02] p-2 rounded border border-white/5">
+                    <button
+                      onClick={() => setIsPlayingRecording(!isPlayingRecording)}
+                      className="p-1 rounded bg-[#06B6D4]/10 text-[#06B6D4] border border-[#06B6D4]/30 hover:bg-[#06B6D4]/20 cursor-pointer"
+                    >
+                      {isPlayingRecording ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                    </button>
+                    <span className="font-bold text-white text-xs">{playbackTime} IST</span>
+                    <div className="flex items-center space-x-1 text-white/50">
+                      <button className="p-1 hover:text-white cursor-pointer"><SkipBack className="w-3.5 h-3.5" /></button>
+                      <button className="p-1 hover:text-white cursor-pointer"><SkipForward className="w-3.5 h-3.5" /></button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Nearest Facilities */}
+                <div className="p-3 bg-black border border-white/10 rounded space-y-2">
+                  <div className="text-white/60 font-bold text-[10px] uppercase tracking-wider flex items-center space-x-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-[#10B981]" />
+                    <span>Nearest Emergency Facilities</span>
+                  </div>
+                  <div className="space-y-1 text-[9px] text-white/70">
+                    <div>🏛 <strong>Junction</strong>: {selectedCamera.nearestJunction}</div>
+                    <div>🚨 <strong>Police PS</strong>: {selectedCamera.nearestPoliceStation}</div>
+                    <div>🏥 <strong>Hospital</strong>: {selectedCamera.nearestHospital}</div>
                   </div>
                 </div>
               </div>
+            )}
 
-              {/* Sadaksh PyTorch AI Model Diagnostic Debug Console */}
-              <div className="p-3 bg-black border border-[#06B6D4]/30 rounded space-y-2 font-mono text-[10px]">
-                <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                  <div className="text-[#06B6D4] font-bold text-[10px] uppercase tracking-wider flex items-center space-x-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-[#06B6D4]" />
-                    <span>Sadaksh Model Diagnostic Debug Console</span>
+            {/* AI ENGINE TAB — Full SadakshDiagnosticsPanel */}
+            {inspectorTab === 'ai' && (
+              <SadakshDiagnosticsPanel compact />
+            )}
+
+            {/* EVENTS TAB — Live AI-detected events */}
+            {inspectorTab === 'events' && (
+              <div className="space-y-2">
+                <div className="text-white/50 text-[9px] font-bold uppercase tracking-wider pb-1 border-b border-white/10">
+                  Live AI Event Log — {liveEvents.length} Events
+                </div>
+                {liveEvents.length === 0 ? (
+                  <div className="text-center text-white/20 text-[10px] py-8">
+                    No events detected yet.<br />
+                    <span className="text-white/10">Connect camera and start inference.</span>
                   </div>
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[8px] font-bold">
-                    LIVE
-                  </span>
-                </div>
-
-                <div className="space-y-1 text-[9px]">
-                  <div className="text-emerald-400">✓ Repository Loaded (Sadaksh-main/src)</div>
-                  <div className="text-emerald-400">✓ YOLOv8 Weights: yolov8n.pt</div>
-                  <div className="text-emerald-400">✓ ByteTrack Tracker Initialized</div>
-                  <div className="text-cyan-300">⚡ PyTorch Device: CPU Fallback / CUDA</div>
-                  <div className="text-amber-400">🌐 Endpoint: http://127.0.0.1:8008/analyze-frame</div>
-                </div>
-
-                <div className="pt-2 border-t border-white/10 flex justify-between items-center text-[9px]">
-                  <span className="text-white/40">Inference Status:</span>
-                  <span className="font-bold text-emerald-400">READY (PyTorch Active)</span>
-                </div>
+                ) : (
+                  liveEvents.map((ev, i) => {
+                    const color = CameraAIService.severityColor(ev.severity);
+                    return (
+                      <div
+                        key={i}
+                        className="p-2 rounded border text-[9px] font-mono"
+                        style={{
+                          borderColor: `${color}40`,
+                          backgroundColor: `${color}10`,
+                        }}
+                      >
+                        <div className="flex justify-between items-start">
+                          <span className="font-bold" style={{ color }}>
+                            {ev.type.replace(/_/g, ' ')}
+                          </span>
+                          <span
+                            className="px-1 py-0.5 rounded text-[7px] font-bold"
+                            style={{ color, backgroundColor: `${color}25` }}
+                          >
+                            {ev.severity}
+                          </span>
+                        </div>
+                        <div className="text-white/60 mt-0.5 leading-tight">{ev.message}</div>
+                        {ev.camera && (
+                          <div className="text-white/30 text-[8px] mt-0.5">📷 {ev.camera}</div>
+                        )}
+                        {ev.timestamp && (
+                          <div className="text-white/20 text-[7px]">
+                            {new Date(ev.timestamp).toLocaleTimeString()}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
               </div>
-
-              {/* Camera Playback Controls */}
-              <div className="p-3 bg-black border border-white/10 rounded space-y-2">
-                <div className="text-white/60 font-bold text-[10px] uppercase tracking-wider flex items-center space-x-1.5">
-                  <Clock className="w-3.5 h-3.5 text-[#F59E0B]" />
-                  <span>Timeline Recording Playback</span>
-                </div>
-
-                <div className="flex items-center justify-between bg-white/[0.02] p-2 rounded border border-white/5">
-                  <button
-                    onClick={() => setIsPlayingRecording(!isPlayingRecording)}
-                    className="p-1 rounded bg-[#06B6D4]/10 text-[#06B6D4] border border-[#06B6D4]/30 hover:bg-[#06B6D4]/20 cursor-pointer"
-                  >
-                    {isPlayingRecording ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                  </button>
-
-                  <span className="font-bold text-white text-xs">{playbackTime} IST</span>
-
-                  <div className="flex items-center space-x-1 text-white/50">
-                    <button className="p-1 hover:text-white cursor-pointer"><SkipBack className="w-3.5 h-3.5" /></button>
-                    <button className="p-1 hover:text-white cursor-pointer"><SkipForward className="w-3.5 h-3.5" /></button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Nearest Emergency Facilities */}
-              <div className="p-3 bg-black border border-white/10 rounded space-y-2">
-                <div className="text-white/60 font-bold text-[10px] uppercase tracking-wider flex items-center space-x-1.5">
-                  <Building2 className="w-3.5 h-3.5 text-[#10B981]" />
-                  <span>Nearest Emergency Facilities</span>
-                </div>
-
-                <div className="space-y-1 text-[9px] text-white/70">
-                  <div>🏛 <strong>Junction</strong>: {selectedCamera.nearestJunction}</div>
-                  <div>🚨 <strong>Police PS</strong>: {selectedCamera.nearestPoliceStation}</div>
-                  <div>🏥 <strong>Hospital</strong>: {selectedCamera.nearestHospital}</div>
-                </div>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
+
 
       {/* Fullscreen Video Modal with Sadaksh YOLOv8 + ByteTrack Engine */}
       {fullscreenCam && (
@@ -788,10 +928,11 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
           <div className="flex-1 mt-4 relative overflow-hidden rounded-lg border border-white/20 bg-black flex items-center justify-center">
             {showAiOverlay ? (
               <PureSadakshAiCanvas
-                stream={webcamStream}
+                stream={isWebcamActive ? webcamStream : null}
                 camId={fullscreenCam.id}
                 isWebcam={isWebcamActive}
                 videoUrl={fullscreenCam.streamUrl}
+                onFrameResult={handleFrameResult}
               />
             ) : isWebcamActive && webcamStream ? (
               <WebcamVideoElement stream={webcamStream} />
@@ -814,17 +955,34 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
                   </div>
                 </div>
 
-                {/* Bottom Telemetry Bar */}
+                {/* Bottom Telemetry Bar — Live AI data from model */}
                 <div className="bg-black/90 p-3.5 rounded-lg backdrop-blur border border-white/15 flex justify-between items-center text-xs shadow-2xl">
                   <div className="flex items-center space-x-4">
                     <span className="text-white font-bold">Cam ID: {fullscreenCam.id}</span>
                     <span className="text-white/40">|</span>
-                    <span className="text-[#06B6D4] font-bold">Live PyTorch Inference Stream</span>
+                    {liveAnalytics ? (
+                      <>
+                        <span className="text-[#06B6D4] font-bold flex items-center space-x-1">
+                          <Car className="w-3.5 h-3.5" />
+                          <span>{liveAnalytics.vehicleCount} Vehicles</span>
+                        </span>
+                        <span className="text-[#10B981] font-bold flex items-center space-x-1">
+                          <Users className="w-3.5 h-3.5" />
+                          <span>{liveAnalytics.pedestrianCount} Pedestrians</span>
+                        </span>
+                        <span className="font-bold px-2 py-0.5 rounded" style={{
+                          color: CameraAIService.congestionColor(liveAnalytics.congestionLevel),
+                          backgroundColor: `${CameraAIService.congestionColor(liveAnalytics.congestionLevel)}20`,
+                        }}>{liveAnalytics.congestionLevel}</span>
+                      </>
+                    ) : (
+                      <span className="text-[#06B6D4] font-bold">Live PyTorch Inference Stream</span>
+                    )}
                   </div>
 
                   <div className="flex items-center space-x-4 font-mono font-bold">
-                    <span className="text-emerald-400">⚡ PyTorch YOLOv8 + ByteTrack</span>
-                    <span className="text-cyan-300">🌐 Endpoint: http://127.0.0.1:8008/infer</span>
+                    <span className="text-emerald-400">⚡ YOLOv8 + ByteTrack</span>
+                    {liveFps !== null && <span className="text-amber-400">{liveFps} FPS · {liveLatency}ms</span>}
                   </div>
                 </div>
               </div>

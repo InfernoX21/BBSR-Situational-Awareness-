@@ -387,6 +387,38 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
         const marker = L.marker([inc.location.lat, inc.location.lng], { icon: customIcon });
 
         if (isSelected) {
+          const bufferRadius = inc.bufferRadiusMeters || 500;
+          const bufferCircle = L.circle([inc.location.lat, inc.location.lng], {
+            radius: bufferRadius,
+            color: '#3B82F6',
+            weight: 2,
+            dashArray: '6, 6',
+            fillColor: '#3B82F6',
+            fillOpacity: 0.15,
+          }).addTo(group);
+
+          bufferCircle.bindTooltip(
+            `<div class="font-mono text-[10px] bg-[#090D16] text-[#60A5FA] px-2 py-1 border border-blue-500/40 rounded">
+              ⚡ EOC RESPONSE PERIMETER (${bufferRadius}m RADIUS)
+            </div>`,
+            { sticky: true }
+          );
+
+          // Responder Dispatch Route Vector Polyline
+          const routeCoords = inc.routeCoordinates || [
+            [20.269, 85.836],
+            [20.278, 85.832],
+            [20.288, 85.828],
+            [inc.location.lat, inc.location.lng],
+          ];
+
+          L.polyline(routeCoords, {
+            color: '#10B981',
+            weight: 4,
+            opacity: 0.85,
+            dashArray: '8, 8',
+          }).addTo(group);
+
           marker.bindTooltip(
             `
             <div class="font-mono text-[10px] bg-[#0A0A0A] text-white p-2 border border-[#06B6D4] rounded shadow-2xl">
@@ -395,7 +427,7 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
               <div class="text-white/70 mt-0.5">${inc.location.name}</div>
               <div class="mt-1 flex items-center justify-between text-[9px]">
                 <span class="text-red-400 font-bold">${inc.priority}</span>
-                <span class="text-emerald-400 font-bold">${inc.status}</span>
+                <span class="text-emerald-400 font-bold">${inc.workflowStage || inc.status}</span>
               </div>
             </div>
             `,

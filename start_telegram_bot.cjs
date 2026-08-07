@@ -80,29 +80,28 @@ function generateOperationalCard(userText, username) {
   if (promptLower.startsWith('/start')) {
     const code = Math.floor(100000 + Math.random() * 900000);
     replyText = `🛡 *ARKA OpenClaw Autonomous Command Center* (@Arkacmd_bot)\n\nWelcome, *${username}*!\n\nYour 6-digit dashboard linking code: \`${code}\`\n\nEnter this code inside ARKA Dashboard -> Settings -> Telegram Integration to pair your mobile session.\n\nTry sending natural questions:\n• *"Show camera AI results for Khandagiri"*\n• *"What is the traffic status at Khandagiri?"*\n• *"Show critical incidents"*\n• *"Display nearby hospitals"*`;
-  } else if (promptLower.includes('camera') || promptLower.includes('edge 5g') || promptLower.includes('semantic') || promptLower.includes('vision') || promptLower.startsWith('/camera_ai')) {
-    replyText = `📹 *Semantic Edge 5G Traffic Vision Telemetry*
+  } else if (promptLower.includes('camera') || promptLower.includes('sadaksh') || promptLower.includes('yolo') || promptLower.includes('vision') || promptLower.startsWith('/ai') || promptLower.startsWith('/camera_ai')) {
+    replyText = `🛡 *Sadaksh PyTorch YOLOv8 + ByteTrack Live AI Telemetry*
 
-🤖 *Model*: Semantic Edge 5G Vision Network (5G Ultra-Low Latency Inference)
-📍 *Active Feed*: Jayadev Vihar Overpass CCTV Alpha (CAM-JV-01)
-⚡ *Status*: ONLINE | *Execution*: 30 FPS | *Latency*: 14ms
+🤖 *Engine*: Sadaksh Computer Vision Intelligence Engine (v8n + ByteTrack)
+📍 *Active Feed*: Patia Infocity Junction CCTV (CAM-LAPTOP-01)
+⚡ *Status*: ONLINE (PyTorch Active) | *Execution*: 31 FPS | *Latency*: 13ms
 
-🚗 *Vehicle Breakdown*:
-• Cars: 31
-• Buses: 3
-• Trucks: 4
-• Motorcycles: 10
-• Pedestrians: 27
-📊 *Total Vehicles*: 48 Units
-🚗 *Corridor Speed*: 16 km/h (SEVERE Congestion)
-📐 *Queue Length*: 240 meters
+🚗 *Live Model Detections*:
+• Track #1: PERSON (Confidence: 98%)
+• Track #2: CAR (Confidence: 94%)
+• Track #3: BUS (Confidence: 91%)
+📊 *Vehicles Tracked*: 2 Units
+👤 *Pedestrians Tracked*: 1 Person
+🚦 *Congestion Level*: MODERATE (Density: MEDIUM)
 
-⚠️ *Semantic Edge 5G Alert*:
-🚨 Stationary vehicle detected on Jayadev Vihar overpass lane 2 (>180s)
-🎯 *Confidence*: 98% | *Updated*: 18:30 IST
+⚠️ *Sadaksh AI Event Alert*:
+✓ Trajectory History Active (20 frames)
+✓ CSV Telemetry Logger Active (\`detection_log.csv\`)
+🎯 *Confidence*: 98% | *Updated*: Live Real-Time
 
 *Data Sources Used*:
-✓ Semantic Edge 5G  ✓ Traffic Cameras TMC  ✓ GIS Digital Twin`;
+✓ Sadaksh PyTorch Engine  ✓ ByteTrack Multi-Object Tracker  ✓ ARKA Digital Twin`;
   } else if (promptLower.includes('khandagiri') || (promptLower.includes('traffic') && !promptLower.includes('incidents'))) {
     replyText = `🚦 *Traffic Operational Status*
 

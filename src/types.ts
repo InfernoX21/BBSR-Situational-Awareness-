@@ -97,6 +97,82 @@ export interface Agency {
   icon: string;
 }
 
+export type WorkflowStage =
+  | 'DETECTED'
+  | 'VALIDATE'
+  | 'SEVERITY'
+  | 'EXACT_LOCATION'
+  | 'BUFFER_ZONE'
+  | 'NEARBY_RESPONDERS'
+  | 'TRAFFIC_ANALYSIS'
+  | 'WEATHER_ANALYSIS'
+  | 'INFRASTRUCTURE_CONSTRAINTS'
+  | 'RECOMMENDED_RESPONSE'
+  | 'NOTIFY_AGENCIES'
+  | 'DEPLOY_RESOURCES'
+  | 'MONITOR_PROGRESS'
+  | 'UPDATE_STATE'
+  | 'RESOLVE'
+  | 'ARCHIVE_ANALYTICS';
+
+export interface WorkflowTimelineEvent {
+  id: string;
+  timestamp: string;
+  stage: WorkflowStage;
+  label: string;
+  description: string;
+  actor: 'AI_ENGINE' | 'OPERATOR' | 'OPENCLAW' | 'KAFKA_BUS' | 'TELEGRAM_BOT';
+  details?: Record<string, any>;
+}
+
+export interface AgencyWorkflowStatus {
+  agencyId: string;
+  agencyName: string;
+  role: string;
+  notificationStatus: 'PENDING' | 'NOTIFIED' | 'ACKNOWLEDGED' | 'FAILED';
+  dispatchStatus: 'UNASSIGNED' | 'DISPATCHED' | 'EN_ROUTE' | 'ON_SCENE' | 'COMPLETED';
+  unitsAssigned: number;
+  etaMinutes: number;
+  currentActivity: string;
+  lastUpdated: string;
+}
+
+export interface ResourceRecommendation {
+  unitId: string;
+  unitName: string;
+  unitType: string;
+  distanceKm: number;
+  etaMinutes: number;
+  capabilityMatchPct: number;
+  rank: number;
+  status: 'AVAILABLE' | 'EN_ROUTE' | 'DISPATCHED';
+  baseStation: string;
+}
+
+export interface IncidentContextData {
+  gps: { lat: number; lng: number; address: string };
+  camerasNearby: { id: string; name: string; road: string; status: string }[];
+  trafficConditions: { congestionLevel: string; avgSpeedKmh: number; affectedRoads: string[] };
+  weatherConditions: { tempC: number; condition: string; windKmh: number; rainMm: number };
+  nearbyHospitals: { name: string; distKm: number; bedsAvailable: number }[];
+  policeStations: { name: string; distKm: number }[];
+  fireStations: { name: string; distKm: number }[];
+  infrastructureStatus: { powerGrid: string; drainage: string; bridgeStatus: string };
+  relatedNews: { headline: string; publisher: string; time: string }[];
+  historicalIncidentsCount: number;
+}
+
+export interface IncidentAnalytics {
+  responseTimeSec: number;
+  dispatchTimeSec: number;
+  travelTimeSec: number;
+  arrivalTimeSec: number;
+  totalResolutionTimeMin: number;
+  slaCompliant: boolean;
+  resourceUtilizationPct: number;
+  agencyPerformanceScore: number;
+}
+
 export interface Incident {
   id: string;
   category: 'TRAFFIC' | 'FIRE' | 'FLOOD' | 'UTILITY' | 'SECURITY' | 'MEDICAL';
@@ -121,6 +197,18 @@ export interface Incident {
   reasoning?: string;
   provenance?: DataProvenance;
   connectionStatus?: ConnectionStatus;
+  
+  // Workflow Engine Extensions
+  workflowStage?: WorkflowStage;
+  bufferRadiusMeters?: number; // e.g. 100, 250, 500, 1000
+  escalationRisk?: 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
+  estimatedResolutionMin?: number;
+  timeline?: WorkflowTimelineEvent[];
+  agenciesWorkflow?: AgencyWorkflowStatus[];
+  resourceRecommendations?: ResourceRecommendation[];
+  contextData?: IncidentContextData;
+  analytics?: IncidentAnalytics;
+  routeCoordinates?: [number, number][];
 }
 
 export interface IntelligenceItem {
