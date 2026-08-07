@@ -36,7 +36,7 @@ export const MobileAIBottomSheet: React.FC<MobileAIBottomSheetProps> = ({ onExec
         ...prev,
         {
           sender: 'OPENCLAW',
-          text: res.executiveSummary || res.recommendation || 'Command processed successfully.',
+          text: res.finalSummary || (res.recommendations && res.recommendations[0]) || 'Command processed successfully.',
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
