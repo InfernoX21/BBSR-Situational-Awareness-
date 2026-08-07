@@ -31,6 +31,7 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
   onFuseIntelligence,
   isFusing,
   onRefreshAll,
+  onOpenMobileMenu,
 }) => {
   const [currentTime, setCurrentTime] = useState<string>('');
   const [healthMap, setHealthMap] = useState<ConnectionHealthMap>(liveDataManager.getConnectionHealth());
