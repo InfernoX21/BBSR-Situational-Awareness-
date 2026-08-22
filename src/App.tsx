@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { WifiOff } from 'lucide-react';
 import {
   NavItem,
   Agency,
@@ -256,11 +257,17 @@ export default function App() {
   };
 
   return (
-    <div className="w-screen h-screen bg-[#050505] flex flex-col overflow-hidden text-[#D1D5DB] font-sans">
+    <div className="w-screen h-screen bg-canvas flex flex-col overflow-hidden text-ink font-sans">
       {/* Offline Alert Banner */}
       {isOffline && (
-        <div className="bg-amber-500 text-black px-3 py-1 font-mono text-[10px] font-bold text-center flex items-center justify-center space-x-2 shrink-0 animate-pulse z-50">
-          <span>⚠️ NETWORK OFFLINE — ARKA running on cached field shell & draft queue mode</span>
+        <div
+          role="status"
+          className="bg-warning-soft border-b border-warning-border text-warning px-4 py-1.5 text-[12px] font-semibold flex items-center justify-center gap-2 shrink-0 z-50"
+        >
+          <WifiOff className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+          <span>
+            Network offline — ARKA is running on cached data with a local draft queue. Values shown may be stale.
+          </span>
         </div>
       )}
 
