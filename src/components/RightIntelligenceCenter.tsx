@@ -1,27 +1,15 @@
 import React, { useState } from 'react';
-import { Incident, IntelligenceItem, Severity } from '../types';
+import { Incident, IntelligenceItem, ResourceUnit, Severity } from '../types';
 import {
-  AlertTriangle,
-  Rss,
-  Tv,
-  Sparkles,
   ExternalLink,
   ChevronRight,
-  Flame,
-  CloudRain,
-  Car,
-  ShieldAlert,
-  Play,
-  RefreshCw,
-  Video,
+  Radio,
 } from 'lucide-react';
 
 interface RightIntelligenceCenterProps {
   incidents: Incident[];
   intelligenceItems: IntelligenceItem[];
-  fusedIncident: Incident | null;
-  onFuseIntelligence: () => void;
-  isFusing: boolean;
+  resources?: ResourceUnit[];
   onSelectIncident: (incident: Incident) => void;
   onOpenArticle: (item: IntelligenceItem) => void;
   onViewAllAlerts: () => void;
@@ -30,9 +18,7 @@ interface RightIntelligenceCenterProps {
 export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = ({
   incidents,
   intelligenceItems,
-  fusedIncident,
-  onFuseIntelligence,
-  isFusing,
+  resources = [],
   onSelectIncident,
   onOpenArticle,
   onViewAllAlerts,
@@ -147,7 +133,12 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
                   <span className="text-[#06B6D4] font-bold truncate max-w-[130px] group-hover:text-cyan-300 transition-colors">
                     {item.publisherName}
                   </span>
-                  <span className="text-white/40 text-[8px]">{item.publishedTime}</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[7px] px-1 py-0.2 rounded bg-zinc-800 text-zinc-300 font-mono">
+                      {item.classification || 'LIVE'}
+                    </span>
+                    <span className="text-white/40 text-[8px]">{item.publishedTime}</span>
+                  </div>
                 </div>
 
                 <h4 className="text-[11px] font-medium text-white leading-tight group-hover:text-[#06B6D4] transition-colors">
@@ -172,172 +163,41 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
           </div>
         </div>
 
-        {/* Widget 3: LIVE MEDIA & NEWS BROADCAST FEEDS */}
+        {/* Section 3: TACTICAL RESOURCE FLEET */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1.5">
-              <Video className="w-3 h-3 text-[#06B6D4] animate-pulse" />
-              <span>Live Odisha News Media Feeds</span>
+              <Radio className="w-3 h-3 text-[#10B981] animate-pulse" />
+              <span>Resource Fleet</span>
             </span>
-            <span className="text-[8px] font-mono text-[#10B981] bg-[#10B981]/10 px-1.5 py-0.5 rounded border border-[#10B981]/30 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-ping" />
-              <span>2 LIVE BROADCASTS</span>
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
-            {/* OTV News Live Stream */}
-            <div className="bg-black border border-white/10 rounded overflow-hidden flex flex-col group relative">
-              <div className="relative aspect-video bg-black flex items-center justify-center overflow-hidden">
-                <iframe
-                  src="https://www.youtube.com/embed/cGZASpb4_9M?autoplay=0&mute=1"
-                  title="OTV Odisha Live Stream"
-                  className="w-full h-full border-0 pointer-events-auto"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                />
-                <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-red-600/90 text-white font-mono text-[8px] font-bold flex items-center gap-1 shadow pointer-events-none">
-                  <span className="w-1 h-1 rounded-full bg-white animate-ping" />
-                  <span>OTV LIVE</span>
-                </div>
-              </div>
-              <div className="p-1.5 bg-[#050505] text-[9px] font-mono text-white/70 flex justify-between items-center border-t border-white/5">
-                <span className="font-bold text-white truncate">OTV NEWS ODISHA</span>
-                <a
-                  href="https://www.youtube.com/live/cGZASpb4_9M"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[#06B6D4] hover:underline font-semibold text-[8px]"
-                >
-                  OPEN STREAM ↗
-                </a>
-              </div>
-            </div>
-
-            {/* Kanak News Live Stream */}
-            <div className="bg-black border border-white/10 rounded overflow-hidden flex flex-col group relative">
-              <div className="relative aspect-video bg-black flex items-center justify-center overflow-hidden">
-                <iframe
-                  src="https://www.youtube.com/embed/QKar1sXiCDU?autoplay=0&mute=1"
-                  title="Kanak News Live Stream"
-                  className="w-full h-full border-0 pointer-events-auto"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                />
-                <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-red-600/90 text-white font-mono text-[8px] font-bold flex items-center gap-1 shadow pointer-events-none">
-                  <span className="w-1 h-1 rounded-full bg-white animate-ping" />
-                  <span>KANAK NEWS</span>
-                </div>
-              </div>
-              <div className="p-1.5 bg-[#050505] text-[9px] font-mono text-white/70 flex justify-between items-center border-t border-white/5">
-                <span className="font-bold text-white truncate">KANAK NEWS ODISHA</span>
-                <a
-                  href="https://www.youtube.com/live/QKar1sXiCDU"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[#06B6D4] hover:underline font-semibold text-[8px]"
-                >
-                  OPEN STREAM ↗
-                </a>
-              </div>
-            </div>
-          </div>
-
-          {/* CCTV Smart City Surveillance Section */}
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1.5">
-              <Video className="w-3 h-3 text-[#10B981] animate-pulse" />
-              <span>BSCL CCTV Traffic Cameras</span>
+            <span className="text-[8px] font-mono text-[#10B981] bg-[#10B981]/10 px-1.5 py-0.5 rounded border border-[#10B981]/30">
+              ONLINE
             </span>
           </div>
 
-          <div className="bg-black border border-white/10 rounded overflow-hidden flex flex-col group relative">
-            <div className="relative aspect-video bg-black flex items-center justify-center overflow-hidden">
-              <video
-                src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4"
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="w-full h-full object-cover"
-              />
-              
-              <div className="absolute inset-0 pointer-events-none p-2">
-                <div className="absolute top-1/3 left-1/4 w-12 h-8 border border-amber-400/80 rounded bg-amber-400/10 flex items-start p-0.5">
-                  <span className="bg-amber-400 text-black text-[6px] font-mono font-bold px-0.5 rounded">
-                    YOLO#104
-                  </span>
+          <div className="space-y-1.5 bg-white/[0.02] border border-white/10 rounded p-2 text-[9px] font-mono">
+            {resources.map((res) => {
+              const pct = Math.round((res.available / res.total) * 100);
+              return (
+                <div key={res.id} className="space-y-0.5">
+                  <div className="flex justify-between text-white/80">
+                    <span className="truncate max-w-[130px] font-medium">{res.name}</span>
+                    <span className="text-white/40">
+                      <strong className="text-[#10B981] font-bold">{res.available}</strong>/{res.total}
+                    </span>
+                  </div>
+                  <div className="w-full h-1 bg-black rounded-full overflow-hidden border border-white/10">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        pct > 70 ? 'bg-[#10B981]' : pct > 40 ? 'bg-[#F59E0B]' : 'bg-[#EF4444]'
+                      }`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="absolute bottom-1/4 right-1/3 w-10 h-7 border border-[#06B6D4]/80 rounded bg-[#06B6D4]/10 flex items-start p-0.5">
-                  <span className="bg-[#06B6D4] text-black text-[6px] font-mono font-bold px-0.5 rounded">
-                    ANPR
-                  </span>
-                </div>
-              </div>
-
-              <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-red-600/90 text-white font-mono text-[8px] font-bold flex items-center gap-1 shadow">
-                <span className="w-1 h-1 rounded-full bg-white animate-ping" />
-                <span>CAM-01 JAYADEV VIHAR</span>
-              </div>
-              <div className="absolute bottom-1.5 right-1.5 bg-black/80 px-1.5 py-0.5 rounded text-[8px] text-[#06B6D4] font-mono border border-white/10">
-                YOLOv9 • 60 FPS
-              </div>
-            </div>
-            <div className="p-1.5 bg-[#050505] text-[9px] font-mono text-white/70 flex justify-between items-center border-t border-white/5">
-              <span className="font-bold text-white truncate">JAYADEV VIHAR TRAFFIC JUNCTION</span>
-              <span className="text-[#10B981] font-semibold text-[8px]">RTSP 1080p</span>
-            </div>
+              );
+            })}
           </div>
-        </div>
-
-        {/* Widget 4: AI DECISION SUPPORT / INCIDENT SUMMARY */}
-        <div className="p-3 border border-[#06B6D4]/30 bg-[#06B6D4]/5 rounded space-y-2">
-          <div className="flex items-center justify-between pb-1.5 border-b border-[#06B6D4]/20">
-            <span className="text-[9px] font-bold text-[#06B6D4] uppercase tracking-wider flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-[#06B6D4]" />
-              <span>Decision Support</span>
-            </span>
-            <button
-              onClick={onFuseIntelligence}
-              disabled={isFusing}
-              className="text-[8px] font-mono text-[#06B6D4] hover:text-white bg-[#06B6D4]/10 px-1.5 py-0.5 rounded border border-[#06B6D4]/30 flex items-center gap-1"
-            >
-              <RefreshCw className={`w-2.5 h-2.5 ${isFusing ? 'animate-spin' : ''}`} />
-              <span>{isFusing ? 'Fusing' : 'Re-Fuse'}</span>
-            </button>
-          </div>
-
-          {fusedIncident ? (
-            <div className="space-y-1.5 text-xs">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-white text-[11px] line-clamp-1">{fusedIncident.title}</h3>
-                <span className="px-1 py-0.5 rounded bg-[#10B981]/10 border border-[#10B981]/30 text-[#10B981] font-mono text-[8px] font-bold">
-                  {fusedIncident.aiConfidence}% CONF
-                </span>
-              </div>
-
-              <p className="text-[10px] text-white/70 italic leading-snug font-serif">
-                "{fusedIncident.description}"
-              </p>
-
-              <div className="p-1.5 rounded bg-black/40 border border-white/5 space-y-0.5 font-mono text-[9px]">
-                <div className="flex justify-between text-white/60">
-                  <span>ROADS:</span>
-                  <span className="text-[#F59E0B] font-semibold truncate max-w-[140px]">
-                    {fusedIncident.affectedRoads?.join(', ') || 'Janpath, NH-16'}
-                  </span>
-                </div>
-                <div className="flex justify-between text-white/60">
-                  <span>AGENCY:</span>
-                  <span className="text-[#10B981]">{fusedIncident.agencyAssigned}</span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-[10px] text-white/40 italic py-1">
-              Click 'AI FUSION' to synthesize live feeds...
-            </p>
-          )}
         </div>
       </div>
     </aside>

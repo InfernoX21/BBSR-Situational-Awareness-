@@ -70,11 +70,21 @@ export class OfflineManagerService {
     if (this.draftQueue.length === 0) return;
 
     console.log(`[OfflineManager] Syncing ${this.draftQueue.length} pending offline drafts to backend...`);
-    // Mock background sync processing
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    this.draftQueue = [];
-    localStorage.removeItem('arka_offline_drafts');
-    console.log('[OfflineManager] Background sync completed successfully.');
+    try {
+      const res = await fetch('/api/offline/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ drafts: this.draftQueue }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        console.log(`[OfflineManager] Sync completed successfully: ${json.processedCount} drafts synced at ${json.syncedTimestamp}.`);
+        this.draftQueue = [];
+        localStorage.removeItem('arka_offline_drafts');
+      }
+    } catch (err) {
+      console.warn('[OfflineManager] Failed to sync offline drafts, will retry on next connection change.', err);
+    }
   }
 
   private loadQueueFromStorage(): void {

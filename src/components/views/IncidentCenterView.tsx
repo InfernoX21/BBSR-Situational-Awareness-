@@ -77,27 +77,12 @@ export const IncidentCenterView: React.FC<IncidentCenterViewProps> = ({
   const statuses = ['ALL', 'ACTIVE', 'DISPATCHED', 'CONTAINED', 'RESOLVED'];
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
     if (isReplaying) {
-      const replayLogs = [
-        'Bayesian Graph Node #1: Ingesting sensor telemetry from Janpath & Rasulgarh...',
-        'Bayesian Graph Node #2: Correlating 45mm rainfall data with drainage blockage models...',
-        'Bayesian Graph Node #3: Predicting traffic delay propagation along NH-16 corridor (+18 mins)...',
-        'Bayesian Graph Node #4: Multi-agency response auto-dispatched to BMC Pump #4 and Fire Station 2.',
-      ];
-      interval = setInterval(() => {
-        setReplayStep((prev) => {
-          const next = (prev + 1) % replayLogs.length;
-          setReplayLog(replayLogs[next]);
-          return next;
-        });
-      }, 3000);
-      setReplayLog(replayLogs[0]);
+      setReplayLog('Workflow Replay Step 1: Ingested validated incident report.');
     } else {
       setReplayStep(0);
       setReplayLog('');
     }
-    return () => clearInterval(interval);
   }, [isReplaying]);
 
   const filteredIncidents = incidents

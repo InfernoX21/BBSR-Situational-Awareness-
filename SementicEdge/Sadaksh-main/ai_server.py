@@ -25,11 +25,6 @@ from typing import Dict, Any, List, Optional, Deque
 
 from pydantic import BaseModel
 
-# Automatically append site-packages path for installed dependencies
-user_site = os.path.expanduser(r"~\AppData\Roaming\Python\Python313\site-packages")
-if os.path.exists(user_site) and user_site not in sys.path:
-    sys.path.insert(0, user_site)
-
 # Ensure src directory is on Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 

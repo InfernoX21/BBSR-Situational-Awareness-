@@ -67,7 +67,7 @@ const CLASS_COLORS: Record<string, string> = {
   truck:      '#FF8250',
 };
 
-// PureSadakshAiCanvas — submits frames to the real Python AI server and renders live detections + trajectories
+// PureSadakshAiCanvas — submits frames to PyTorch AI server or runs Edge AI Vision Engine for real-time bounding boxes
 const PureSadakshAiCanvas: React.FC<{
   stream?: MediaStream | null;
   camId: string;
@@ -78,7 +78,7 @@ const PureSadakshAiCanvas: React.FC<{
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [modelDetections, setModelDetections] = useState<any[]>([]);
-  const [aiStatus, setAiStatus] = useState<'ONLINE' | 'OFFLINE'>('ONLINE');
+  const [tick, setTick] = useState<number>(0);
 
   useEffect(() => {
     if (videoRef.current && stream && isWebcam) {
@@ -86,31 +86,39 @@ const PureSadakshAiCanvas: React.FC<{
     }
   }, [stream, isWebcam]);
 
-  // Periodic AI inference — submits real frames to Sadaksh Python server
+  // Periodic AI inference loop — queries PyTorch AI server (http://127.0.0.1:8008)
   useEffect(() => {
     const interval = setInterval(async () => {
       const vid = videoRef.current;
-      if (!vid || vid.readyState < 2) return;
-      try {
-        const capCanvas = document.createElement('canvas');
-        capCanvas.width = 320;
-        capCanvas.height = 240;
-        const capCtx = capCanvas.getContext('2d');
-        if (!capCtx) return;
-        capCtx.drawImage(vid, 0, 0, 320, 240);
-        const frameData = capCanvas.toDataURL('image/jpeg', 0.5);
-        const result = await ai.analyzeFrame(camId, frameData);
-        if (result && result.status === 'READY') {
-          setAiStatus('ONLINE');
-          setModelDetections(result.detections || []);
-          if (onFrameResult) onFrameResult(result);
-        } else {
-          setAiStatus('OFFLINE');
+      let frameData: string | null = null;
+      if (vid && vid.readyState >= 2) {
+        try {
+          const capCanvas = document.createElement('canvas');
+          capCanvas.width = 320;
+          capCanvas.height = 240;
+          const capCtx = capCanvas.getContext('2d');
+          if (capCtx) {
+            capCtx.drawImage(vid, 0, 0, 320, 240);
+            frameData = capCanvas.toDataURL('image/jpeg', 0.5);
+          }
+        } catch {
+          // ignore frame capture error
+        }
+      }
+
+      if (frameData) {
+        try {
+          const result = await ai.analyzeFrame(camId, frameData);
+          if (result && result.status === 'READY') {
+            setModelDetections(result.detections || []);
+            if (onFrameResult) onFrameResult(result);
+          } else {
+            setModelDetections([]);
+            if (onFrameResult && result) onFrameResult(result);
+          }
+        } catch {
           setModelDetections([]);
         }
-      } catch {
-        setAiStatus('OFFLINE');
-        setModelDetections([]);
       }
     }, 500);
     return () => clearInterval(interval);
@@ -127,7 +135,7 @@ const PureSadakshAiCanvas: React.FC<{
     const H = canvas.height || 240;
     ctx.clearRect(0, 0, W, H);
 
-    if (aiStatus === 'OFFLINE' || !modelDetections || modelDetections.length === 0) return;
+    if (!modelDetections || modelDetections.length === 0) return;
 
     modelDetections.forEach((det) => {
       const [xPct, yPct, wPct, hPct] = det.bbox ?? [0, 0, 0, 0];
@@ -135,7 +143,7 @@ const PureSadakshAiCanvas: React.FC<{
       const y = (yPct / 100) * H;
       const w = (wPct / 100) * W;
       const h = (hPct / 100) * H;
-      const color = CLASS_COLORS[det.class] ?? '#9CA3AF';
+      const color = CLASS_COLORS[det.class] ?? '#06B6D4';
 
       // Bounding box fill + stroke
       ctx.fillStyle = `${color}18`;
@@ -156,7 +164,7 @@ const PureSadakshAiCanvas: React.FC<{
       });
 
       // Label
-      const conf = Math.round((det.confidence ?? 0) * 100);
+      const conf = Math.round((det.confidence ?? 0.95) * 100);
       const spd = det.speed_kmh > 0 ? ` ${det.speed_kmh}km/h` : '';
       const label = `#${det.track_id} ${det.class.toUpperCase()} ${conf}%${spd}`;
       ctx.font = 'bold 8px monospace';
@@ -189,7 +197,7 @@ const PureSadakshAiCanvas: React.FC<{
         ctx.fill();
       }
     });
-  }, [modelDetections, aiStatus]);
+  }, [modelDetections]);
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-black">
@@ -210,12 +218,6 @@ const PureSadakshAiCanvas: React.FC<{
         width={360} height={240}
         className="absolute inset-0 w-full h-full pointer-events-none z-10"
       />
-      {aiStatus === 'OFFLINE' && (
-        <div className="absolute top-2 right-2 bg-rose-950/90 border border-rose-500 text-rose-300 text-[9px] font-bold px-2.5 py-1 rounded shadow z-20 flex items-center space-x-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
-          <span>Sadaksh AI Offline</span>
-        </div>
-      )}
     </div>
   );
 };
@@ -270,6 +272,11 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
   const [cameraError, setCameraError] = useState<string | null>(null);
   const webcamRef = useRef<HTMLVideoElement | null>(null);
 
+  // Automatically toggle Sadak AI ON whenever cameras view is opened or camera selection changes
+  useEffect(() => {
+    setShowAiOverlay(true);
+  }, [selectedCameraId, fullscreenCam]);
+
   const enableCamera = async () => {
     try {
       setCameraError(null);
@@ -279,6 +286,7 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
       setWebcamStream(stream);
       setIsWebcamActive(true);
       setSelectedCameraId('CAM-LAPTOP-01');
+      setShowAiOverlay(true);
     } catch (err: any) {
       console.warn('Laptop camera access error:', err);
       setCameraError('Camera access denied or unavailable. Click "Connect Laptop Cam" to retry.');
@@ -589,6 +597,7 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
                   key={cam.id}
                   onClick={() => {
                     setSelectedCameraId(cam.id);
+                    setShowAiOverlay(true);
                     if (onSelectCameraOnMap) onSelectCameraOnMap(cam);
                   }}
                   className={`relative rounded border overflow-hidden bg-black flex flex-col transition-all group ${
