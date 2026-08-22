@@ -4,8 +4,8 @@
   "description": "Smart City Emergency Command & Control Platform for Bhubaneswar",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f3f6fa",
-  "theme_color": "#0f2b4c",
+  "background_color": "#0b0d10",
+  "theme_color": "#0b0d10",
   "orientation": "any",
   "icons": [
     {
