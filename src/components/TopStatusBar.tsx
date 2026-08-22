@@ -4,7 +4,6 @@ import { liveDataManager } from '../services/LiveDataManager';
 import {
   Activity,
   ShieldAlert,
-  Sparkles,
   RefreshCw,
   Info,
   CheckCircle2,
@@ -20,8 +19,6 @@ interface TopStatusBarProps {
   weather: WeatherData;
   threatLevel: Severity;
   setThreatLevel: (level: Severity) => void;
-  onFuseIntelligence: () => void;
-  isFusing: boolean;
   onRefreshAll: () => void;
   onOpenMobileMenu?: () => void;
 }
@@ -32,8 +29,6 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
   weather,
   threatLevel,
   setThreatLevel,
-  onFuseIntelligence,
-  isFusing,
   onRefreshAll,
   onOpenMobileMenu,
 }) => {
@@ -248,18 +243,6 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
             </div>
           )}
         </div>
-
-        {/* --- AI fusion --- */}
-        <button
-          type="button"
-          onClick={onFuseIntelligence}
-          disabled={isFusing}
-          className="gov-btn gov-btn-onnavy gov-btn-sm shrink-0"
-          title="Fuse news, weather and incident signals into a single assessment"
-        >
-          <Sparkles className={`w-3.5 h-3.5 ${isFusing ? 'animate-spin' : ''}`} aria-hidden="true" />
-          <span className="hidden sm:inline">{isFusing ? 'Fusing…' : 'AI fusion'}</span>
-        </button>
 
         {/* --- Refresh --- */}
         <button

@@ -276,8 +276,6 @@ export default function App() {
         weather={weather}
         threatLevel={threatLevel}
         setThreatLevel={setThreatLevel}
-        onFuseIntelligence={handleFuseIntelligence}
-        isFusing={isFusing}
         onRefreshAll={handleRefreshAll}
         onOpenMobileMenu={() => setMobileMenuOpen(true)}
       />
