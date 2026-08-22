@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Incident, ResourceUnit, WeatherData, Severity, TrafficCorridor, TrafficSummary } from '../types';
+import { LiveNewsPanel } from './LiveNewsPanel';
 import {
   PieChart as PieIcon,
   BarChart2,
@@ -198,39 +199,8 @@ export const BottomAnalytics: React.FC<BottomAnalyticsProps> = ({
         </div>
       </div>
 
-      {/* Widget 3: Weather Radar */}
-      <div className="border border-white/10 bg-white/[0.02] rounded p-2 flex flex-col justify-between">
-        <div className="flex items-center justify-between border-b border-white/5 pb-1 text-[9px] font-bold uppercase tracking-widest">
-          <span className="text-white/40">Radar Telemetry</span>
-          <span className="text-[#06B6D4]">{weather.floodRiskLevel} RISK</span>
-        </div>
-
-        <div className="flex items-center space-x-3 flex-1">
-          <div className="w-16 h-16 rounded-full border border-[#06B6D4]/40 bg-black relative overflow-hidden flex items-center justify-center shrink-0">
-            <div className="w-12 h-12 rounded-full border border-[#06B6D4]/20 absolute" />
-            <div className="w-6 h-6 rounded-full border border-[#06B6D4]/30 absolute" />
-            <div className="w-full h-[1px] bg-[#06B6D4]/20 absolute" />
-            <div className="h-full w-[1px] bg-[#06B6D4]/20 absolute" />
-            <div className="w-8 h-8 absolute top-0 right-0 origin-bottom-left bg-gradient-to-tr from-[#06B6D4]/40 to-transparent animate-radar" />
-            <div className="w-1.5 h-1.5 rounded-full bg-[#F59E0B] absolute top-3 right-4 animate-ping" />
-          </div>
-
-          <div className="space-y-1 text-[9px] text-white/70 flex-1">
-            <div className="flex justify-between">
-              <span className="text-white/40">RAIN:</span>
-              <span className="text-[#06B6D4] font-bold">{weather.rainIntensity} mm/h</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/40">BASIN:</span>
-              <span className="text-[#F59E0B] font-bold">+0.4m</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/40">SQ:</span>
-              <span className="text-[#10B981]">16:30 IST</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Widget 3: Live Odia News Stream */}
+      <LiveNewsPanel />
 
       {/* Widget 4: Resource Status Availability */}
       <div className="border border-white/10 bg-white/[0.02] rounded p-2 flex flex-col justify-between">
