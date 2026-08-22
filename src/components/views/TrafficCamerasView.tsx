@@ -270,6 +270,11 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
   const [cameraError, setCameraError] = useState<string | null>(null);
   const webcamRef = useRef<HTMLVideoElement | null>(null);
 
+  // Automatically toggle Sadak AI ON whenever cameras view is opened or camera selection changes
+  useEffect(() => {
+    setShowAiOverlay(true);
+  }, [selectedCameraId, fullscreenCam]);
+
   const enableCamera = async () => {
     try {
       setCameraError(null);
@@ -279,6 +284,7 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
       setWebcamStream(stream);
       setIsWebcamActive(true);
       setSelectedCameraId('CAM-LAPTOP-01');
+      setShowAiOverlay(true);
     } catch (err: any) {
       console.warn('Laptop camera access error:', err);
       setCameraError('Camera access denied or unavailable. Click "Connect Laptop Cam" to retry.');
@@ -589,6 +595,7 @@ export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
                   key={cam.id}
                   onClick={() => {
                     setSelectedCameraId(cam.id);
+                    setShowAiOverlay(true);
                     if (onSelectCameraOnMap) onSelectCameraOnMap(cam);
                   }}
                   className={`relative rounded border overflow-hidden bg-black flex flex-col transition-all group ${
