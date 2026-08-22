@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Video, Radio, AlertTriangle, ExternalLink, RefreshCw } from 'lucide-react';
+import { Radio, AlertTriangle, ExternalLink, RefreshCw, ChevronDown } from 'lucide-react';
 
 export interface NewsChannel {
   id: string;
@@ -28,7 +28,7 @@ export const ODIA_NEWS_CHANNELS: NewsChannel[] = [
   {
     id: 'kalinga',
     name: 'Kalinga TV',
-    shortName: 'Kalinga',
+    shortName: 'Kalinga TV',
     callsign: 'KALINGA LIVE',
     videoId: 'H__wXo3J9K4',
     channelId: 'UC45i_h9m9N5v1f-nUeO20aA',
@@ -50,7 +50,7 @@ export const ODIA_NEWS_CHANNELS: NewsChannel[] = [
   {
     id: 'kanak',
     name: 'Kanak News',
-    shortName: 'Kanak',
+    shortName: 'Kanak News',
     callsign: 'KANAK LIVE',
     videoId: 'QKar1sXiCDU',
     channelId: 'UCcT6I2pbg0iC-347t_RngDA',
@@ -86,38 +86,32 @@ export const LiveNewsPanel: React.FC<LiveNewsPanelProps> = ({ className = '' }) 
 
   return (
     <div className={`border border-white/10 bg-white/[0.02] rounded p-2 flex flex-col justify-between overflow-hidden ${className}`}>
-      {/* Header & Channel Selector Bar */}
-      <div className="flex items-center justify-between border-b border-white/5 pb-1 text-[9px] font-bold uppercase tracking-widest gap-1">
-        <div className="flex items-center gap-1.5 truncate">
+      {/* Header & Dropdown Channel Selector Bar */}
+      <div className="flex items-center justify-between border-b border-white/5 pb-1 text-[9px] font-bold uppercase tracking-widest gap-2">
+        <div className="flex items-center gap-1.5 min-w-0">
           <Radio className="w-3 h-3 text-[#EF4444] animate-pulse shrink-0" />
-          <span className="text-white/80 font-bold truncate">LIVE ODIA NEWS</span>
+          <span className="text-white/90 font-bold truncate">LIVE ODIA NEWS</span>
         </div>
 
-        {/* Compact Channel Selector Buttons */}
-        <div className="flex items-center gap-1 shrink-0">
-          {ODIA_NEWS_CHANNELS.map((ch) => {
-            const isActive = ch.id === activeChannelId;
-            return (
-              <button
-                key={ch.id}
-                type="button"
-                onClick={() => handleChannelSelect(ch.id)}
-                className={`px-1.5 py-0.5 rounded text-[8px] font-mono transition-all uppercase ${
-                  isActive
-                    ? 'bg-[#06B6D4]/20 text-[#06B6D4] border border-[#06B6D4]/50 font-bold shadow-[0_0_8px_rgba(6,182,212,0.3)]'
-                    : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white border border-transparent'
-                }`}
-                title={`Switch to ${ch.name}`}
-              >
-                {ch.shortName}
-              </button>
-            );
-          })}
+        {/* Tactical Channel Dropdown */}
+        <div className="relative shrink-0 flex items-center">
+          <select
+            value={activeChannelId}
+            onChange={(e) => handleChannelSelect(e.target.value)}
+            className="bg-black/90 text-[#06B6D4] border border-[#06B6D4]/50 hover:border-[#06B6D4] rounded px-2 py-0.5 text-[9px] font-mono font-bold cursor-pointer outline-none transition-all shadow-[0_0_10px_rgba(6,182,212,0.25)] appearance-none pr-5 text-right"
+          >
+            {ODIA_NEWS_CHANNELS.map((ch) => (
+              <option key={ch.id} value={ch.id} className="bg-zinc-950 text-zinc-200 py-1">
+                {ch.name}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="w-3 h-3 text-[#06B6D4] absolute right-1.5 pointer-events-none opacity-80" />
         </div>
       </div>
 
       {/* Embedded Live Video Player Area */}
-      <div className="relative w-full flex-1 rounded overflow-hidden bg-black border border-white/10 mt-1 flex flex-col justify-between">
+      <div className="relative w-full flex-1 rounded overflow-hidden bg-black border border-white/10 mt-1 flex flex-col justify-between min-h-0">
         {!hasStreamError ? (
           <div className="relative w-full h-full bg-black overflow-hidden group">
             <iframe
@@ -139,7 +133,7 @@ export const LiveNewsPanel: React.FC<LiveNewsPanelProps> = ({ className = '' }) 
             {/* Tactical Signal Status & Info Overlay */}
             <div className="absolute top-1 right-1 bg-black/80 px-1.5 py-0.5 rounded text-[7px] text-[#10B981] font-mono border border-white/10 flex items-center gap-1 pointer-events-none z-10">
               <span className="w-1 h-1 rounded-full bg-[#10B981] animate-pulse" />
-              <span>SIGNAL ACTIVE · {activeChannel.quality}</span>
+              <span>SIGNAL ACTIVE</span>
             </div>
           </div>
         ) : (
