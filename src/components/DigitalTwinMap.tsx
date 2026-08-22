@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
+// Map stylesheet is bundled with the app rather than loaded from a CDN, so the
+// map still renders correctly when the operator is offline.
+import 'leaflet/dist/leaflet.css';
 import {
   Incident,
   LandmarkNode,
