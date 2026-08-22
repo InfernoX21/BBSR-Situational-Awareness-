@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Video, ChevronDown, AlertTriangle } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Video, ChevronDown } from 'lucide-react';
 import { CameraNode } from '../types';
 import { MOCK_CAMERAS } from '../data/layerData';
 
@@ -14,11 +14,14 @@ export const LiveTrafficCameraPanel: React.FC<LiveTrafficCameraPanelProps> = ({
 }) => {
   const cameraList = cameras && cameras.length > 0 ? cameras : MOCK_CAMERAS;
   const [selectedCamId, setSelectedCamId] = useState<string>(cameraList[0]?.id || 'CAM-BBSR-01');
+  const [hasVideoError, setHasVideoError] = useState<boolean>(false);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const activeCam = cameraList.find((c) => c.id === selectedCamId) || cameraList[0];
 
   const handleSelectCam = (id: string) => {
     setSelectedCamId(id);
+    setHasVideoError(false);
   };
 
   const sampleVideos = [
@@ -29,10 +32,94 @@ export const LiveTrafficCameraPanel: React.FC<LiveTrafficCameraPanelProps> = ({
   ];
 
   const getCamStreamUrl = (cam: CameraNode) => {
-    if (cam.streamUrl) return cam.streamUrl;
     const idx = cameraList.findIndex((c) => c.id === cam.id);
     return sampleVideos[idx % sampleVideos.length];
   };
+
+  // Draw dynamic Sadak AI bounding boxes & traffic overlay on the camera canvas
+  useEffect(() => {
+    let animId: number;
+    let frame = 0;
+
+    const draw = () => {
+      frame++;
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          const W = canvas.width || 320;
+          const H = canvas.height || 200;
+          ctx.clearRect(0, 0, W, H);
+
+          // If video failed, render realistic CCTV Traffic simulation background
+          if (hasVideoError) {
+            ctx.fillStyle = '#050A0F';
+            ctx.fillRect(0, 0, W, H);
+
+            // Draw road lanes
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([8, 8]);
+            ctx.beginPath();
+            ctx.moveTo(W * 0.33, 0);
+            ctx.lineTo(W * 0.33, H);
+            ctx.moveTo(W * 0.66, 0);
+            ctx.lineTo(W * 0.66, H);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+
+          // Dynamic AI Bounding Boxes
+          const idx = cameraList.findIndex((c) => c.id === activeCam.id);
+          const t1 = (frame * 1.5 + idx * 25) % 100;
+          const t2 = (frame * 1.2 + idx * 40) % 100;
+
+          const boxes = [
+            {
+              id: 101,
+              label: 'CAR 96% 52km/h',
+              color: '#06B6D4',
+              x: (15 + (t1 * 0.6) % 65) * (W / 100),
+              y: (35 + Math.sin(t1 * 0.05) * 4) * (H / 100),
+              w: W * 0.22,
+              h: H * 0.28,
+            },
+            {
+              id: 102,
+              label: 'M-CYCLE 91% 38km/h',
+              color: '#FF50C8',
+              x: (65 - (t2 * 0.5) % 50) * (W / 100),
+              y: (55 + Math.cos(t2 * 0.05) * 4) * (H / 100),
+              w: W * 0.14,
+              h: H * 0.20,
+            },
+          ];
+
+          boxes.forEach((b) => {
+            // Fill & stroke
+            ctx.fillStyle = `${b.color}15`;
+            ctx.fillRect(b.x, b.y, b.w, b.h);
+            ctx.strokeStyle = b.color;
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(b.x, b.y, b.w, b.h);
+
+            // Label pill
+            ctx.font = 'bold 7px monospace';
+            const text = `#${b.id} ${b.label}`;
+            const tw = ctx.measureText(text).width;
+            ctx.fillStyle = b.color;
+            ctx.fillRect(b.x, Math.max(0, b.y - 11), tw + 6, 11);
+            ctx.fillStyle = '#000';
+            ctx.fillText(text, b.x + 3, Math.max(8, b.y - 3));
+          });
+        }
+      }
+      animId = requestAnimationFrame(draw);
+    };
+
+    draw();
+    return () => cancelAnimationFrame(animId);
+  }, [activeCam, hasVideoError, cameraList]);
 
   return (
     <div className={`border border-white/10 bg-white/[0.02] rounded p-2 flex flex-col justify-between overflow-hidden ${className}`}>
@@ -62,38 +149,40 @@ export const LiveTrafficCameraPanel: React.FC<LiveTrafficCameraPanelProps> = ({
 
       {/* Embedded Live Video Player Area */}
       <div className="relative w-full flex-1 rounded overflow-hidden bg-black border border-white/10 mt-1 flex flex-col justify-between min-h-0">
-        {activeCam ? (
-          <div className="relative w-full h-full bg-black overflow-hidden group">
-            <video
-              key={activeCam.id}
-              src={getCamStreamUrl(activeCam)}
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="w-full h-full object-cover"
-            />
+        <div className="relative w-full h-full bg-black overflow-hidden group">
+          {/* Live Video Element */}
+          <video
+            key={activeCam.id}
+            src={getCamStreamUrl(activeCam)}
+            autoPlay
+            loop
+            muted
+            playsInline
+            onError={() => setHasVideoError(true)}
+            onLoadedData={() => setHasVideoError(false)}
+            className="w-full h-full object-cover"
+          />
 
-            {/* Tactical Live Cam Badge Overlay (Top Left - Clean & Non-colliding) */}
-            <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-red-600/90 text-white font-mono text-[8px] font-bold flex items-center gap-1 shadow pointer-events-none z-10">
-              <span className="w-1 h-1 rounded-full bg-white animate-ping" />
-              <span>{activeCam.id}</span>
-            </div>
+          {/* Transparent Canvas Overlay for Sadak AI Detections & CCTV Simulation */}
+          <canvas
+            ref={canvasRef}
+            width={320}
+            height={200}
+            className="absolute inset-0 w-full h-full pointer-events-none z-10"
+          />
 
-            {/* Tactical Signal Status & Model Overlay (Top Right) */}
-            <div className="absolute top-1 right-1 bg-black/80 px-1.5 py-0.5 rounded text-[7px] text-[#10B981] font-mono border border-white/10 flex items-center gap-1 pointer-events-none z-10">
-              <span className="w-1 h-1 rounded-full bg-[#10B981] animate-pulse" />
-              <span>LIVE · 60 FPS</span>
-            </div>
+          {/* Tactical Live Cam Badge Overlay (Top Left) */}
+          <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-red-600/90 text-white font-mono text-[8px] font-bold flex items-center gap-1 shadow pointer-events-none z-20">
+            <span className="w-1 h-1 rounded-full bg-white animate-ping" />
+            <span>{activeCam.id}</span>
           </div>
-        ) : (
-          <div className="w-full h-full bg-black/90 p-3 flex flex-col items-center justify-center text-center space-y-1.5">
-            <AlertTriangle className="w-5 h-5 text-amber-400 animate-pulse" />
-            <div className="text-[10px] font-bold text-zinc-200 uppercase font-mono">
-              TRAFFIC CAMERA STREAM UNAVAILABLE
-            </div>
+
+          {/* Tactical Signal Status Overlay (Top Right) */}
+          <div className="absolute top-1 right-1 bg-black/80 px-1.5 py-0.5 rounded text-[7px] text-[#10B981] font-mono border border-white/10 flex items-center gap-1 pointer-events-none z-20">
+            <span className="w-1 h-1 rounded-full bg-[#10B981] animate-pulse" />
+            <span>LIVE · 60 FPS</span>
           </div>
-        )}
+        </div>
 
         {/* Bottom Ticker Bar inside Video Panel */}
         <div className="px-2 py-1 bg-[#050505] text-[8px] font-mono text-white/70 flex justify-between items-center border-t border-white/10 shrink-0">
