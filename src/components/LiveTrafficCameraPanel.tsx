@@ -68,50 +68,6 @@ export const LiveTrafficCameraPanel: React.FC<LiveTrafficCameraPanelProps> = ({
             ctx.stroke();
             ctx.setLineDash([]);
           }
-
-          // Dynamic AI Bounding Boxes
-          const idx = cameraList.findIndex((c) => c.id === activeCam.id);
-          const t1 = (frame * 1.5 + idx * 25) % 100;
-          const t2 = (frame * 1.2 + idx * 40) % 100;
-
-          const boxes = [
-            {
-              id: 101,
-              label: 'CAR 96% 52km/h',
-              color: '#06B6D4',
-              x: (15 + (t1 * 0.6) % 65) * (W / 100),
-              y: (35 + Math.sin(t1 * 0.05) * 4) * (H / 100),
-              w: W * 0.22,
-              h: H * 0.28,
-            },
-            {
-              id: 102,
-              label: 'M-CYCLE 91% 38km/h',
-              color: '#FF50C8',
-              x: (65 - (t2 * 0.5) % 50) * (W / 100),
-              y: (55 + Math.cos(t2 * 0.05) * 4) * (H / 100),
-              w: W * 0.14,
-              h: H * 0.20,
-            },
-          ];
-
-          boxes.forEach((b) => {
-            // Fill & stroke
-            ctx.fillStyle = `${b.color}15`;
-            ctx.fillRect(b.x, b.y, b.w, b.h);
-            ctx.strokeStyle = b.color;
-            ctx.lineWidth = 1.5;
-            ctx.strokeRect(b.x, b.y, b.w, b.h);
-
-            // Label pill
-            ctx.font = 'bold 7px monospace';
-            const text = `#${b.id} ${b.label}`;
-            const tw = ctx.measureText(text).width;
-            ctx.fillStyle = b.color;
-            ctx.fillRect(b.x, Math.max(0, b.y - 11), tw + 6, 11);
-            ctx.fillStyle = '#000';
-            ctx.fillText(text, b.x + 3, Math.max(8, b.y - 3));
-          });
         }
       }
       animId = requestAnimationFrame(draw);

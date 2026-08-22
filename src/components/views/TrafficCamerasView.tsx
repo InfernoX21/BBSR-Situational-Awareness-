@@ -86,56 +86,9 @@ const PureSadakshAiCanvas: React.FC<{
     }
   }, [stream, isWebcam]);
 
-  // Generate continuous Edge AI detections when Python server is starting / offline
-  const getEdgeDetections = useCallback((camIdentifier: string, currentTick: number) => {
-    const seed = (camIdentifier.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) + currentTick) % 100;
-    const t1 = (currentTick * 2 + seed) % 100;
-    const t2 = (currentTick * 1.5 + seed * 2) % 100;
-    const t3 = (currentTick * 2.5 + seed * 3) % 100;
-
-    return [
-      {
-        track_id: 101,
-        class: 'car',
-        confidence: 0.94,
-        bbox: [15 + (t1 * 0.5) % 65, 30 + Math.sin(t1 * 0.1) * 4, 22, 28],
-        trajectory: [
-          [15 + (t1 * 0.5) % 65 - 8, 30],
-          [15 + (t1 * 0.5) % 65 - 4, 30 + Math.sin(t1 * 0.1) * 2],
-          [15 + (t1 * 0.5) % 65, 30 + Math.sin(t1 * 0.1) * 4],
-        ],
-        speed_kmh: 48,
-      },
-      {
-        track_id: 102,
-        class: 'motorcycle',
-        confidence: 0.91,
-        bbox: [65 - (t2 * 0.4) % 45, 55 + Math.cos(t2 * 0.1) * 4, 12, 16],
-        trajectory: [
-          [65 - (t2 * 0.4) % 45 + 6, 55],
-          [65 - (t2 * 0.4) % 45, 55 + Math.cos(t2 * 0.1) * 4],
-        ],
-        speed_kmh: 38,
-      },
-      {
-        track_id: 103,
-        class: 'bus',
-        confidence: 0.97,
-        bbox: [22 + (t3 * 0.3) % 55, 22 + Math.sin(t3 * 0.05) * 3, 26, 32],
-        trajectory: [
-          [22 + (t3 * 0.3) % 55 - 10, 22],
-          [22 + (t3 * 0.3) % 55 - 5, 22 + Math.sin(t3 * 0.05) * 1.5],
-          [22 + (t3 * 0.3) % 55, 22 + Math.sin(t3 * 0.05) * 3],
-        ],
-        speed_kmh: 42,
-      },
-    ];
-  }, []);
-
-  // Periodic AI inference loop — queries PyTorch AI server or uses Edge AI Vision Engine
+  // Periodic AI inference loop — queries PyTorch AI server (http://127.0.0.1:8008)
   useEffect(() => {
     const interval = setInterval(async () => {
-      setTick((t) => t + 1);
       const vid = videoRef.current;
       let frameData: string | null = null;
       if (vid && vid.readyState >= 2) {
@@ -153,48 +106,23 @@ const PureSadakshAiCanvas: React.FC<{
         }
       }
 
-      try {
-        let result: SadakshFrameResponse | null = null;
-        if (frameData) {
-          result = await ai.analyzeFrame(camId, frameData);
-        }
-        if (result && result.status === 'READY' && result.detections && result.detections.length > 0) {
-          setModelDetections(result.detections);
-          if (onFrameResult) onFrameResult(result);
-        } else {
-          // Fallback to Edge AI Vision Engine
-          const edgeDets = getEdgeDetections(camId, tick + 1);
-          setModelDetections(edgeDets);
-          if (onFrameResult) {
-            onFrameResult({
-              status: 'READY',
-              camera: camId,
-              fps: 30,
-              latency: 12,
-              detections: edgeDets,
-              analytics: {
-                vehicleCount: 3,
-                pedestrianCount: 1,
-                totalTargets: 4,
-                classCounts: { car: 1, motorcycle: 1, bus: 1, person: 1 },
-                congestionLevel: 'MODERATE',
-                density: 'MEDIUM',
-                flowRate: 48,
-                entryCount: 14,
-                exitCount: 11,
-                activeTracks: 4,
-              },
-              events: [],
-            });
+      if (frameData) {
+        try {
+          const result = await ai.analyzeFrame(camId, frameData);
+          if (result && result.status === 'READY') {
+            setModelDetections(result.detections || []);
+            if (onFrameResult) onFrameResult(result);
+          } else {
+            setModelDetections([]);
+            if (onFrameResult && result) onFrameResult(result);
           }
+        } catch {
+          setModelDetections([]);
         }
-      } catch {
-        const edgeDets = getEdgeDetections(camId, tick + 1);
-        setModelDetections(edgeDets);
       }
     }, 500);
     return () => clearInterval(interval);
-  }, [camId, onFrameResult, getEdgeDetections, tick]);
+  }, [camId, onFrameResult]);
 
   // Render live Sadaksh detections: bounding boxes + class labels + trajectory polylines
   useEffect(() => {
