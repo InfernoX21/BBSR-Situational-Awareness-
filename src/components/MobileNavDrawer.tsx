@@ -10,7 +10,6 @@ interface MobileNavDrawerProps {
   setActiveTab: (tab: NavItem) => void;
   agencies: Agency[];
 }
-
 export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
   isOpen,
   onClose,

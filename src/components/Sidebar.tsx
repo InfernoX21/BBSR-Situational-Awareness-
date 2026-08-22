@@ -19,7 +19,6 @@ interface SidebarProps {
   agencies: Agency[];
   onAgencyClick?: (agency: Agency) => void;
 }
-
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   setActiveTab,

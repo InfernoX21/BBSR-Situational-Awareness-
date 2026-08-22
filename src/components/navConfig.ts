@@ -51,7 +51,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Incident Center', icon: AlertTriangle, hint: 'Incident queue and response workflow' },
       { label: 'AI Operations', icon: Bot, hint: 'Assisted analysis and task automation' },
       { label: 'Resource Tracker', icon: Radio, hint: 'Field units and dispatch status' },
-      { label: 'Drone Feed', icon: Video, hint: 'Aerial and camera video feeds' },
     ],
   },
   {

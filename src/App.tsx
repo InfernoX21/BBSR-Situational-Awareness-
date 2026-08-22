@@ -358,9 +358,6 @@ export default function App() {
               <RightIntelligenceCenter
                 incidents={incidents}
                 intelligenceItems={intelligenceItems}
-                fusedIncident={fusedIncident}
-                onFuseIntelligence={handleFuseIntelligence}
-                isFusing={isFusing}
                 onSelectIncident={(inc) => {
                   setSelectedIncident(inc);
                   addLog(`Selected incident #${inc.id} from Intelligence Center.`, 'INFO');

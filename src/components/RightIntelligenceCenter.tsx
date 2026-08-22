@@ -1,27 +1,14 @@
 import React, { useState } from 'react';
 import { Incident, IntelligenceItem, Severity } from '../types';
 import {
-  AlertTriangle,
-  Rss,
-  Tv,
-  Sparkles,
   ExternalLink,
   ChevronRight,
-  Flame,
-  CloudRain,
-  Car,
-  ShieldAlert,
-  Play,
-  RefreshCw,
   Video,
 } from 'lucide-react';
 
 interface RightIntelligenceCenterProps {
   incidents: Incident[];
   intelligenceItems: IntelligenceItem[];
-  fusedIncident: Incident | null;
-  onFuseIntelligence: () => void;
-  isFusing: boolean;
   onSelectIncident: (incident: Incident) => void;
   onOpenArticle: (item: IntelligenceItem) => void;
   onViewAllAlerts: () => void;
@@ -30,9 +17,6 @@ interface RightIntelligenceCenterProps {
 export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = ({
   incidents,
   intelligenceItems,
-  fusedIncident,
-  onFuseIntelligence,
-  isFusing,
   onSelectIncident,
   onOpenArticle,
   onViewAllAlerts,
@@ -288,56 +272,6 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
               <span className="text-[#10B981] font-semibold text-[8px]">RTSP 1080p</span>
             </div>
           </div>
-        </div>
-
-        {/* Widget 4: AI DECISION SUPPORT / INCIDENT SUMMARY */}
-        <div className="p-3 border border-[#06B6D4]/30 bg-[#06B6D4]/5 rounded space-y-2">
-          <div className="flex items-center justify-between pb-1.5 border-b border-[#06B6D4]/20">
-            <span className="text-[9px] font-bold text-[#06B6D4] uppercase tracking-wider flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-[#06B6D4]" />
-              <span>Decision Support</span>
-            </span>
-            <button
-              onClick={onFuseIntelligence}
-              disabled={isFusing}
-              className="text-[8px] font-mono text-[#06B6D4] hover:text-white bg-[#06B6D4]/10 px-1.5 py-0.5 rounded border border-[#06B6D4]/30 flex items-center gap-1"
-            >
-              <RefreshCw className={`w-2.5 h-2.5 ${isFusing ? 'animate-spin' : ''}`} />
-              <span>{isFusing ? 'Fusing' : 'Re-Fuse'}</span>
-            </button>
-          </div>
-
-          {fusedIncident ? (
-            <div className="space-y-1.5 text-xs">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-white text-[11px] line-clamp-1">{fusedIncident.title}</h3>
-                <span className="px-1 py-0.5 rounded bg-[#10B981]/10 border border-[#10B981]/30 text-[#10B981] font-mono text-[8px] font-bold">
-                  {fusedIncident.aiConfidence}% CONF
-                </span>
-              </div>
-
-              <p className="text-[10px] text-white/70 italic leading-snug font-serif">
-                "{fusedIncident.description}"
-              </p>
-
-              <div className="p-1.5 rounded bg-black/40 border border-white/5 space-y-0.5 font-mono text-[9px]">
-                <div className="flex justify-between text-white/60">
-                  <span>ROADS:</span>
-                  <span className="text-[#F59E0B] font-semibold truncate max-w-[140px]">
-                    {fusedIncident.affectedRoads?.join(', ') || 'Janpath, NH-16'}
-                  </span>
-                </div>
-                <div className="flex justify-between text-white/60">
-                  <span>AGENCY:</span>
-                  <span className="text-[#10B981]">{fusedIncident.agencyAssigned}</span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-[10px] text-white/40 italic py-1">
-              Click 'AI FUSION' to synthesize live feeds...
-            </p>
-          )}
         </div>
       </div>
     </aside>

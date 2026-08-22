@@ -1309,7 +1309,7 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`ARKA C2 Command Server listening on http://0.0.0.0:${PORT}`);
+    console.log(`ARKA C2 Command Server listening on http://localhost:${PORT} (Network: http://0.0.0.0:${PORT})`);
     startTelegramPolling();
   });
 }
