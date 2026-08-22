@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { Incident, IntelligenceItem, Severity } from '../types';
+import { Incident, IntelligenceItem, ResourceUnit, Severity } from '../types';
 import {
   ExternalLink,
   ChevronRight,
+  Radio,
 } from 'lucide-react';
 
 interface RightIntelligenceCenterProps {
   incidents: Incident[];
   intelligenceItems: IntelligenceItem[];
+  resources?: ResourceUnit[];
   onSelectIncident: (incident: Incident) => void;
   onOpenArticle: (item: IntelligenceItem) => void;
   onViewAllAlerts: () => void;
@@ -16,6 +18,7 @@ interface RightIntelligenceCenterProps {
 export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = ({
   incidents,
   intelligenceItems,
+  resources = [],
   onSelectIncident,
   onOpenArticle,
   onViewAllAlerts,
@@ -157,6 +160,43 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Section 3: TACTICAL RESOURCE FLEET */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1.5">
+              <Radio className="w-3 h-3 text-[#10B981] animate-pulse" />
+              <span>Resource Fleet</span>
+            </span>
+            <span className="text-[8px] font-mono text-[#10B981] bg-[#10B981]/10 px-1.5 py-0.5 rounded border border-[#10B981]/30">
+              ONLINE
+            </span>
+          </div>
+
+          <div className="space-y-1.5 bg-white/[0.02] border border-white/10 rounded p-2 text-[9px] font-mono">
+            {resources.map((res) => {
+              const pct = Math.round((res.available / res.total) * 100);
+              return (
+                <div key={res.id} className="space-y-0.5">
+                  <div className="flex justify-between text-white/80">
+                    <span className="truncate max-w-[130px] font-medium">{res.name}</span>
+                    <span className="text-white/40">
+                      <strong className="text-[#10B981] font-bold">{res.available}</strong>/{res.total}
+                    </span>
+                  </div>
+                  <div className="w-full h-1 bg-black rounded-full overflow-hidden border border-white/10">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        pct > 70 ? 'bg-[#10B981]' : pct > 40 ? 'bg-[#F59E0B]' : 'bg-[#EF4444]'
+                      }`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

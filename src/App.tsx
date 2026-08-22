@@ -363,6 +363,7 @@ export default function App() {
               <RightIntelligenceCenter
                 incidents={incidents}
                 intelligenceItems={intelligenceItems}
+                resources={resources}
                 onSelectIncident={(inc) => {
                   setSelectedIncident(inc);
                   addLog(`Selected incident #${inc.id} from Intelligence Center.`, 'INFO');

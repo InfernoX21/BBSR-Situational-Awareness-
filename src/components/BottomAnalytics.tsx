@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Incident, ResourceUnit, WeatherData, Severity, TrafficCorridor, TrafficSummary } from '../types';
 import { LiveNewsPanel } from './LiveNewsPanel';
+import { LiveTrafficCameraPanel } from './LiveTrafficCameraPanel';
 import {
   PieChart as PieIcon,
   BarChart2,
@@ -202,37 +203,8 @@ export const BottomAnalytics: React.FC<BottomAnalyticsProps> = ({
       {/* Widget 3: Live Odia News Stream */}
       <LiveNewsPanel />
 
-      {/* Widget 4: Resource Status Availability */}
-      <div className="border border-white/10 bg-white/[0.02] rounded p-2 flex flex-col justify-between">
-        <div className="flex items-center justify-between border-b border-white/5 pb-1 text-[9px] font-bold uppercase tracking-widest">
-          <span className="text-white/40">Resource Fleet</span>
-          <span className="text-[#10B981]">ONLINE</span>
-        </div>
-
-        <div className="space-y-1 flex-1 overflow-y-auto pr-1 pt-1 text-[9px]">
-          {resources.map((res) => {
-            const pct = Math.round((res.available / res.total) * 100);
-            return (
-              <div key={res.id} className="space-y-0.5">
-                <div className="flex justify-between text-white/70">
-                  <span className="truncate max-w-[120px]">{res.name}</span>
-                  <span className="text-white/40">
-                    <strong className="text-[#10B981]">{res.available}</strong>/{res.total}
-                  </span>
-                </div>
-                <div className="w-full h-1 bg-black rounded-full overflow-hidden border border-white/10">
-                  <div
-                    className={`h-full rounded-full transition-all duration-300 ${
-                      pct > 70 ? 'bg-[#10B981]' : pct > 40 ? 'bg-[#F59E0B]' : 'bg-[#EF4444]'
-                    }`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      {/* Widget 4: Live Traffic Camera Stream */}
+      <LiveTrafficCameraPanel />
     </div>
   );
 };
