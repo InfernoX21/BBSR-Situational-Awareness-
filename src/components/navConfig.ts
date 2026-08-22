@@ -6,7 +6,6 @@ import {
   AlertTriangle,
   Bot,
   Radio,
-  Video,
   Car,
   Camera,
   CloudRain,
