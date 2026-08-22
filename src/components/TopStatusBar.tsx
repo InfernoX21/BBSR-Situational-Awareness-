@@ -6,12 +6,16 @@ import {
   ShieldAlert,
   Sparkles,
   RefreshCw,
-  Wifi,
   Info,
   CheckCircle2,
   AlertTriangle,
   RotateCw,
   Menu,
+  Bell,
+  ChevronDown,
+  UserRound,
+  X,
+  MapPin,
 } from 'lucide-react';
 
 interface TopStatusBarProps {
@@ -24,6 +28,8 @@ interface TopStatusBarProps {
   onOpenMobileMenu?: () => void;
 }
 
+type PopoverId = 'threat' | 'weather' | 'notices' | 'profile' | null;
+
 export const TopStatusBar: React.FC<TopStatusBarProps> = ({
   weather,
   threatLevel,
@@ -34,9 +40,10 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
   onOpenMobileMenu,
 }) => {
   const [currentTime, setCurrentTime] = useState<string>('');
+  const [currentDate, setCurrentDate] = useState<string>('');
   const [healthMap, setHealthMap] = useState<ConnectionHealthMap>(liveDataManager.getConnectionHealth());
   const [showHealthModal, setShowHealthModal] = useState(false);
-  const [showWeatherProvenance, setShowWeatherProvenance] = useState(false);
+  const [openPopover, setOpenPopover] = useState<PopoverId>(null);
 
   useEffect(() => {
     const updateTimes = () => {
@@ -49,6 +56,15 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
           minute: '2-digit',
           second: '2-digit',
         }) + ' IST'
+      );
+      setCurrentDate(
+        now.toLocaleDateString('en-GB', {
+          timeZone: 'Asia/Kolkata',
+          weekday: 'short',
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        })
       );
       setHealthMap(liveDataManager.getConnectionHealth());
     };
@@ -63,200 +79,434 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
     };
   }, []);
 
-  const getThreatBadge = (level: Severity) => {
+  const toggle = (id: Exclude<PopoverId, null>) =>
+    setOpenPopover((prev) => (prev === id ? null : id));
+
+  const threatBadgeClass = (level: Severity) => {
     switch (level) {
       case 'CRITICAL':
-        return 'text-[#EF4444] font-bold';
+        return 'is-critical';
       case 'HIGH':
-        return 'text-[#F59E0B] font-bold';
+        return 'is-high';
       case 'MEDIUM':
-        return 'text-yellow-400 font-bold';
+        return 'is-medium';
       default:
-        return 'text-[#06B6D4] font-bold';
+        return 'is-low';
     }
   };
 
-  const activeConnectedCount = (Object.values(healthMap) as ConnectionHealthInfo[]).filter((h) => h.status === 'CONNECTED').length;
-  const totalStreamsCount = Object.keys(healthMap).length;
+  const healthEntries = Object.entries(healthMap) as [string, ConnectionHealthInfo][];
+  const activeConnectedCount = healthEntries.filter(([, h]) => h.status === 'CONNECTED').length;
+  const totalStreamsCount = healthEntries.length;
+  const degradedStreams = healthEntries.filter(([, h]) => h.status !== 'CONNECTED');
+  const allStreamsUp = degradedStreams.length === 0;
 
   return (
-    <header className="h-12 md:h-10 border-b border-white/10 bg-[#0A0A0A] flex items-center px-3 md:px-4 justify-between shrink-0 select-none overflow-x-auto text-[11px] font-mono relative">
-      {/* Left System Status & Mobile Drawer Toggle */}
-      <div className="flex items-center gap-3 md:gap-6">
-        {onOpenMobileMenu && (
-          <button
-            onClick={onOpenMobileMenu}
-            aria-label="Open mobile navigation drawer"
-            className="md:hidden w-10 h-10 rounded bg-white/10 flex items-center justify-center text-white active:bg-white/20 transition-colors shrink-0"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-        )}
-
-        <button
-          onClick={() => setShowHealthModal(!showHealthModal)}
-          className="flex items-center gap-2 px-2 py-1 rounded bg-white/[0.03] border border-white/10 hover:border-[#10B981]/40 transition-all cursor-pointer"
-        >
-          <div className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse shadow-[0_0_8px_#10B981]" />
-          <span className="text-[10px] font-bold tracking-[0.15em] text-[#10B981] uppercase truncate">
-            TELEMETRY ({activeConnectedCount}/{totalStreamsCount})
-          </span>
-          <Wifi className="w-3 h-3 text-[#10B981] shrink-0" />
-        </button>
-
-        <div className="h-4 w-[1px] bg-white/10" />
-
-        <div className="flex items-center gap-3">
-          <span className="text-white/40 uppercase">Threat Level:</span>
-          <div className="relative group">
+    <header className="bg-navy text-white border-b border-navy-700 shrink-0 relative z-30">
+      <div className="h-14 flex items-center gap-2 sm:gap-4 px-2 sm:px-4 overflow-x-auto">
+        {/* --- Identity --- */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {onOpenMobileMenu && (
             <button
-              className={`uppercase tracking-wider transition-all flex items-center gap-1.5 ${getThreatBadge(
-                threatLevel
-              )}`}
+              type="button"
+              onClick={onOpenMobileMenu}
+              aria-label="Open navigation menu"
+              className="md:hidden w-10 h-10 rounded-md bg-white/10 hover:bg-white/20 flex items-center justify-center shrink-0"
             >
-              <ShieldAlert className="w-3.5 h-3.5" />
-              <span>DEFCON 5 / {threatLevel}</span>
+              <Menu className="w-5 h-5" aria-hidden="true" />
             </button>
+          )}
 
-            {/* Quick Threat Switcher Dropdown */}
-            <div className="absolute top-full left-0 mt-1 hidden group-hover:flex flex-col bg-[#0A0A0A] border border-white/10 rounded shadow-2xl p-1 z-50 space-y-1 w-32">
-              {(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as Severity[]).map((lvl) => (
-                <button
-                  key={lvl}
-                  onClick={() => setThreatLevel(lvl)}
-                  className="w-full text-left px-2 py-1 text-[10px] rounded hover:bg-white/10 text-white transition-colors uppercase font-mono"
-                >
-                  {lvl}
-                </button>
-              ))}
+          <div className="flex items-center gap-2.5">
+            <span
+              aria-hidden="true"
+              className="w-8 h-8 rounded-md bg-white/10 border border-white/20 hidden sm:flex items-center justify-center text-[13px] font-bold tracking-tight"
+            >
+              AR
+            </span>
+            <div className="leading-tight min-w-0">
+              <div className="text-[15px] font-bold tracking-tight">ARKA</div>
+              <div className="text-[11px] text-white/70 hidden sm:block whitespace-nowrap">
+                Geospatial Situational Awareness Platform
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Middle/Right Telemetry & Weather & Live Status */}
-      <div className="flex items-center gap-6 uppercase">
-        {/* Weather Indicator with Data Provenance Popover */}
-        <div className="relative">
+        <div className="hidden lg:block h-8 w-px bg-white/20 shrink-0" aria-hidden="true" />
+
+        {/* --- Jurisdiction --- */}
+        <div className="hidden lg:flex items-center gap-1.5 text-[12px] shrink-0">
+          <MapPin className="w-3.5 h-3.5 text-white/60" aria-hidden="true" />
+          <span className="text-white/60">Jurisdiction:</span>
+          <span className="font-semibold">Bhubaneswar (BMC), Odisha</span>
+        </div>
+
+        <div className="flex-1 min-w-2" />
+
+        {/* --- Date & time --- */}
+        <div className="hidden md:flex flex-col items-end leading-tight shrink-0 pr-1">
+          <span className="text-[11px] text-white/70">{currentDate}</span>
+          <span className="gov-mono text-[12px] font-semibold tabular-nums">{currentTime}</span>
+        </div>
+
+        {/* --- System status --- */}
+        <button
+          type="button"
+          onClick={() => setShowHealthModal(true)}
+          title="Open connection health and stream diagnostics"
+          className="gov-btn gov-btn-onnavy gov-btn-sm shrink-0"
+        >
+          {allStreamsUp ? (
+            <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
+          ) : (
+            <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />
+          )}
+          <span className="hidden sm:inline">
+            {allStreamsUp ? 'Systems normal' : 'Systems degraded'}
+          </span>
+          <span className="gov-mono text-[11px] text-white/80">
+            {activeConnectedCount}/{totalStreamsCount}
+          </span>
+        </button>
+
+        {/* --- Threat level --- */}
+        <div className="relative shrink-0">
           <button
-            onClick={() => setShowWeatherProvenance(!showWeatherProvenance)}
-            className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/[0.03] border border-white/10 hover:border-[#06B6D4]/40 transition-all text-white/80"
+            type="button"
+            onClick={() => toggle('threat')}
+            aria-expanded={openPopover === 'threat'}
+            aria-haspopup="menu"
+            className="gov-btn gov-btn-onnavy gov-btn-sm"
+            title="Set city-wide alert level"
           >
-            <span className="text-white/40">BBSR WEATHER:</span>
-            <span className="text-white font-bold">{weather.temperature}°C / {weather.humidity}% RH</span>
-            <Info className="w-3 h-3 text-[#06B6D4]" />
+            <ShieldAlert className="w-3.5 h-3.5" aria-hidden="true" />
+            <span className="hidden sm:inline text-white/80">Alert level</span>
+            <span className={`gov-badge ${threatBadgeClass(threatLevel)}`}>{threatLevel}</span>
+            <ChevronDown className="w-3 h-3 opacity-70" aria-hidden="true" />
           </button>
 
-          {showWeatherProvenance && (
-            <div className="absolute top-full right-0 mt-2 w-80 bg-[#0A0A0A] border border-[#06B6D4]/40 rounded shadow-2xl p-3 z-50 font-mono text-[10px] text-white">
-              <div className="flex justify-between items-center text-[#06B6D4] font-bold border-b border-white/10 pb-1 mb-2">
-                <span>DATA PROVENANCE METADATA</span>
-                <span className="text-[8px] bg-[#06B6D4]/20 px-1 rounded">VERIFIED SOURCE</span>
+          {openPopover === 'threat' && (
+            <div role="menu" className="absolute right-0 top-full mt-2 w-44 gov-panel p-1 z-50">
+              <p className="gov-label px-2 py-1">City alert level</p>
+              {(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as Severity[]).map((lvl) => (
+                <button
+                  key={lvl}
+                  role="menuitemradio"
+                  aria-checked={threatLevel === lvl}
+                  onClick={() => {
+                    setThreatLevel(lvl);
+                    setOpenPopover(null);
+                  }}
+                  className={`w-full flex items-center justify-between gap-2 px-2 py-2 rounded-md text-[13px] text-left hover:bg-sunken ${
+                    threatLevel === lvl ? 'text-accent font-semibold' : 'text-ink'
+                  }`}
+                >
+                  <span>{lvl}</span>
+                  {threatLevel === lvl && <CheckCircle2 className="w-4 h-4" aria-hidden="true" />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* --- Weather + provenance --- */}
+        <div className="relative shrink-0 hidden md:block">
+          <button
+            type="button"
+            onClick={() => toggle('weather')}
+            aria-expanded={openPopover === 'weather'}
+            className="gov-btn gov-btn-onnavy gov-btn-sm"
+            title="Bhubaneswar weather and data provenance"
+          >
+            <span className="text-white/70">Weather</span>
+            <span className="gov-mono font-semibold">
+              {weather.temperature}°C · {weather.humidity}% RH
+            </span>
+            <Info className="w-3.5 h-3.5 opacity-80" aria-hidden="true" />
+          </button>
+
+          {openPopover === 'weather' && (
+            <div className="absolute right-0 top-full mt-2 w-80 gov-panel z-50">
+              <div className="gov-panel-head">
+                <span className="gov-title">Data provenance</span>
+                <span className="gov-tag is-live">Live source</span>
               </div>
-              <div className="space-y-1 text-white/70">
-                <div>SOURCE: <strong className="text-white">{weather.provenance?.source || 'Open-Meteo & IMD Radar'}</strong></div>
-                <div>PROVIDER: <strong className="text-white">{weather.provenance?.provider || 'IMD Bhubaneswar'}</strong></div>
-                <div>CONFIDENCE: <strong className="text-[#10B981]">{weather.provenance?.confidence || 98}%</strong></div>
-                <div>LATENCY: <strong className="text-cyan-400">{weather.provenance?.latencyMs || 18} ms</strong></div>
-                <div>LAST SYNC: <strong className="text-white">{weather.provenance?.lastUpdated || new Date().toLocaleTimeString()}</strong></div>
-                <div>CONDITION: <strong className="text-yellow-400">{weather.condition}</strong></div>
+              <dl className="p-3 space-y-1.5 text-[12px]">
+                {[
+                  ['Source', weather.provenance?.source || 'Open-Meteo & IMD radar'],
+                  ['Provider', weather.provenance?.provider || 'IMD Bhubaneswar'],
+                  ['Confidence', `${weather.provenance?.confidence ?? 98}%`],
+                  ['Latency', `${weather.provenance?.latencyMs ?? 18} ms`],
+                  ['Last sync', weather.provenance?.lastUpdated || new Date().toLocaleTimeString()],
+                  ['Condition', weather.condition],
+                ].map(([k, v]) => (
+                  <div key={k} className="flex items-start justify-between gap-3">
+                    <dt className="text-ink-muted">{k}</dt>
+                    <dd className="text-ink font-medium text-right gov-mono">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
+        </div>
+
+        {/* --- AI fusion --- */}
+        <button
+          type="button"
+          onClick={onFuseIntelligence}
+          disabled={isFusing}
+          className="gov-btn gov-btn-onnavy gov-btn-sm shrink-0"
+          title="Fuse news, weather and incident signals into a single assessment"
+        >
+          <Sparkles className={`w-3.5 h-3.5 ${isFusing ? 'animate-spin' : ''}`} aria-hidden="true" />
+          <span className="hidden sm:inline">{isFusing ? 'Fusing…' : 'AI fusion'}</span>
+        </button>
+
+        {/* --- Refresh --- */}
+        <button
+          type="button"
+          onClick={onRefreshAll}
+          className="gov-btn gov-btn-onnavy gov-btn-sm shrink-0"
+          title="Refresh all feeds"
+          aria-label="Refresh all feeds"
+        >
+          <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
+        </button>
+
+        {/* --- Notifications --- */}
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            onClick={() => toggle('notices')}
+            aria-expanded={openPopover === 'notices'}
+            className="gov-btn gov-btn-onnavy gov-btn-sm relative"
+            title="System notices"
+            aria-label={`System notices, ${degradedStreams.length} needing attention`}
+          >
+            <Bell className="w-4 h-4" aria-hidden="true" />
+            {degradedStreams.length > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-critical-fill text-white text-[10px] font-bold flex items-center justify-center">
+                {degradedStreams.length}
+              </span>
+            )}
+          </button>
+
+          {openPopover === 'notices' && (
+            <div className="absolute right-0 top-full mt-2 w-80 gov-panel z-50">
+              <div className="gov-panel-head">
+                <span className="gov-title">System notices</span>
+                <span className="gov-label">{degradedStreams.length} open</span>
+              </div>
+              <div className="p-2 max-h-64 overflow-y-auto">
+                {degradedStreams.length === 0 ? (
+                  <p className="px-2 py-4 text-[13px] text-ink-muted text-center">
+                    No notices. All {totalStreamsCount} data streams are connected.
+                  </p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {degradedStreams.map(([key, info]) => (
+                      <li
+                        key={key}
+                        className="gov-row gov-rail gov-rail-high p-2.5"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[13px] font-semibold text-ink capitalize">
+                            {key} stream
+                          </span>
+                          <span className="gov-badge is-high">{info.status}</span>
+                        </div>
+                        <p className="text-[12px] text-ink-muted mt-0.5">{info.details}</p>
+                        <p className="gov-mono text-[11px] text-ink-subtle mt-1">
+                          {info.provider} · last sync {info.lastSync}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div className="px-3 py-2 border-t border-line">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenPopover(null);
+                    setShowHealthModal(true);
+                  }}
+                  className="gov-btn gov-btn-secondary gov-btn-sm w-full"
+                >
+                  Open stream diagnostics
+                </button>
               </div>
             </div>
           )}
         </div>
 
-        <div className="hidden lg:flex gap-2">
-          <span className="text-white/40">TIME:</span>
-          <span className="text-white tracking-widest">{currentTime}</span>
-        </div>
+        {/* --- Operator / profile --- */}
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            onClick={() => toggle('profile')}
+            aria-expanded={openPopover === 'profile'}
+            aria-haspopup="menu"
+            className="gov-btn gov-btn-onnavy gov-btn-sm"
+            title="Operator session"
+          >
+            <UserRound className="w-4 h-4" aria-hidden="true" />
+            <span className="hidden lg:inline">Duty Officer</span>
+            <ChevronDown className="w-3 h-3 opacity-70 hidden lg:inline" aria-hidden="true" />
+          </button>
 
-        {/* AI Fusion Trigger */}
-        <button
-          onClick={onFuseIntelligence}
-          disabled={isFusing}
-          className="px-2 py-0.5 rounded bg-[#06B6D4]/10 border border-[#06B6D4]/30 text-[#06B6D4] hover:bg-[#06B6D4]/20 text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 transition-all"
-        >
-          <Sparkles className={`w-3 h-3 ${isFusing ? 'animate-spin' : ''}`} />
-          <span>{isFusing ? 'FUSING...' : 'AI FUSION'}</span>
-        </button>
-
-        <button
-          onClick={onRefreshAll}
-          className="p-1 text-white/40 hover:text-white transition-colors"
-          title="Refresh All Feeds"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-        </button>
-
-        <div className="flex items-center gap-1 bg-[#10B981]/10 px-2.5 py-0.5 rounded border border-[#10B981]/30">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-          <span className="text-[9px] font-bold text-[#10B981]">CONNECTED</span>
+          {openPopover === 'profile' && (
+            <div role="menu" className="absolute right-0 top-full mt-2 w-72 gov-panel z-50">
+              <div className="p-3 border-b border-line">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[13px] font-semibold text-ink">Duty Officer</span>
+                  <span className="gov-tag is-simulated">Demo session</span>
+                </div>
+                <p className="text-[12px] text-ink-muted mt-0.5">
+                  Operations desk · Bhubaneswar (BMC)
+                </p>
+                <p className="text-[11px] text-ink-subtle mt-1">
+                  No sign-in is configured on this deployment; the operator identity above is a
+                  placeholder.
+                </p>
+              </div>
+              <div className="p-1">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setOpenPopover(null);
+                    onRefreshAll();
+                  }}
+                  className="w-full flex items-center gap-2 px-2 py-2 rounded-md text-[13px] text-ink hover:bg-sunken text-left"
+                >
+                  <RefreshCw className="w-4 h-4 text-ink-subtle" aria-hidden="true" />
+                  Refresh all feeds
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setOpenPopover(null);
+                    setShowHealthModal(true);
+                  }}
+                  className="w-full flex items-center gap-2 px-2 py-2 rounded-md text-[13px] text-ink hover:bg-sunken text-left"
+                >
+                  <Activity className="w-4 h-4 text-ink-subtle" aria-hidden="true" />
+                  Connection diagnostics
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* SYSTEM CONNECTION HEALTH DIAGNOSTICS MODAL */}
+      {/* Click-away layer for popovers */}
+      {openPopover && (
+        <div
+          className="fixed inset-0 z-20"
+          aria-hidden="true"
+          onClick={() => setOpenPopover(null)}
+        />
+      )}
+
+      {/* --- Connection health & stream diagnostics --- */}
       {showHealthModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl bg-[#0A0A0A] border border-white/20 rounded-lg shadow-2xl p-5 font-mono text-xs">
-            <div className="flex justify-between items-center border-b border-white/10 pb-3 mb-4">
+        <div
+          className="fixed inset-0 bg-navy/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setShowHealthModal(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Connection health and stream diagnostics"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-3xl gov-panel shadow-lg max-h-[85vh] flex flex-col"
+          >
+            <div className="gov-panel-head">
               <div className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-[#06B6D4]" />
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                  ARKA Connection Health & Stream Diagnostics
+                <Activity className="w-4 h-4 text-accent" aria-hidden="true" />
+                <h3 className="text-[14px] font-semibold text-ink">
+                  Connection health & stream diagnostics
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setShowHealthModal(false)}
-                className="text-white/40 hover:text-white text-base px-2"
+                aria-label="Close diagnostics"
+                className="gov-btn gov-btn-quiet gov-btn-sm"
               >
-                ✕
+                <X className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-              {(Object.entries(healthMap) as [string, ConnectionHealthInfo][]).map(([key, info]) => (
-                <div
-                  key={key}
-                  className="bg-white/[0.02] border border-white/10 rounded p-3 flex flex-col justify-between"
-                >
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="font-bold text-white uppercase text-[11px]">{key} STREAM</span>
-                    <span
-                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${
-                        info.status === 'CONNECTED'
-                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                          : info.status === 'SYNCING'
-                          ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
-                          : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                      }`}
-                    >
-                      {info.status === 'CONNECTED' ? (
-                        <CheckCircle2 className="w-2.5 h-2.5" />
-                      ) : info.status === 'SYNCING' ? (
-                        <RotateCw className="w-2.5 h-2.5 animate-spin" />
-                      ) : (
-                        <AlertTriangle className="w-2.5 h-2.5" />
-                      )}
-                      {info.status}
-                    </span>
-                  </div>
+            <div className="p-4 overflow-y-auto">
+              <p className="text-[12px] text-ink-muted mb-3">
+                {activeConnectedCount} of {totalStreamsCount} ingestion streams are connected.
+              </p>
 
-                  <div className="text-[10px] text-white/60 space-y-0.5">
-                    <div>PROVIDER: <strong className="text-white">{info.provider}</strong></div>
-                    <div>LATENCY: <strong className="text-cyan-400">{info.latencyMs} ms</strong></div>
-                    <div>LAST SYNC: <strong className="text-white">{info.lastSync}</strong></div>
-                    <div className="text-[9px] text-white/40 italic mt-1">{info.details}</div>
-                  </div>
-                </div>
-              ))}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {healthEntries.map(([key, info]) => {
+                  const badge =
+                    info.status === 'CONNECTED'
+                      ? 'is-low'
+                      : info.status === 'SYNCING'
+                      ? 'is-info'
+                      : 'is-high';
+                  const rail =
+                    info.status === 'CONNECTED'
+                      ? 'gov-rail-low'
+                      : info.status === 'SYNCING'
+                      ? 'gov-rail-info'
+                      : 'gov-rail-high';
+                  return (
+                    <div key={key} className={`gov-row gov-rail ${rail} p-3`}>
+                      <div className="flex justify-between items-start gap-2 mb-1.5">
+                        <span className="text-[13px] font-semibold text-ink capitalize">
+                          {key} stream
+                        </span>
+                        <span className={`gov-badge ${badge}`}>
+                          {info.status === 'CONNECTED' ? (
+                            <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
+                          ) : info.status === 'SYNCING' ? (
+                            <RotateCw className="w-3 h-3 animate-spin" aria-hidden="true" />
+                          ) : (
+                            <AlertTriangle className="w-3 h-3" aria-hidden="true" />
+                          )}
+                          {info.status}
+                        </span>
+                      </div>
+
+                      <dl className="text-[12px] space-y-0.5">
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-ink-muted">Provider</dt>
+                          <dd className="text-ink font-medium text-right">{info.provider}</dd>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-ink-muted">Latency</dt>
+                          <dd className="gov-mono text-ink text-right">{info.latencyMs} ms</dd>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-ink-muted">Last sync</dt>
+                          <dd className="gov-mono text-ink text-right">{info.lastSync}</dd>
+                        </div>
+                      </dl>
+
+                      <p className="text-[11px] text-ink-subtle mt-1.5">{info.details}</p>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
-            <div className="flex justify-end">
+            <div className="px-4 py-3 border-t border-line flex justify-end">
               <button
+                type="button"
                 onClick={() => setShowHealthModal(false)}
-                className="px-4 py-1.5 rounded bg-[#06B6D4] hover:bg-[#06B6D4]/80 text-black font-bold text-xs uppercase transition-all"
+                className="gov-btn gov-btn-primary"
               >
-                Close Diagnostics
+                Close
               </button>
             </div>
           </div>
@@ -265,4 +515,3 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
     </header>
   );
 };
-

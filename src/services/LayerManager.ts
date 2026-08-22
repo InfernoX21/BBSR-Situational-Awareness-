@@ -35,7 +35,9 @@ export class CentralLayerManager {
     fire: true,
     buildings3D: true,
     satellite: false,
-    basemapStyle: 'dark',
+    // Light street cartography is the default so the map reads as a civic
+    // basemap; every other style remains selectable from the layer toolbar.
+    basemapStyle: 'street',
   };
 
   private loadingStates: Record<LayerId, boolean> = {
@@ -63,7 +65,7 @@ export class CentralLayerManager {
     police: { patrolVans: true, etaPrediction: true },
     fire: { coverageRadius: true, hydrantNodes: true },
     buildings3D: { lodHeight: 40, dynamicExtrusions: true },
-    satellite: { style: 'dark' },
+    satellite: { style: 'street' },
   };
 
   private listeners: Set<LayerEventListener> = new Set();
