@@ -242,6 +242,13 @@ export default function App() {
       setDetailModalIncident({ ...detailModalIncident, status: newStatus });
     }
 
+    // Persist to server store asynchronously
+    fetch(`/api/incidents/${id}/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus }),
+    }).catch((err) => console.warn('Failed to persist incident status to server:', err));
+
     const targetInc = incidents.find((i) => i.id === id);
     const titleStr = targetInc ? `"${targetInc.title}"` : `#${id}`;
 

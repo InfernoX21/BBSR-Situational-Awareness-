@@ -9,7 +9,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const useDemoData = process.env.USE_DEMO_DATA === 'true';
 
 app.use(express.json());
 
@@ -35,13 +36,14 @@ function getGeminiClient() {
   });
 }
 
-// System Health API
+// System Health & Config API
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'OPERATIONAL',
     system: 'ARKA Geospatial Command Engine',
     city: 'Bhubaneswar',
     timestamp: new Date().toISOString(),
+    useDemoData,
     aiEngine: process.env.GEMINI_API_KEY ? 'ONLINE' : 'STANDBY',
     workflowEngine: 'ONLINE_ACTIVE',
   });
@@ -207,6 +209,7 @@ app.get('/api/news/bhubaneswar', async (req, res) => {
         source: 'GOOGLE_NEWS' as const,
         category: cat,
         content: summaryText,
+        classification: 'LIVE' as const,
         highlights: [
           `Published by ${publisher} at ${pubTime}.`,
           `Main headline: ${headline}`,
@@ -216,38 +219,49 @@ app.get('/api/news/bhubaneswar', async (req, res) => {
       };
     });
 
-    res.json({ success: true, count: items.length, data: items });
+    res.json({ success: true, count: items.length, classification: 'LIVE', data: items });
   } catch (err) {
-    console.warn('RSS Feed fetch error, using fallback:', err);
-    // Return fallback items if external RSS is blocked or offline
-    res.json({
-      success: true,
-      fallback: true,
-      data: [
-        {
-          id: 'fb-1',
-          publisherName: 'Odisha State Govt Advisory',
-          publishedTime: '12 mins ago',
-          headline: 'OSDMA Mobilizes Drainage Operations across Bhubaneswar Ward 12-45',
-          summary: 'Special relief squads deployed with 34 high-capacity pump sets along Jayadev Vihar, Saheed Nagar, and Acharya Vihar underpasses.',
-          url: 'https://osdma.odisha.gov.in',
-          source: 'GOVT_ADVISORY',
-          category: 'WEATHER_ADVISORY',
-          content: 'Odisha Disaster Management Authority has issued direct operational guidelines for civic response teams to clear drainage arteries.',
-        },
-        {
-          id: 'fb-2',
-          publisherName: 'OTV News Hub',
-          publishedTime: '25 mins ago',
-          headline: 'Traffic Diverted at Master Canteen Rotary following Transformer Incident',
-          summary: 'Commuters urged to use Sachivalaya Marg as emergency crews isolate TPCODL feeder line near railway station.',
-          url: 'https://odishatv.in',
-          source: 'TRAFFIC_FEED',
-          category: 'TRAFFIC_ALERT',
-          content: 'Traffic police personnel are managing single-lane flows near Saheed Nagar to facilitate emergency service vehicles.',
-        },
-      ],
-    });
+    if (useDemoData) {
+      // Return fallback items if explicitly enabled via USE_DEMO_DATA=true
+      res.json({
+        success: true,
+        fallback: true,
+        classification: 'SEED',
+        data: [
+          {
+            id: 'fb-1',
+            publisherName: 'Odisha State Govt Advisory [DEMO]',
+            publishedTime: '12 mins ago',
+            headline: 'OSDMA Mobilizes Drainage Operations across Bhubaneswar Ward 12-45',
+            summary: 'Special relief squads deployed with 34 high-capacity pump sets along Jayadev Vihar, Saheed Nagar, and Acharya Vihar underpasses.',
+            url: 'https://osdma.odisha.gov.in',
+            source: 'GOVT_ADVISORY',
+            category: 'WEATHER_ADVISORY',
+            classification: 'SEED',
+            content: 'Odisha Disaster Management Authority has issued direct operational guidelines for civic response teams to clear drainage arteries.',
+          },
+          {
+            id: 'fb-2',
+            publisherName: 'OTV News Hub [DEMO]',
+            publishedTime: '25 mins ago',
+            headline: 'Traffic Diverted at Master Canteen Rotary following Transformer Incident',
+            summary: 'Commuters urged to use Sachivalaya Marg as emergency crews isolate TPCODL feeder line near railway station.',
+            url: 'https://odishatv.in',
+            source: 'TRAFFIC_FEED',
+            category: 'TRAFFIC_ALERT',
+            classification: 'SEED',
+            content: 'Traffic police personnel are managing single-lane flows near Saheed Nagar to facilitate emergency service vehicles.',
+          },
+        ],
+      });
+    } else {
+      res.json({
+        success: false,
+        classification: 'UNAVAILABLE',
+        unavailableReason: 'Google News RSS fetch failed or network offline.',
+        data: [],
+      });
+    }
   }
 });
 
@@ -282,35 +296,65 @@ app.get('/api/weather/live', async (req, res) => {
           confidence: 98,
           latencyMs: latency,
           lastUpdated: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          classification: 'LIVE',
         },
         connectionStatus: 'CONNECTED',
       },
     });
   } catch (err) {
-    res.json({
-      success: true,
-      fallback: true,
-      data: {
-        temperature: 31.8,
-        humidity: 79,
-        windSpeed: 14.2,
-        windDirection: 'SW',
-        rainIntensity: 18.4,
-        condition: 'Scattered Thunderstorms',
-        visibility: 8.5,
-        floodRiskLevel: 'MODERATE',
-        forecast: 'IMD Doppler Radar grid operational.',
-        provenance: {
-          source: 'IMD Bhubaneswar Radar Station',
-          timestamp: new Date().toISOString(),
-          provider: 'Indian Meteorological Dept',
-          confidence: 92,
-          latencyMs: Date.now() - startTime,
-          lastUpdated: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+    if (useDemoData) {
+      res.json({
+        success: true,
+        fallback: true,
+        data: {
+          temperature: 31.8,
+          humidity: 79,
+          windSpeed: 14.2,
+          windDirection: 'SW',
+          rainIntensity: 18.4,
+          condition: 'Scattered Thunderstorms [DEMO]',
+          visibility: 8.5,
+          floodRiskLevel: 'MODERATE',
+          forecast: 'IMD Doppler Radar grid operational.',
+          provenance: {
+            source: 'IMD Bhubaneswar Radar Station',
+            timestamp: new Date().toISOString(),
+            provider: 'Indian Meteorological Dept',
+            confidence: 92,
+            latencyMs: Date.now() - startTime,
+            lastUpdated: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            classification: 'FALLBACK',
+          },
+          connectionStatus: 'CONNECTED',
         },
-        connectionStatus: 'CONNECTED',
-      },
-    });
+      });
+    } else {
+      res.json({
+        success: false,
+        data: {
+          temperature: 0,
+          humidity: 0,
+          windSpeed: 0,
+          windDirection: 'N/A',
+          rainIntensity: 0,
+          condition: 'Weather Stream Unavailable',
+          visibility: 0,
+          floodRiskLevel: 'LOW',
+          forecast: 'Open-Meteo live API connection offline.',
+          provenance: {
+            source: 'Open-Meteo Forecast API',
+            timestamp: new Date().toISOString(),
+            provider: 'IMD / Open-Meteo',
+            confidence: 0,
+            latencyMs: Date.now() - startTime,
+            lastUpdated: new Date().toLocaleTimeString(),
+            classification: 'UNAVAILABLE',
+            unavailableReason: 'Open-Meteo WMO Forecast API unreachable.',
+          },
+          connectionStatus: 'OFFLINE',
+        },
+      });
+    }
   }
 });
 
@@ -345,82 +389,50 @@ app.get('/api/adsb/live', async (req, res) => {
           confidence: 96,
           latencyMs: Date.now() - startTime,
           lastUpdated: nowStr,
+          classification: 'LIVE' as const,
         },
       }));
-      return res.json({ success: true, count: flights.length, flights });
+      return res.json({ success: true, count: flights.length, classification: 'LIVE', flights });
     }
   } catch (err) {
-    // OpenSky rate-limited or offline fallback
+    // OpenSky API offline or rate limited
   }
 
-  // Live real flights fallback with dynamic telemetry positions
-  const flights = [
-    {
-      id: 'FL-6E2041',
-      callsign: 'IGO2041',
-      origin: 'New Delhi (DEL)',
-      destination: 'Bhubaneswar (BPIA)',
-      lat: 20.2650,
-      lng: 85.8050,
-      altitudeMeters: 850,
-      speedKmh: 290,
-      heading: 145,
-      aircraftType: 'Airbus A320neo (IndiGo)',
-      status: 'APPROACHING',
-      provenance: {
-        source: 'BPIA ADS-B Ground Sensor #04',
-        timestamp: new Date().toISOString(),
-        provider: 'Airports Authority of India (AAI)',
-        confidence: 99,
-        latencyMs: Date.now() - startTime,
-        lastUpdated: nowStr,
+  if (useDemoData) {
+    const flights = [
+      {
+        id: 'FL-6E2041',
+        callsign: 'IGO2041',
+        origin: 'New Delhi (DEL)',
+        destination: 'Bhubaneswar (BPIA)',
+        lat: 20.2650,
+        lng: 85.8050,
+        altitudeMeters: 850,
+        speedKmh: 290,
+        heading: 145,
+        aircraftType: 'Airbus A320neo (IndiGo) [DEMO]',
+        status: 'APPROACHING',
+        provenance: {
+          source: 'BPIA ADS-B Ground Sensor #04',
+          timestamp: new Date().toISOString(),
+          provider: 'Airports Authority of India (AAI)',
+          confidence: 99,
+          latencyMs: Date.now() - startTime,
+          lastUpdated: nowStr,
+          classification: 'SIMULATED' as const,
+        },
       },
-    },
-    {
-      id: 'FL-AI775',
-      callsign: 'AIC775',
-      origin: 'Kolkata (CCU)',
-      destination: 'Bhubaneswar (BPIA)',
-      lat: 20.3120,
-      lng: 85.8420,
-      altitudeMeters: 2400,
-      speedKmh: 420,
-      heading: 210,
-      aircraftType: 'Boeing 737 MAX (Air India)',
-      status: 'AIRBORNE',
-      provenance: {
-        source: 'BPIA ADS-B Ground Sensor #02',
-        timestamp: new Date().toISOString(),
-        provider: 'Airports Authority of India (AAI)',
-        confidence: 98,
-        latencyMs: Date.now() - startTime,
-        lastUpdated: nowStr,
-      },
-    },
-    {
-      id: 'FL-QP1104',
-      callsign: 'AKJ1104',
-      origin: 'Bengaluru (BLR)',
-      destination: 'Bhubaneswar (BPIA)',
-      lat: 20.2100,
-      lng: 85.7900,
-      altitudeMeters: 1400,
-      speedKmh: 340,
-      heading: 35,
-      aircraftType: 'Boeing 737 (Akasa Air)',
-      status: 'APPROACHING',
-      provenance: {
-        source: 'BPIA ADS-B Receiver #01',
-        timestamp: new Date().toISOString(),
-        provider: 'AAI Radar Cell',
-        confidence: 97,
-        latencyMs: Date.now() - startTime,
-        lastUpdated: nowStr,
-      },
-    },
-  ];
+    ];
+    return res.json({ success: true, count: flights.length, classification: 'SIMULATED', flights });
+  }
 
-  res.json({ success: true, count: flights.length, flights });
+  return res.json({
+    success: false,
+    classification: 'UNAVAILABLE',
+    unavailableReason: 'OpenSky ADS-B API unreachable or rate-limited. No live aircraft stream.',
+    count: 0,
+    flights: [],
+  });
 });
 
 // Live SCADA Utility Telemetry API (TPCODL, WATCO, BSNL)
@@ -428,10 +440,20 @@ app.get('/api/utilities/live', (req, res) => {
   const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const latency = Math.floor(10 + Math.random() * 15);
 
+  if (!useDemoData) {
+    return res.json({
+      success: false,
+      classification: 'UNAVAILABLE',
+      unavailableReason: 'SCADA Modbus telemetry gateway IP/credential not configured in production mode.',
+      count: 0,
+      utilities: [],
+    });
+  }
+
   const utilities = [
     {
       id: 'UTIL-POW-01',
-      name: 'TPCODL Central Substation 132/33kV',
+      name: 'TPCODL Central Substation 132/33kV [DEMO]',
       type: 'POWER_SUBSTATION',
       lat: 20.2800,
       lng: 85.8380,
@@ -448,11 +470,12 @@ app.get('/api/utilities/live', (req, res) => {
         confidence: 99,
         latencyMs: latency,
         lastUpdated: nowStr,
+        classification: 'SIMULATED' as const,
       },
     },
     {
       id: 'UTIL-WAT-01',
-      name: 'WATCO Chandaka Water Treatment Plant',
+      name: 'WATCO Chandaka Water Treatment Plant [DEMO]',
       type: 'WATER_PUMP',
       lat: 20.3320,
       lng: 85.7980,
@@ -469,62 +492,32 @@ app.get('/api/utilities/live', (req, res) => {
         confidence: 95,
         latencyMs: latency + 5,
         lastUpdated: nowStr,
-      },
-    },
-    {
-      id: 'UTIL-WAT-02',
-      name: 'Patia Potable Supply Valve V-89',
-      type: 'GAS_PIPELINE',
-      lat: 20.3533,
-      lng: 85.8189,
-      gridZone: 'Patia Infocity Main',
-      capacityMetric: '400mm Trunk Pipeline',
-      currentLoadPct: 15,
-      status: 'CRITICAL_OUTAGE',
-      outageRiskScore: 92,
-      aiAnomalyScore: 96,
-      provenance: {
-        source: 'WATCO Pressure Sensor Net #12',
-        timestamp: new Date().toISOString(),
-        provider: 'WATCO Odisha',
-        confidence: 97,
-        latencyMs: latency + 2,
-        lastUpdated: nowStr,
-      },
-    },
-    {
-      id: 'UTIL-TEL-01',
-      name: 'BSNL / BNOA Fiber Optical POP Hub',
-      type: 'TELECOM_TOWER',
-      lat: 20.2912,
-      lng: 85.8450,
-      gridZone: 'Smart City Backbone',
-      capacityMetric: '100 Gbps Dark Fiber',
-      currentLoadPct: 64,
-      status: 'NORMAL',
-      outageRiskScore: 8,
-      aiAnomalyScore: 2,
-      provenance: {
-        source: 'BSNL Network Operations Center Telemetry',
-        timestamp: new Date().toISOString(),
-        provider: 'BSNL Odisha Telecom',
-        confidence: 99,
-        latencyMs: latency,
-        lastUpdated: nowStr,
+        classification: 'SIMULATED' as const,
       },
     },
   ];
 
-  res.json({ success: true, count: utilities.length, utilities });
+  res.json({ success: true, count: utilities.length, classification: 'SIMULATED', utilities });
 });
 
 // Live CCTV Camera Telemetry & RTSP Streams
 app.get('/api/cctv/streams', (req, res) => {
   const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  if (!useDemoData) {
+    return res.json({
+      success: false,
+      classification: 'UNAVAILABLE',
+      unavailableReason: 'BSCL RTSP camera stream feeds require VPN/on-premise integration.',
+      count: 0,
+      cameras: [],
+    });
+  }
+
   const cameras = [
     {
       id: 'CAM-BBSR-01',
-      name: 'Jayadev Vihar Junction CCTV 01',
+      name: 'Jayadev Vihar Junction CCTV 01 [DEMO]',
       locationName: 'Jayadev Vihar Square',
       lat: 20.3025,
       lng: 85.8255,
@@ -546,11 +539,12 @@ app.get('/api/cctv/streams', (req, res) => {
         confidence: 96,
         latencyMs: 18,
         lastUpdated: nowStr,
+        classification: 'SIMULATED' as const,
       },
     },
     {
       id: 'CAM-BBSR-02',
-      name: 'Master Canteen Rotary ANPR',
+      name: 'Master Canteen Rotary ANPR [DEMO]',
       locationName: 'Master Canteen Square',
       lat: 20.2682,
       lng: 85.8405,
@@ -572,63 +566,12 @@ app.get('/api/cctv/streams', (req, res) => {
         confidence: 98,
         latencyMs: 14,
         lastUpdated: nowStr,
-      },
-    },
-    {
-      id: 'CAM-BBSR-03',
-      name: 'Rasulgarh NH-16 Flyover Camera',
-      locationName: 'Rasulgarh Interchange',
-      lat: 20.2885,
-      lng: 85.8650,
-      status: 'ALERT',
-      direction: 'SOUTH',
-      fovAngle: 85,
-      model: 'YOLOv9 Traffic Flow',
-      detectedVehicles: 112,
-      detectedPedestrians: 8,
-      anomaliesDetected: 2,
-      lastUpdate: 'Just now',
-      streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=400&q=80',
-      clusterGroup: 'EAST_SECTOR',
-      provenance: {
-        source: 'NHAI Traffic Control Center',
-        timestamp: new Date().toISOString(),
-        provider: 'NHAI Highway Surveillance',
-        confidence: 97,
-        latencyMs: 16,
-        lastUpdated: nowStr,
-      },
-    },
-    {
-      id: 'CAM-BBSR-04',
-      name: 'Patia Infocity Tech Circle CCTV',
-      locationName: 'Infocity Square',
-      lat: 20.3535,
-      lng: 85.8192,
-      status: 'ONLINE',
-      direction: 'WEST',
-      fovAngle: 110,
-      model: 'YOLOv9 Crowd Analytics',
-      detectedVehicles: 41,
-      detectedPedestrians: 19,
-      anomaliesDetected: 0,
-      lastUpdate: 'Just now',
-      streamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1508873696983-2df515122519?auto=format&fit=crop&w=400&q=80',
-      clusterGroup: 'NORTH_SECTOR',
-      provenance: {
-        source: 'Infocity Smart Tech Park CCTV Grid',
-        timestamp: new Date().toISOString(),
-        provider: 'BSCL North Hub',
-        confidence: 99,
-        latencyMs: 12,
-        lastUpdated: nowStr,
+        classification: 'SIMULATED' as const,
       },
     },
   ];
 
-  res.json({ success: true, count: cameras.length, cameras });
+  res.json({ success: true, count: cameras.length, classification: 'SIMULATED', cameras });
 });
 
 // Real-Time Bhubaneswar Traffic Sensor & Corridor Ingestion API
@@ -636,14 +579,32 @@ app.get('/api/traffic/live', (req, res) => {
   const now = new Date();
   const timestampStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-  // Minor randomized dynamic telemetry variance (+/- 3 km/h & vehicle rate shifts)
+  if (!useDemoData) {
+    return res.json({
+      success: false,
+      classification: 'UNAVAILABLE',
+      unavailableReason: 'BSCL Traffic Speed Radar Gateway not connected in production mode.',
+      timestamp: timestampStr,
+      summary: {
+        cityAvgSpeedKmh: 0,
+        cityFreeFlowAvgSpeedKmh: 45,
+        activeBottlenecks: 0,
+        totalVehiclesPerMin: 0,
+        congestionTrend: 'STABLE',
+        highestCongestionCorridor: 'None (Feed Unavailable)',
+      },
+      corridors: [],
+      sensors: [],
+    });
+  }
+
   const randSpeed = (base: number) => Math.max(5, Math.min(60, Math.round(base + (Math.random() * 6 - 3))));
   const randCount = (base: number) => Math.max(10, Math.round(base + (Math.random() * 20 - 10)));
 
   const corridors = [
     {
       id: 'corridor-nh16',
-      name: 'NH-16 Express Arterial',
+      name: 'NH-16 Express Arterial [DEMO]',
       roadName: 'National Highway 16 (Patia - Jayadev Vihar - Rasulgarh)',
       path: [
         [20.3533, 85.8189],
@@ -664,7 +625,7 @@ app.get('/api/traffic/live', (req, res) => {
     },
     {
       id: 'corridor-janpath',
-      name: 'Janpath Commercial Corridor',
+      name: 'Janpath Commercial Corridor [DEMO]',
       roadName: 'Janpath (Jayadev Vihar - Saheed Nagar - Master Canteen - Kalpana)',
       path: [
         [20.3023, 85.8252],
@@ -682,91 +643,11 @@ app.get('/api/traffic/live', (req, res) => {
       activeIncidentId: 'INC-2026-8901',
       updatedAt: timestampStr,
     },
-    {
-      id: 'corridor-nandankanan',
-      name: 'Nandankanan IT Corridor',
-      roadName: 'Jayadev Vihar - NALCO Square - Damana - Patia Infocity',
-      path: [
-        [20.3023, 85.8252],
-        [20.3150, 85.8220],
-        [20.3320, 85.8190],
-        [20.3533, 85.8189],
-        [20.3700, 85.8170],
-      ] as [number, number][],
-      avgSpeedKmh: randSpeed(24),
-      freeFlowSpeedKmh: 50,
-      congestionLevel: 'SLOW' as const,
-      congestionScore: 54,
-      vehicleCount: randCount(740),
-      trend: 'IMPROVING' as const,
-      activeIncidentId: 'INC-2026-8904',
-      updatedAt: timestampStr,
-    },
-    {
-      id: 'corridor-sachivalaya',
-      name: 'Sachivalaya Administrative Axis',
-      roadName: 'Sachivalaya Marg (AG Square - Secretariat - Power House - Jayadev Vihar)',
-      path: [
-        [20.2600, 85.8300],
-        [20.2745, 85.8340],
-        [20.2880, 85.8300],
-        [20.3023, 85.8252],
-      ] as [number, number][],
-      avgSpeedKmh: randSpeed(36),
-      freeFlowSpeedKmh: 45,
-      congestionLevel: 'CLEAR' as const,
-      congestionScore: 22,
-      vehicleCount: randCount(410),
-      trend: 'IMPROVING' as const,
-      updatedAt: timestampStr,
-    },
-    {
-      id: 'corridor-puri-cuttack',
-      name: 'Cuttack-Puri Arterial Link',
-      roadName: 'Puri Road (Rasulgarh - Bomikhal - Laxmisagar - Kalpana)',
-      path: [
-        [20.2882, 85.8647],
-        [20.2780, 85.8520],
-        [20.2650, 85.8450],
-        [20.2550, 85.8380],
-      ] as [number, number][],
-      avgSpeedKmh: randSpeed(21),
-      freeFlowSpeedKmh: 45,
-      congestionLevel: 'SLOW' as const,
-      congestionScore: 62,
-      vehicleCount: randCount(830),
-      trend: 'STABLE' as const,
-      updatedAt: timestampStr,
-    },
-    {
-      id: 'corridor-khandagiri',
-      name: 'Khandagiri Western Bypass',
-      roadName: 'NH-16 Bypass (Khandagiri Sq - Baramunda ISBT - AIIMS Bypass)',
-      path: [
-        [20.2500, 85.7800],
-        [20.2600, 85.7900],
-        [20.2780, 85.7980],
-        [20.2950, 85.8050],
-      ] as [number, number][],
-      avgSpeedKmh: randSpeed(42),
-      freeFlowSpeedKmh: 50,
-      congestionLevel: 'CLEAR' as const,
-      congestionScore: 18,
-      vehicleCount: randCount(360),
-      trend: 'IMPROVING' as const,
-      updatedAt: timestampStr,
-    },
   ];
 
   const sensors = [
     { id: 'TS-101', name: 'Jayadev Vihar Rotary Speed Radar', lat: 20.3023, lng: 85.8252, speed: randSpeed(16), status: 'ALERT' as const, vehicleRatePerMin: randCount(48), corridorId: 'corridor-janpath' },
     { id: 'TS-102', name: 'Rasulgarh NH-16 Interchange Radar', lat: 20.2882, lng: 85.8647, speed: randSpeed(12), status: 'ALERT' as const, vehicleRatePerMin: randCount(62), corridorId: 'corridor-nh16' },
-    { id: 'TS-103', name: 'Master Canteen Square Camera Sensor', lat: 20.2678, lng: 85.8402, speed: randSpeed(22), status: 'ONLINE' as const, vehicleRatePerMin: randCount(35), corridorId: 'corridor-janpath' },
-    { id: 'TS-104', name: 'Patia Infocity Junction Sensor', lat: 20.3533, lng: 85.8189, speed: randSpeed(26), status: 'ONLINE' as const, vehicleRatePerMin: randCount(29), corridorId: 'corridor-nandankanan' },
-    { id: 'TS-105', name: 'Vani Vihar Flyover Radar Node', lat: 20.2912, lng: 85.8450, speed: randSpeed(15), status: 'ALERT' as const, vehicleRatePerMin: randCount(54), corridorId: 'corridor-nh16' },
-    { id: 'TS-106', name: 'Khandagiri Square Traffic Node', lat: 20.2580, lng: 85.7880, speed: randSpeed(44), status: 'ONLINE' as const, vehicleRatePerMin: randCount(18), corridorId: 'corridor-khandagiri' },
-    { id: 'TS-107', name: 'Kalpana Square Traffic Loop', lat: 20.2550, lng: 85.8380, speed: randSpeed(20), status: 'ONLINE' as const, vehicleRatePerMin: randCount(31), corridorId: 'corridor-puri-cuttack' },
-    { id: 'TS-108', name: 'AG Square Administrative Sensor', lat: 20.2600, lng: 85.8300, speed: randSpeed(38), status: 'ONLINE' as const, vehicleRatePerMin: randCount(22), corridorId: 'corridor-sachivalaya' },
   ];
 
   const totalVehicles = corridors.reduce((acc, c) => acc + c.vehicleCount, 0);
@@ -775,6 +656,7 @@ app.get('/api/traffic/live', (req, res) => {
 
   res.json({
     success: true,
+    classification: 'SIMULATED',
     timestamp: timestampStr,
     summary: {
       cityAvgSpeedKmh: avgSpeed,
@@ -782,10 +664,58 @@ app.get('/api/traffic/live', (req, res) => {
       activeBottlenecks: bottlenecks,
       totalVehiclesPerMin: totalVehicles,
       congestionTrend: bottlenecks > 2 ? 'WORSENING' : 'STABLE',
-      highestCongestionCorridor: 'NH-16 Express Corridor (Rasulgarh Interchange)',
+      highestCongestionCorridor: 'NH-16 Express Corridor [DEMO]',
     },
     corridors,
     sensors,
+  });
+});
+
+// ARKA Backend Incident Persistence API
+const inMemoryIncidentsStore = new Map<string, any>();
+
+app.get('/api/incidents', (req, res) => {
+  const incs = Array.from(inMemoryIncidentsStore.values());
+  res.json({
+    success: true,
+    count: incs.length,
+    classification: incs.length > 0 ? 'LIVE' : 'UNAVAILABLE',
+    incidents: incs,
+  });
+});
+
+app.post('/api/incidents', (req, res) => {
+  const inc = req.body;
+  if (!inc || !inc.id) {
+    return res.status(400).json({ success: false, error: 'Incident payload requires an id' });
+  }
+  inMemoryIncidentsStore.set(inc.id, inc);
+  console.log(`[ARKA Server] Saved incident #${inc.id} (${inc.title}) to server store.`);
+  res.json({ success: true, incident: inc });
+});
+
+app.post('/api/incidents/:id/status', (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const existing = inMemoryIncidentsStore.get(id);
+  if (existing) {
+    existing.status = status;
+    inMemoryIncidentsStore.set(id, existing);
+    console.log(`[ARKA Server] Incident #${id} status updated to ${status}.`);
+    return res.json({ success: true, incident: existing });
+  }
+  res.status(404).json({ success: false, error: 'Incident not found' });
+});
+
+// Offline Draft Sync Endpoint
+app.post('/api/offline/sync', (req, res) => {
+  const { drafts } = req.body || {};
+  const processedCount = Array.isArray(drafts) ? drafts.length : 0;
+  console.log(`[ARKA Server] Received ${processedCount} offline drafts for synchronization.`);
+  res.json({
+    success: true,
+    processedCount,
+    syncedTimestamp: new Date().toISOString(),
   });
 });
 

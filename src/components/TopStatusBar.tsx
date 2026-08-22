@@ -223,7 +223,12 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
             <div className="absolute right-0 top-full mt-2 w-80 gov-panel z-50">
               <div className="gov-panel-head">
                 <span className="gov-title">Data provenance</span>
-                <span className="gov-tag is-live">Live source</span>
+                <span className={`gov-tag ${
+                  weather.provenance?.classification === 'LIVE' ? 'is-live' :
+                  weather.provenance?.classification === 'CACHED' ? 'is-info' : 'is-high'
+                }`}>
+                  {weather.provenance?.classification || 'LIVE'}
+                </span>
               </div>
               <dl className="p-3 space-y-1.5 text-[12px]">
                 {[
@@ -314,11 +319,15 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
                       : info.status === 'SYNCING'
                       ? 'gov-rail-info'
                       : 'gov-rail-high';
+                  const clsLabel = info.classification || (info.status === 'CONNECTED' ? 'LIVE' : 'UNAVAILABLE');
                   return (
                     <div key={key} className={`gov-row gov-rail ${rail} p-3`}>
                       <div className="flex justify-between items-start gap-2 mb-1.5">
-                        <span className="text-[13px] font-semibold text-ink capitalize">
+                        <span className="text-[13px] font-semibold text-ink capitalize flex items-center gap-1.5">
                           {key} stream
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono">
+                            {clsLabel}
+                          </span>
                         </span>
                         <span className={`gov-badge ${badge}`}>
                           {info.status === 'CONNECTED' ? (

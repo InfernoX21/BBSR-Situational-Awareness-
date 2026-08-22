@@ -131,7 +131,12 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
                   <span className="text-[#06B6D4] font-bold truncate max-w-[130px] group-hover:text-cyan-300 transition-colors">
                     {item.publisherName}
                   </span>
-                  <span className="text-white/40 text-[8px]">{item.publishedTime}</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[7px] px-1 py-0.2 rounded bg-zinc-800 text-zinc-300 font-mono">
+                      {item.classification || 'LIVE'}
+                    </span>
+                    <span className="text-white/40 text-[8px]">{item.publishedTime}</span>
+                  </div>
                 </div>
 
                 <h4 className="text-[11px] font-medium text-white leading-tight group-hover:text-[#06B6D4] transition-colors">
@@ -269,7 +274,7 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
             </div>
             <div className="p-1.5 bg-[#050505] text-[9px] font-mono text-white/70 flex justify-between items-center border-t border-white/5">
               <span className="font-bold text-white truncate">JAYADEV VIHAR TRAFFIC JUNCTION</span>
-              <span className="text-[#10B981] font-semibold text-[8px]">RTSP 1080p</span>
+              <span className="text-amber-400 font-semibold text-[8px] bg-amber-950/40 px-1 py-0.5 rounded border border-amber-800/40">SIMULATED MEDIA</span>
             </div>
           </div>
         </div>

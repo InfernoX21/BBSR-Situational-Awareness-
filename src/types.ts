@@ -1,6 +1,8 @@
 export type Severity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 
-export type ConnectionStatus = 'CONNECTED' | 'SYNCING' | 'OFFLINE' | 'RETRYING' | 'AWAITING_FEED';
+export type ConnectionStatus = 'CONNECTED' | 'SYNCING' | 'OFFLINE' | 'RETRYING' | 'AWAITING_FEED' | 'UNAVAILABLE';
+
+export type DataClassification = 'LIVE' | 'CACHED' | 'SEED' | 'SIMULATED' | 'FALLBACK' | 'UNAVAILABLE';
 
 export interface DataProvenance {
   source: string;
@@ -9,6 +11,8 @@ export interface DataProvenance {
   confidence: number;
   latencyMs: number;
   lastUpdated: string;
+  classification?: DataClassification;
+  unavailableReason?: string;
 }
 
 export interface ConnectionHealthInfo {
@@ -17,6 +21,8 @@ export interface ConnectionHealthInfo {
   lastSync: string;
   provider: string;
   details?: string;
+  classification?: DataClassification;
+  unavailableReason?: string;
 }
 
 export type ConnectionHealthMap = Record<string, ConnectionHealthInfo>;

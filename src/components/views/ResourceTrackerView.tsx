@@ -87,6 +87,9 @@ export const ResourceTrackerView: React.FC<ResourceTrackerViewProps> = ({
             <h1 className="text-lg font-bold uppercase tracking-wider text-white">
               Tactical Resource Tracker & Fleet Dispatch
             </h1>
+            <span className="text-[10px] font-mono font-bold bg-amber-950/40 text-amber-400 border border-amber-800/40 px-2 py-0.5 rounded">
+              SEED / SIMULATED
+            </span>
           </div>
           <p className="text-white/40 text-[11px] mt-0.5">
             Hungarian Assignment Algorithm, Real-Time GPS Vehicle Telemetry & Incident Dispatch

@@ -11,6 +11,7 @@ import {
   ConnectionHealthMap,
   ConnectionStatus,
   DataProvenance,
+  DataClassification,
 } from '../types';
 
 export class LiveDataManager {
@@ -90,7 +91,7 @@ export class LiveDataManager {
     return { ...this.connectionHealth };
   }
 
-  public updateHealth(moduleKey: string, status: ConnectionStatus, latencyMs: number, details?: string) {
+  public updateHealth(moduleKey: string, status: ConnectionStatus, latencyMs: number, details?: string, classification?: DataClassification, unavailableReason?: string) {
     if (this.connectionHealth[moduleKey]) {
       this.connectionHealth[moduleKey] = {
         ...this.connectionHealth[moduleKey],
@@ -98,6 +99,8 @@ export class LiveDataManager {
         latencyMs,
         lastSync: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
         details: details || this.connectionHealth[moduleKey].details,
+        classification,
+        unavailableReason,
       };
       this.notify();
     }
@@ -111,32 +114,36 @@ export class LiveDataManager {
       const res = await fetch('/api/weather/live');
       const json = await res.json();
       const latency = Date.now() - start;
-      if (json.success && json.data) {
-        this.updateHealth('weather', 'CONNECTED', latency, 'Live Open-Meteo & IMD Radar Ingestion');
+      if (json.data) {
+        const cls = json.data.provenance?.classification || (json.success ? 'LIVE' : 'UNAVAILABLE');
+        const st = json.success ? 'CONNECTED' : 'UNAVAILABLE';
+        this.updateHealth('weather', st, latency, `Open-Meteo & IMD (${cls})`, cls, json.data.provenance?.unavailableReason);
         return json.data;
       }
       throw new Error('Invalid weather payload');
     } catch (err) {
-      this.updateHealth('weather', 'RETRYING', Date.now() - start, 'Awaiting Weather Sensor Feed');
+      this.updateHealth('weather', 'UNAVAILABLE', Date.now() - start, 'Weather API Unreachable', 'UNAVAILABLE', 'Connection timeout');
       return {
-        temperature: 31.8,
-        condition: 'Awaiting Radar Feed',
-        humidity: 78,
-        visibility: 8.5,
-        windSpeed: 14.0,
-        windDirection: 'SW',
-        rainIntensity: 12.0,
-        floodRiskLevel: 'MODERATE',
-        forecast: 'Awaiting Live Weather Stream...',
+        temperature: 0,
+        condition: 'Weather Stream Unavailable',
+        humidity: 0,
+        visibility: 0,
+        windSpeed: 0,
+        windDirection: 'N/A',
+        rainIntensity: 0,
+        floodRiskLevel: 'LOW',
+        forecast: 'No weather stream connected.',
         provenance: {
-          source: 'IMD Bhubaneswar Radar Fallback',
+          source: 'Open-Meteo Forecast API',
           timestamp: new Date().toISOString(),
-          provider: 'IMD Weather Mesh',
-          confidence: 85,
+          provider: 'IMD / Open-Meteo',
+          confidence: 0,
           latencyMs: Date.now() - start,
           lastUpdated: new Date().toLocaleTimeString(),
+          classification: 'UNAVAILABLE',
+          unavailableReason: 'Network connection failed.',
         },
-        connectionStatus: 'RETRYING',
+        connectionStatus: 'OFFLINE',
       };
     }
   }
@@ -153,18 +160,17 @@ export class LiveDataManager {
       const res = await fetch('/api/traffic/live');
       const json = await res.json();
       const latency = Date.now() - start;
-      if (json.success) {
-        this.updateHealth('traffic', 'CONNECTED', latency, `${json.corridors?.length || 0} Corridors Monitored`);
-        return {
-          corridors: json.corridors,
-          sensors: json.sensors,
-          summary: json.summary,
-        };
-      }
-      throw new Error('Traffic telemetry failed');
+      const cls = json.classification || (json.success ? 'LIVE' : 'UNAVAILABLE');
+      const st = json.success ? 'CONNECTED' : 'UNAVAILABLE';
+      this.updateHealth('traffic', st, latency, `${json.corridors?.length || 0} Corridors (${cls})`, cls, json.unavailableReason);
+      return {
+        corridors: json.corridors || [],
+        sensors: json.sensors || [],
+        summary: json.summary || { cityAvgSpeedKmh: 0, cityFreeFlowAvgSpeedKmh: 45, activeBottlenecks: 0, totalVehiclesPerMin: 0, congestionTrend: 'STABLE', highestCongestionCorridor: 'Feed Unavailable' },
+      };
     } catch (err) {
-      this.updateHealth('traffic', 'RETRYING', Date.now() - start, 'Awaiting Traffic Sensor Feed');
-      return { corridors: [], sensors: [], summary: { cityAvgSpeedKmh: 0, cityFreeFlowAvgSpeedKmh: 45, activeBottlenecks: 0, totalVehiclesPerMin: 0, congestionTrend: 'STABLE', highestCongestionCorridor: 'Awaiting Data' } };
+      this.updateHealth('traffic', 'UNAVAILABLE', Date.now() - start, 'Traffic Radar Offline', 'UNAVAILABLE', 'Gateway connection failed');
+      return { corridors: [], sensors: [], summary: { cityAvgSpeedKmh: 0, cityFreeFlowAvgSpeedKmh: 45, activeBottlenecks: 0, totalVehiclesPerMin: 0, congestionTrend: 'STABLE', highestCongestionCorridor: 'Feed Unavailable' } };
     }
   }
 
@@ -176,13 +182,12 @@ export class LiveDataManager {
       const res = await fetch('/api/adsb/live');
       const json = await res.json();
       const latency = Date.now() - start;
-      if (json.success && json.flights) {
-        this.updateHealth('adsb', 'CONNECTED', latency, `${json.flights.length} Airspace Targets Tracked`);
-        return json.flights;
-      }
-      throw new Error('ADS-B fetch failed');
+      const cls = json.classification || (json.success ? 'LIVE' : 'UNAVAILABLE');
+      const st = json.success ? 'CONNECTED' : 'UNAVAILABLE';
+      this.updateHealth('adsb', st, latency, `${json.flights?.length || 0} Targets (${cls})`, cls, json.unavailableReason);
+      return json.flights || [];
     } catch (err) {
-      this.updateHealth('adsb', 'AWAITING_FEED', Date.now() - start, 'Awaiting BPIA Airspace Telemetry');
+      this.updateHealth('adsb', 'UNAVAILABLE', Date.now() - start, 'BPIA Airspace Stream Offline', 'UNAVAILABLE', 'OpenSky API connection failed');
       return [];
     }
   }
@@ -195,13 +200,12 @@ export class LiveDataManager {
       const res = await fetch('/api/utilities/live');
       const json = await res.json();
       const latency = Date.now() - start;
-      if (json.success && json.utilities) {
-        this.updateHealth('utilities', 'CONNECTED', latency, 'SCADA Grid Telemetry Active');
-        return json.utilities;
-      }
-      throw new Error('Utilities fetch failed');
+      const cls = json.classification || (json.success ? 'LIVE' : 'UNAVAILABLE');
+      const st = json.success ? 'CONNECTED' : 'UNAVAILABLE';
+      this.updateHealth('utilities', st, latency, `SCADA Grid (${cls})`, cls, json.unavailableReason);
+      return json.utilities || [];
     } catch (err) {
-      this.updateHealth('utilities', 'OFFLINE', Date.now() - start, 'Awaiting SCADA Connection');
+      this.updateHealth('utilities', 'UNAVAILABLE', Date.now() - start, 'SCADA Gateway Offline', 'UNAVAILABLE', 'Modbus gateway connection failed');
       return [];
     }
   }
@@ -214,13 +218,12 @@ export class LiveDataManager {
       const res = await fetch('/api/news/bhubaneswar');
       const json = await res.json();
       const latency = Date.now() - start;
-      if (json.success && json.data) {
-        this.updateHealth('rssNews', 'CONNECTED', latency, 'Google News & OSDMA Advisories');
-        return json.data;
-      }
-      throw new Error('News fetch failed');
+      const cls = json.classification || (json.success ? 'LIVE' : 'UNAVAILABLE');
+      const st = json.success ? 'CONNECTED' : 'UNAVAILABLE';
+      this.updateHealth('rssNews', st, latency, `Google News RSS (${cls})`, cls, json.unavailableReason);
+      return json.data || [];
     } catch (err) {
-      this.updateHealth('rssNews', 'RETRYING', Date.now() - start, 'Awaiting RSS Stream');
+      this.updateHealth('rssNews', 'UNAVAILABLE', Date.now() - start, 'RSS Stream Offline', 'UNAVAILABLE', 'RSS Aggregator fetch error');
       return [];
     }
   }
