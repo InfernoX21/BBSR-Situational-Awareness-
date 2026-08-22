@@ -87,18 +87,18 @@ export const LiveNewsPanel: React.FC<LiveNewsPanelProps> = ({ className = '' }) 
   return (
     <div className={`border border-white/10 bg-white/[0.02] rounded p-2 flex flex-col justify-between overflow-hidden ${className}`}>
       {/* Header & Dropdown Channel Selector Bar */}
-      <div className="flex items-center justify-between border-b border-white/5 pb-1 text-[9px] font-bold uppercase tracking-widest gap-2">
+      <div className="flex items-center justify-between border-b border-white/5 pb-1 text-[9px] font-bold uppercase tracking-widest gap-1">
         <div className="flex items-center gap-1.5 min-w-0">
           <Radio className="w-3 h-3 text-[#EF4444] animate-pulse shrink-0" />
-          <span className="text-white/90 font-bold truncate">LIVE ODIA NEWS</span>
+          <span className="text-white/90 font-bold truncate">ODIA NEWS</span>
         </div>
 
         {/* Tactical Channel Dropdown */}
-        <div className="relative shrink-0 flex items-center">
+        <div className="relative shrink-0 flex items-center max-w-[130px]">
           <select
             value={activeChannelId}
             onChange={(e) => handleChannelSelect(e.target.value)}
-            className="bg-black/90 text-[#06B6D4] border border-[#06B6D4]/50 hover:border-[#06B6D4] rounded px-2 py-0.5 text-[9px] font-mono font-bold cursor-pointer outline-none transition-all shadow-[0_0_10px_rgba(6,182,212,0.25)] appearance-none pr-5 text-right"
+            className="bg-black/90 text-[#06B6D4] border border-[#06B6D4]/50 hover:border-[#06B6D4] rounded px-1.5 py-0.5 text-[8.5px] font-mono font-bold cursor-pointer outline-none transition-all shadow-[0_0_10px_rgba(6,182,212,0.25)] appearance-none pr-4 text-right truncate w-full"
           >
             {ODIA_NEWS_CHANNELS.map((ch) => (
               <option key={ch.id} value={ch.id} className="bg-zinc-950 text-zinc-200 py-1">
@@ -106,7 +106,7 @@ export const LiveNewsPanel: React.FC<LiveNewsPanelProps> = ({ className = '' }) 
               </option>
             ))}
           </select>
-          <ChevronDown className="w-3 h-3 text-[#06B6D4] absolute right-1.5 pointer-events-none opacity-80" />
+          <ChevronDown className="w-2.5 h-2.5 text-[#06B6D4] absolute right-1 pointer-events-none opacity-80" />
         </div>
       </div>
 
