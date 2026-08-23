@@ -170,8 +170,8 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
               <Radio className="w-3 h-3 text-[#10B981] animate-pulse" />
               <span>Resource Fleet</span>
             </span>
-            <span className="text-[8px] font-mono text-[#10B981] bg-[#10B981]/10 px-1.5 py-0.5 rounded border border-[#10B981]/30">
-              ONLINE
+            <span className="text-[8px] font-mono text-amber-400 bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-800/40">
+              STATIC ROSTER
             </span>
           </div>
 
