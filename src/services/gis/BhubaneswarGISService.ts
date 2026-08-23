@@ -34,14 +34,23 @@
 
 import type {
   CityGISProvider,
+  GISAttributeRow,
   GISBounds,
   GISFeatureResult,
   GISLayerDef,
   GISLayerDescription,
+  GISQueryableLayer,
   GISQueryOptions,
+  GISQueryResult,
   GISRasterTemplate,
   GISSearchHit,
+  GISWardRecord,
+  GISWardTotals,
 } from './types';
+import { BOUNDARY_DASH, PALETTE } from './palette';
+import { describeAttributes, featureLabel } from './formatAttributes';
+import { BOUNDARY_LAYERS, WARD_DATASET, WARD_FIELDS } from './catalogue/boundaries';
+import { THEMATIC_LAYERS } from './catalogue/thematic';
 
 // ---------------------------------------------------------------------------
 // Endpoint configuration
@@ -78,33 +87,22 @@ const REQUEST_TIMEOUT_MS = 20_000;
 const METADATA_TTL_MS = 60 * 60 * 1000;
 
 /**
+ * Catalogue id of the ward layer the ward-intelligence module reads.
+ *
+ * Named once so the module's availability check and the published layer can
+ * never disagree: if this layer is dropped from the catalogue, `hasWardDataset`
+ * turns false and the module reports itself unavailable instead of querying a
+ * service nothing declares.
+ */
+const WARD_LAYER_ID = 'bmc-wards';
+
+/**
  * Read operations ARKA is permitted to issue. `fetchJson` refuses anything
  * else, which is what keeps an editing verb from ever reaching an
  * unauthenticated FeatureServer — including by accident, via a future caller
  * that builds its own path.
  */
 const READ_ONLY_OPERATIONS = ['query', 'export', 'legend', 'identify', ''] as const;
-
-/**
- * Colours are the resolved values of ARKA's own design tokens (see
- * `src/index.css` `@theme`), inlined because Leaflet writes SVG presentation
- * attributes rather than CSS. Nothing new is introduced to the palette.
- */
-const PALETTE = {
-  /** --color-accent */
-  accent: '#4c8dd9',
-  /** --color-accent-border */
-  accentDim: '#2e4e73',
-  /** --color-line-strong */
-  line: '#384250',
-  /** --color-ink-muted */
-  ink: '#a9b4c2',
-  water: '#3f7fa8',
-  vegetation: '#4a7a5c',
-  power: '#b0873f',
-  transit: '#6f8fb5',
-  civic: '#8a7fb0',
-} as const;
 
 /**
  * Layers present in the BhubaneswarOne catalogue that ARKA deliberately does
@@ -127,6 +125,36 @@ export const EXCLUDED_LAYERS: { path: string; reason: string }[] = [
     reason:
       'Road Network is a group layer with no queryable geometry of its own; it is published as a raster layer instead.',
   },
+  {
+    path: 'AirportBoundary/MapServer/0',
+    reason: 'Returns a feature count of 0. The airport area is published instead from CityMap/5.',
+  },
+  {
+    path: 'Category/FeatureServer/9 (General Post Office)',
+    reason: 'Returns a feature count of 0. Branch and sub post offices (10, 11) carry the published records.',
+  },
+  {
+    path: 'Category/FeatureServer/31 (District Headquarters Hospital)',
+    reason: 'Returns a feature count of 0. Hospitals are published from Category/37.',
+  },
+  {
+    path: 'Category/FeatureServer/40 (Anganwadi Centre)',
+    reason: 'Exact duplicate of Category/24 — same 355 records and same schema. Published once, from 24.',
+  },
+  {
+    path: 'VillagePlotBoundary/MapServer/2 (Village Boundary)',
+    reason: 'Same 205 village records already published as `village-mouza` from CityMap/1.',
+  },
+  {
+    path: 'BMC_WardBoundary/FeatureServer/0',
+    reason:
+      'Holds only 58 of the city’s 67 wards (W9, W11, W16, W17, W21, W24, W26, W30 and W35 are absent) with the same schema as AdministrativeBoundary/4. Building ward intelligence on it would report nine real wards as having no data, so the complete dataset is used instead.',
+  },
+  {
+    path: 'Ward/MapServer/0',
+    reason:
+      'Carries all 67 wards but with join artefacts from an unrelated analysis (covidcases, p_sex, wardno_1, fid_1). AdministrativeBoundary/4 publishes the same wards with a clean schema.',
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -134,7 +162,10 @@ export const EXCLUDED_LAYERS: { path: string; reason: string }[] = [
 // ---------------------------------------------------------------------------
 
 /**
- * The published catalogue.
+ * The verified core catalogue: boundaries already in place, transport, water and
+ * environment, utility networks, smart-city assets and citywide amenities. The
+ * newer boundary and thematic groups live in `./catalogue/*` and are appended in
+ * `FULL_CATALOGUE` below; the split is purely for readability.
  *
  * `kind` follows from what the service can actually do:
  *
@@ -143,14 +174,14 @@ export const EXCLUDED_LAYERS: { path: string; reason: string }[] = [
  *  - `raster-dynamic` where the layer is a group, has thousands of features, or
  *    is only meaningful as cartography. Dynamic export is used rather than the
  *    tile cache because a fused cache renders the whole service and cannot
- *    isolate a sublayer — and the user's requirement is that every category
- *    stays independently controllable.
+ *    isolate a sublayer — and the requirement is that every category stays
+ *    independently controllable.
  *
  * `order` sorts within the base-GIS panes: area fills lowest, then lines, then
  * points, so a ward fill never hides a hospital marker.
  */
-const LAYER_CATALOGUE: GISLayerDef[] = [
-  // --- Administrative -----------------------------------------------------
+const CORE_LAYERS: GISLayerDef[] = [
+  // --- Planning -----------------------------------------------------------
   {
     id: 'cdp-2030',
     label: 'Comprehensive Development Plan 2030',
@@ -171,7 +202,7 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
   {
     id: 'urban-transport-area',
     label: 'Urban transport area',
-    category: 'planning',
+    category: 'statutory-boundaries',
     kind: 'vector',
     dataClass: 'reference',
     description: 'Statutory boundary of the Bhubaneswar Urban Transport Area.',
@@ -179,41 +210,36 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
     defaultOpacity: 0.9,
     order: 13,
     source: { protocol: 'arcgis', service: 'UrbanTransport', serviceType: 'MapServer', sublayers: [1] },
-    style: { color: PALETTE.transit, weight: 1.5, fillColor: PALETTE.transit, fillOpacity: 0.04, dashArray: '6 4' },
+    style: {
+      color: PALETTE.transit,
+      weight: 1.5,
+      fillColor: PALETTE.transit,
+      fillOpacity: 0.04,
+      dashArray: BOUNDARY_DASH.statutory,
+    },
     popupFields: [{ field: 'vill_name', label: 'Area' }],
     searchField: 'vill_name',
   },
   {
-    id: 'tp-schemes',
-    label: 'Town planning schemes',
-    category: 'planning',
-    kind: 'raster-dynamic',
-    dataClass: 'reference',
-    description: 'Draft, declared and in-principle approved TP scheme boundaries.',
-    defaultVisible: false,
-    defaultOpacity: 0.7,
-    order: 14,
-    source: { protocol: 'arcgis', service: 'TPSchemeBoundary', serviceType: 'MapServer', sublayers: [0] },
-  },
-  {
     id: 'bda-boundary',
     label: 'BDA boundary',
-    category: 'administrative',
+    category: 'admin-boundaries',
     kind: 'vector',
     dataClass: 'reference',
     description: 'Outer limit of the Bhubaneswar Development Authority area.',
     defaultVisible: false,
     defaultOpacity: 0.9,
     order: 15,
+    verifiedFeatureCount: 1,
     source: { protocol: 'arcgis', service: 'Boundary', serviceType: 'MapServer', sublayers: [2] },
-    style: { color: PALETTE.line, weight: 1.5, fillOpacity: 0, dashArray: '8 5' },
+    style: { color: PALETTE.line, weight: 1.5, fillOpacity: 0, dashArray: BOUNDARY_DASH.authority },
     popupFields: [{ field: 'name', label: 'Authority' }],
     searchField: 'name',
   },
   {
     id: 'village-mouza',
     label: 'Village / mouza boundaries',
-    category: 'administrative',
+    category: 'statutory-boundaries',
     kind: 'vector',
     dataClass: 'reference',
     // Published with a fully transparent symbol, so the server-rendered image is
@@ -222,8 +248,9 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
     defaultVisible: false,
     defaultOpacity: 0.85,
     order: 16,
+    verifiedFeatureCount: 205,
     source: { protocol: 'arcgis', service: 'CityMap', serviceType: 'MapServer', sublayers: [1] },
-    style: { color: PALETTE.line, weight: 0.6, fillOpacity: 0 },
+    style: { color: PALETTE.line, weight: 0.6, fillOpacity: 0, dashArray: BOUNDARY_DASH.revenue },
     popupFields: [
       { field: 'village_name', label: 'Village' },
       { field: 'admin_boundary', label: 'Administrative area' },
@@ -237,15 +264,22 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
   {
     id: 'bda-planning-zones',
     label: 'BDA planning zones',
-    category: 'administrative',
+    category: 'admin-boundaries',
     kind: 'vector',
     dataClass: 'reference',
     description: 'BDA planning zones with their broad development classification.',
     defaultVisible: false,
     defaultOpacity: 0.85,
     order: 18,
+    verifiedFeatureCount: 14,
     source: { protocol: 'arcgis', service: 'BMCBDAZONEPLAN', serviceType: 'MapServer', sublayers: [1] },
-    style: { color: PALETTE.accentDim, weight: 1, fillColor: PALETTE.accent, fillOpacity: 0.05 },
+    style: {
+      color: PALETTE.accentDim,
+      weight: 1,
+      fillColor: PALETTE.accent,
+      fillOpacity: 0.05,
+      dashArray: BOUNDARY_DASH.zone,
+    },
     popupFields: [
       { field: 'name', label: 'Zone' },
       { field: 'number', label: 'Zone number', format: 'integer' },
@@ -257,37 +291,45 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
   {
     id: 'bmc-boundary',
     label: 'BMC boundary',
-    category: 'administrative',
+    category: 'admin-boundaries',
     kind: 'vector',
     dataClass: 'reference',
     description: 'Bhubaneswar Municipal Corporation municipal limit.',
     defaultVisible: true,
     defaultOpacity: 1,
     order: 20,
+    verifiedFeatureCount: 1,
     source: { protocol: 'arcgis', service: 'Boundary', serviceType: 'MapServer', sublayers: [1] },
-    style: { color: PALETTE.accent, weight: 2, fillOpacity: 0 },
+    style: { color: PALETTE.accent, weight: 2, fillOpacity: 0, dashArray: BOUNDARY_DASH.municipal },
     popupFields: [{ field: 'Name', label: 'Area' }],
     searchField: 'Name',
   },
   {
     id: 'bmc-zones',
     label: 'BMC municipal zones',
-    category: 'administrative',
+    category: 'admin-boundaries',
     kind: 'vector',
     dataClass: 'reference',
     description: 'BMC administrative zones used for municipal service delivery.',
     defaultVisible: false,
     defaultOpacity: 0.9,
     order: 22,
+    verifiedFeatureCount: 3,
     source: { protocol: 'arcgis', service: 'BMCBDAZONEPLAN', serviceType: 'MapServer', sublayers: [0] },
-    style: { color: PALETTE.accent, weight: 1.4, fillColor: PALETTE.accent, fillOpacity: 0.04 },
+    style: {
+      color: PALETTE.accent,
+      weight: 1.4,
+      fillColor: PALETTE.accent,
+      fillOpacity: 0.04,
+      dashArray: BOUNDARY_DASH.zone,
+    },
     popupFields: [{ field: 'municipalz', label: 'Zone' }],
     searchField: 'municipalz',
   },
   {
     id: 'smart-city-abd',
     label: 'Smart City area-based development',
-    category: 'planning',
+    category: 'smart-city',
     kind: 'raster-dynamic',
     dataClass: 'reference',
     description: 'BSCL area-based development footprint and town centre precincts.',
@@ -299,29 +341,36 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
   {
     id: 'bmc-wards',
     label: 'BMC wards',
-    category: 'administrative',
+    category: 'admin-boundaries',
     kind: 'vector',
     dataClass: 'reference',
-    description: 'All 58 municipal wards with councillor, household count and zone.',
+    description: 'All 67 municipal wards with councillor, household count, population and zone.',
     defaultVisible: true,
     defaultOpacity: 0.9,
     order: 25,
+    verifiedFeatureCount: WARD_DATASET.wardCount,
     source: {
       protocol: 'arcgis',
-      service: 'BMC_WardBoundary',
-      serviceType: 'FeatureServer',
-      sublayers: [0],
+      service: WARD_DATASET.service,
+      serviceType: WARD_DATASET.serviceType,
+      sublayers: [WARD_DATASET.sublayer],
     },
-    style: { color: PALETTE.accentDim, weight: 0.9, fillColor: PALETTE.accent, fillOpacity: 0.03 },
+    style: {
+      color: PALETTE.accentDim,
+      weight: 0.9,
+      fillColor: PALETTE.accent,
+      fillOpacity: 0.03,
+      dashArray: BOUNDARY_DASH.ward,
+    },
     popupFields: [
-      { field: 'wardno', label: 'Ward' },
-      { field: 'municipalz', label: 'Municipal zone' },
-      { field: 'nameofthec', label: 'Councillor' },
-      { field: 'numberofho', label: 'Households', format: 'integer' },
-      { field: 'totalwardp', label: 'Ward population', format: 'integer' },
-      { field: 'area_in_he', label: 'Area', format: 'area-hectares' },
+      { field: WARD_FIELDS.wardNo, label: 'Ward' },
+      { field: WARD_FIELDS.zone, label: 'Municipal zone' },
+      { field: WARD_FIELDS.councillor, label: 'Councillor' },
+      { field: WARD_FIELDS.households, label: 'Households', format: 'integer', suppressZero: true },
+      { field: WARD_FIELDS.population, label: 'Ward population', format: 'integer', suppressZero: true },
+      { field: WARD_FIELDS.areaHectares, label: 'Area', format: 'area-hectares', suppressZero: true },
     ],
-    searchField: 'wardno',
+    searchField: WARD_FIELDS.wardNo,
   },
 
   // --- Transportation -----------------------------------------------------
@@ -340,7 +389,7 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
   {
     id: 'parking-sites',
     label: 'Designated parking sites',
-    category: 'transportation',
+    category: 'parking',
     kind: 'vector',
     dataClass: 'reference',
     description: 'Surveyed on-street and off-street parking footprints.',
@@ -348,6 +397,7 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
     defaultVisible: false,
     defaultOpacity: 0.9,
     order: 35,
+    facilityKind: 'parking',
     source: { protocol: 'arcgis', service: 'SmartElements', serviceType: 'FeatureServer', sublayers: [13] },
     style: { color: PALETTE.transit, weight: 1.2, fillColor: PALETTE.transit, fillOpacity: 0.18 },
     popupFields: [{ field: 'name', label: 'Location' }],
@@ -472,6 +522,7 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
     defaultVisible: false,
     defaultOpacity: 0.95,
     order: 84,
+    facilityKind: 'transport',
     source: { protocol: 'arcgis', service: 'UpdatedBusStops', serviceType: 'FeatureServer', sublayers: [1] },
     style: { color: PALETTE.transit, weight: 1.4, fillColor: PALETTE.transit, fillOpacity: 0.9, pointRadius: 5 },
     popupFields: [{ field: 'Name', label: 'Terminal' }],
@@ -489,6 +540,7 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
     defaultVisible: false,
     defaultOpacity: 0.95,
     order: 86,
+    verifiedFeatureCount: 50,
     source: { protocol: 'arcgis', service: 'TrafficJunctions', serviceType: 'MapServer', sublayers: [0] },
     style: { color: PALETTE.accent, weight: 1.2, fillColor: PALETTE.accent, fillOpacity: 0.7, pointRadius: 4 },
     popupFields: [{ field: 'Name', label: 'Junction' }],
@@ -533,11 +585,11 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
     source: { protocol: 'arcgis', service: 'CityMap', serviceType: 'MapServer', sublayers: [14] },
   },
 
-  // --- Civic infrastructure -----------------------------------------------
+  // --- Utility networks ---------------------------------------------------
   {
     id: 'water-pipeline',
     label: 'Water supply pipelines',
-    category: 'infrastructure',
+    category: 'utility',
     kind: 'raster-dynamic',
     dataClass: 'reference',
     description: 'Distribution pipeline network (4,102 segments).',
@@ -554,7 +606,7 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
   {
     id: 'sewerage-network',
     label: 'Sewerage network',
-    category: 'infrastructure',
+    category: 'utility',
     kind: 'raster-dynamic',
     dataClass: 'reference',
     description: 'Sewer mains, manholes, pumping stations and treatment plants.',
@@ -571,7 +623,7 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
   {
     id: 'hi-tension-line',
     label: 'High-tension power lines',
-    category: 'infrastructure',
+    category: 'utility',
     kind: 'vector',
     dataClass: 'reference',
     description: 'High-tension transmission line alignments.',
@@ -591,7 +643,7 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
   {
     id: 'water-supply-assets',
     label: 'Water supply assets',
-    category: 'infrastructure',
+    category: 'utility',
     kind: 'raster-dynamic',
     dataClass: 'reference',
     description: 'Reservoirs, treatment plants, pump houses and production wells.',
@@ -608,7 +660,7 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
   {
     id: 'electric-assets',
     label: 'Substations & division offices',
-    category: 'infrastructure',
+    category: 'utility',
     kind: 'raster-dynamic',
     dataClass: 'reference',
     description: 'Grid substations and distribution division offices.',
@@ -622,10 +674,11 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
       sublayers: [1, 2],
     },
   },
+  // --- Smart city assets --------------------------------------------------
   {
     id: 'cctv-sites',
     label: 'CCTV camera sites',
-    category: 'infrastructure',
+    category: 'smart-city',
     kind: 'vector',
     dataClass: 'reference',
     description: 'The 48 published smart-city camera installation sites.',
@@ -634,6 +687,7 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
     defaultVisible: false,
     defaultOpacity: 0.95,
     order: 90,
+    verifiedFeatureCount: 48,
     source: { protocol: 'arcgis', service: 'SmartElements', serviceType: 'FeatureServer', sublayers: [10] },
     style: { color: PALETTE.civic, weight: 1.2, fillColor: PALETTE.civic, fillOpacity: 0.7, pointRadius: 4 },
     popupFields: [
@@ -645,7 +699,7 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
   {
     id: 'atcc-sites',
     label: 'Traffic counter sites (ATCC)',
-    category: 'infrastructure',
+    category: 'smart-city',
     kind: 'vector',
     dataClass: 'reference',
     description: 'The 32 automatic traffic counter and classifier installation sites.',
@@ -653,6 +707,7 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
     defaultVisible: false,
     defaultOpacity: 0.95,
     order: 91,
+    verifiedFeatureCount: 32,
     source: { protocol: 'arcgis', service: 'SmartElements', serviceType: 'FeatureServer', sublayers: [12] },
     style: { color: PALETTE.civic, weight: 1.2, fillColor: PALETTE.civic, fillOpacity: 0.5, pointRadius: 3.5 },
     popupFields: [
@@ -662,11 +717,13 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
     searchField: 'name',
   },
 
-  // --- Points of interest -------------------------------------------------
+  // --- Community services -------------------------------------------------
+  // Fire and police stations are filed here rather than under a bespoke
+  // "emergency" group because that is where the city's own catalogue files them.
   {
     id: 'public-amenities',
     label: 'Public amenities',
-    category: 'poi',
+    category: 'community-services',
     kind: 'raster-dynamic',
     dataClass: 'reference',
     description: 'Water ATMs, ATMs, playgrounds, parks, malls, Wi-Fi points, toilets and services.',
@@ -678,13 +735,14 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
   {
     id: 'public-toilets',
     label: 'Public toilets',
-    category: 'poi',
+    category: 'community-services',
     kind: 'vector',
     dataClass: 'reference',
     description: 'Geo-tagged public toilets with seat count, accessibility and operator.',
     defaultVisible: false,
     defaultOpacity: 0.9,
     order: 80,
+    facilityKind: 'toilet',
     source: { protocol: 'arcgis', service: 'SmartElements', serviceType: 'FeatureServer', sublayers: [4] },
     style: { color: PALETTE.ink, weight: 1, fillColor: PALETTE.ink, fillOpacity: 0.5, pointRadius: 3 },
     popupFields: [
@@ -692,8 +750,8 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
       { field: 'address', label: 'Address' },
       { field: 'type_of_to', label: 'Type' },
       { field: 'category', label: 'Category' },
-      { field: 'seats', label: 'Seats', format: 'integer' },
-      { field: 'ward_no', label: 'Ward', format: 'integer' },
+      { field: 'seats', label: 'Seats', format: 'integer', suppressZero: true },
+      { field: 'ward_no', label: 'Ward', format: 'integer', suppressZero: true },
       { field: 'name_of_ma', label: 'Maintained by' },
     ],
     searchField: 'name_of_to',
@@ -701,17 +759,19 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
   {
     id: 'hospitals-poi',
     label: 'Hospitals (city directory)',
-    category: 'poi',
+    category: 'health',
     kind: 'vector',
     dataClass: 'reference',
-    description: 'The 27 hospitals in the city directory, with specialities and emergency contact.',
+    description: 'The 27 hospitals in the city directory, with specialities and contact.',
     caveat:
-      'Facility directory, not capacity. Bed availability and casualty routing come from ARKA live data, not from this layer.',
+      'Facility directory, not capacity. The source publishes its bed-count, emergency and ambulance columns as empty, so they are not shown. Bed availability and casualty routing come from ARKA live data, not from this layer.',
     defaultVisible: false,
     defaultOpacity: 0.95,
     order: 93,
+    verifiedFeatureCount: 27,
+    facilityKind: 'hospital',
     source: { protocol: 'arcgis', service: 'Category', serviceType: 'FeatureServer', sublayers: [37] },
-    style: { color: '#7fa8c4', weight: 1.2, fillColor: '#7fa8c4', fillOpacity: 0.7, pointRadius: 4 },
+    style: { color: PALETTE.health, weight: 1.2, fillColor: PALETTE.health, fillOpacity: 0.7, pointRadius: 4 },
     popupFields: [
       { field: 'name', label: 'Hospital' },
       { field: 'category', label: 'Ownership' },
@@ -726,7 +786,7 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
   {
     id: 'fire-stations-poi',
     label: 'Fire stations (city directory)',
-    category: 'poi',
+    category: 'community-services',
     kind: 'vector',
     dataClass: 'reference',
     description: 'Odisha Fire Service stations serving the city, with station reference and type.',
@@ -734,6 +794,8 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
     defaultVisible: false,
     defaultOpacity: 0.95,
     order: 94,
+    verifiedFeatureCount: 5,
+    facilityKind: 'fire',
     source: { protocol: 'arcgis', service: 'Category', serviceType: 'FeatureServer', sublayers: [7] },
     style: { color: '#c48a6a', weight: 1.2, fillColor: '#c48a6a', fillOpacity: 0.7, pointRadius: 4 },
     popupFields: [
@@ -747,7 +809,7 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
   {
     id: 'police-stations-poi',
     label: 'Police stations (city directory)',
-    category: 'poi',
+    category: 'community-services',
     kind: 'vector',
     dataClass: 'reference',
     description: 'The 17 police stations with jurisdiction, sub-commissionerate and station contact.',
@@ -755,6 +817,8 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
     defaultVisible: false,
     defaultOpacity: 0.95,
     order: 95,
+    verifiedFeatureCount: 17,
+    facilityKind: 'police',
     source: { protocol: 'arcgis', service: 'Category', serviceType: 'FeatureServer', sublayers: [12] },
     style: { color: '#8fa5c4', weight: 1.2, fillColor: '#8fa5c4', fillOpacity: 0.7, pointRadius: 4 },
     popupFields: [
@@ -771,6 +835,13 @@ const LAYER_CATALOGUE: GISLayerDef[] = [
     searchField: 'label',
   },
 ];
+
+/**
+ * The full published catalogue: core layers, plus the boundary and thematic
+ * groups. Assembled here rather than in one giant literal so each group can be
+ * reviewed — and re-verified against the source — on its own.
+ */
+const LAYER_CATALOGUE: GISLayerDef[] = [...CORE_LAYERS, ...BOUNDARY_LAYERS, ...THEMATIC_LAYERS];
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -822,12 +893,12 @@ function withTimeout(signal: AbortSignal | undefined, ms: number): { signal: Abo
   };
 }
 
-/** Best-effort representative point for a feature, used by search results. */
-function featureCentroid(geometry: unknown): { lat: number; lng: number } | null {
-  let minLng = Infinity;
-  let minLat = Infinity;
-  let maxLng = -Infinity;
-  let maxLat = -Infinity;
+/** Bounding box of any GeoJSON geometry, or null when it holds no coordinates. */
+function featureBBox(geometry: unknown): GISBounds | null {
+  let west = Infinity;
+  let south = Infinity;
+  let east = -Infinity;
+  let north = -Infinity;
   let found = false;
 
   const visit = (node: unknown): void => {
@@ -838,20 +909,72 @@ function featureCentroid(geometry: unknown): { lat: number; lng: number } | null
       const lat = node[1];
       if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
       found = true;
-      if (lng < minLng) minLng = lng;
-      if (lat < minLat) minLat = lat;
-      if (lng > maxLng) maxLng = lng;
-      if (lat > maxLat) maxLat = lat;
+      if (lng < west) west = lng;
+      if (lat < south) south = lat;
+      if (lng > east) east = lng;
+      if (lat > north) north = lat;
       return;
     }
     for (const child of node) visit(child);
   };
 
-  const coords = (geometry as { coordinates?: unknown } | null)?.coordinates;
-  visit(coords);
+  visit((geometry as { coordinates?: unknown } | null)?.coordinates);
 
   if (!found) return null;
-  return { lat: (minLat + maxLat) / 2, lng: (minLng + maxLng) / 2 };
+  return { west, south, east, north };
+}
+
+/** Best-effort representative point for a feature, used by search results. */
+function featureCentroid(geometry: unknown): { lat: number; lng: number } | null {
+  const box = featureBBox(geometry);
+  if (!box) return null;
+  return { lat: (box.south + box.north) / 2, lng: (box.west + box.east) / 2 };
+}
+
+/**
+ * Read a numeric attribute, or null when the source did not publish one.
+ *
+ * Blank strings and non-finite values become null rather than 0: a ward with no
+ * published household count is not a ward with no households.
+ */
+function readNumber(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+/** Read a text attribute, treating blanks and whitespace-only markers as absent. */
+function readText(value: unknown): string | null {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length ? trimmed : null;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return null;
+}
+
+/**
+ * Sort ward codes the way an operator reads them.
+ *
+ * The codes are `W1`…`W67`, so a plain string sort puts W10 before W2. This
+ * compares the numeric part when both codes have one and falls back to a string
+ * compare otherwise, which keeps any non-conforming code in a stable position
+ * rather than dropping it.
+ */
+function compareWardCodes(a: string, b: string): number {
+  const numeric = (code: string): number | null => {
+    const match = /(\d+)/.exec(code);
+    return match ? Number(match[1]) : null;
+  };
+  const na = numeric(a);
+  const nb = numeric(b);
+  if (na !== null && nb !== null && na !== nb) return na - nb;
+  return a.localeCompare(b, 'en');
 }
 
 /** Sanity bound for WGS84 output, so a projection mistake cannot reach the map. */
@@ -1108,7 +1231,7 @@ export class BhubaneswarGISService implements CityGISProvider {
     const cap = Math.min(options.maxFeatures ?? DEFAULT_MAX_RECORDS, DEFAULT_MAX_RECORDS);
 
     const url = this.buildUrl(service, serviceType, sublayers[0], 'query', {
-      where: '1=1',
+      where: this.buildWhere(options.attributeFilter),
       outFields: this.outFieldsFor(layer),
       returnGeometry: true,
       outSR: 4326,
@@ -1119,6 +1242,31 @@ export class BhubaneswarGISService implements CityGISProvider {
 
     const raw = await this.fetchJson<GeoJSON.FeatureCollection>(url, options.signal);
     return this.toFeatureResult(raw, cap, url);
+  }
+
+  /**
+   * Turn a structured attribute filter into a `where` clause.
+   *
+   * Callers hand over a field, a value and a match mode rather than SQL, so the
+   * only string that ever reaches the clause is an escaped literal. That is what
+   * makes it impossible for a query typed into the interface to change the shape
+   * of the request.
+   */
+  private buildWhere(filter: GISQueryOptions['attributeFilter']): string {
+    if (!filter) return '1=1';
+
+    // Field names come from the catalogue, never from user input, but reject
+    // anything unexpected so a future caller cannot widen the surface.
+    if (!/^[A-Za-z0-9_]+$/.test(filter.field)) {
+      throw new GISRequestError(`Refusing to filter on unsupported field name "${filter.field}".`, '');
+    }
+
+    const literal = escapeSqlLiteral(filter.value.trim().toUpperCase());
+    if (!literal) return '1=1';
+
+    return filter.match === 'exact'
+      ? `UPPER(${filter.field}) = '${literal}'`
+      : `UPPER(${filter.field}) LIKE '%${literal}%'`;
   }
 
   /**
@@ -1309,6 +1457,254 @@ export class BhubaneswarGISService implements CityGISProvider {
     }
 
     return hits;
+  }
+
+  // --- Ward intelligence -------------------------------------------------
+
+  /**
+   * True when the ward dataset is catalogued.
+   *
+   * Verified rather than assumed: `AdministrativeBoundary/4` was read back and
+   * confirmed to hold 67 ward polygons, each with a published ward code. When
+   * this returns false the ward module must show its unavailable state, not an
+   * empty selector that looks like a city with no wards.
+   */
+  hasWardDataset(): boolean {
+    return this.layers.has(WARD_LAYER_ID);
+  }
+
+  /**
+   * Every ward, without geometry.
+   *
+   * Geometry is the expensive part of a ward request — 67 polygons at city
+   * detail — and the selector only needs codes and headline attributes, so this
+   * asks for attributes alone. `getWard` fetches the polygon for the one ward
+   * actually selected.
+   */
+  async listWards(options: { signal?: AbortSignal } = {}): Promise<GISWardRecord[]> {
+    const url = this.wardQueryUrl({ returnGeometry: false });
+    const raw = await this.fetchJson<{ features?: { attributes?: Record<string, unknown> }[] }>(url, options.signal);
+
+    const wards: GISWardRecord[] = [];
+    for (const feature of raw.features ?? []) {
+      const record = this.toWardRecord(feature.attributes ?? {}, null);
+      if (record) wards.push(record);
+    }
+
+    wards.sort((a, b) => compareWardCodes(a.wardNo, b.wardNo));
+    return wards;
+  }
+
+  /**
+   * One ward, with its polygon.
+   *
+   * Returns null when the code matches nothing, which the UI reports as no
+   * verified data for that ward rather than as a failure.
+   */
+  async getWard(wardNo: string, options: { signal?: AbortSignal } = {}): Promise<GISWardRecord | null> {
+    const code = wardNo.trim();
+    if (!code) return null;
+
+    const url = this.wardQueryUrl({
+      returnGeometry: true,
+      where: `UPPER(${WARD_FIELDS.wardNo}) = '${escapeSqlLiteral(code.toUpperCase())}'`,
+    });
+
+    const raw = await this.fetchJson<GeoJSON.FeatureCollection>(url, options.signal);
+    const feature = raw.features?.find((f) => f?.properties);
+    if (!feature) return null;
+
+    return this.toWardRecord((feature.properties ?? {}) as Record<string, unknown>, feature.geometry ?? null);
+  }
+
+  /**
+   * Citywide totals, summed by the service rather than by ARKA.
+   *
+   * `outStatistics` keeps the arithmetic on the server and out of a client-side
+   * loop over paged results, so the figure cannot silently reflect only the
+   * first thousand rows. A null total means the service did not return one — it
+   * is never substituted with a count of what happened to load.
+   */
+  async getWardTotals(options: { signal?: AbortSignal } = {}): Promise<GISWardTotals | null> {
+    const statistics = [
+      { statisticType: 'sum', onStatisticField: WARD_FIELDS.population, outStatisticFieldName: 'pop_total' },
+      { statisticType: 'sum', onStatisticField: WARD_FIELDS.households, outStatisticFieldName: 'hh_total' },
+      { statisticType: 'count', onStatisticField: WARD_FIELDS.wardNo, outStatisticFieldName: 'ward_count' },
+    ];
+
+    const url = this.buildUrl(WARD_DATASET.service, WARD_DATASET.serviceType, WARD_DATASET.sublayer, 'query', {
+      where: '1=1',
+      outStatistics: JSON.stringify(statistics),
+      returnGeometry: false,
+      f: 'json',
+    });
+
+    let raw: { features?: { attributes?: Record<string, unknown> }[] };
+    try {
+      raw = await this.fetchJson(url, options.signal);
+    } catch (cause) {
+      if (options.signal?.aborted) throw cause;
+      // Totals are a summary, not the ward data itself. A failure here must not
+      // take the ward module down with it.
+      return null;
+    }
+
+    const attributes = raw.features?.[0]?.attributes;
+    if (!attributes) return null;
+
+    const wardCount = readNumber(attributes.ward_count);
+
+    return {
+      wardCount: wardCount ?? WARD_DATASET.wardCount,
+      population: readNumber(attributes.pop_total),
+      households: readNumber(attributes.hh_total),
+      datasetLabel: WARD_DATASET.label,
+    };
+  }
+
+  /** Build a ward query asking for exactly the fields ARKA reads. */
+  private wardQueryUrl(options: { returnGeometry: boolean; where?: string }): string {
+    return this.buildUrl(WARD_DATASET.service, WARD_DATASET.serviceType, WARD_DATASET.sublayer, 'query', {
+      where: options.where ?? '1=1',
+      // Restricted to the read set in `WARD_FIELDS`, which deliberately excludes
+      // the officer mobile-number columns the source also publishes.
+      outFields: Object.values(WARD_FIELDS).join(','),
+      returnGeometry: options.returnGeometry,
+      outSR: 4326,
+      resultRecordCount: DEFAULT_MAX_RECORDS,
+      f: options.returnGeometry ? 'geojson' : 'json',
+    });
+  }
+
+  /**
+   * Convert raw ward attributes into a record.
+   *
+   * A row with no ward code is dropped rather than shown as an unnamed ward, and
+   * every numeric field goes through `readNumber` so an empty column arrives as
+   * null instead of zero.
+   */
+  private toWardRecord(attributes: Record<string, unknown>, geometry: GeoJSON.Geometry | null): GISWardRecord | null {
+    const wardNo = readText(attributes[WARD_FIELDS.wardNo]);
+    if (!wardNo) return null;
+
+    return {
+      wardNo,
+      zone: readText(attributes[WARD_FIELDS.zone]),
+      councillor: readText(attributes[WARD_FIELDS.councillor]),
+      // The source publishes no ward-officer name column, only a contact number
+      // ARKA does not request. Reported as absent rather than invented.
+      wardOfficer: null,
+      areaHectares: readNumber(attributes[WARD_FIELDS.areaHectares]),
+      households: readNumber(attributes[WARD_FIELDS.households]),
+      population: readNumber(attributes[WARD_FIELDS.population]),
+      populationMale: readNumber(attributes[WARD_FIELDS.populationMale]),
+      populationFemale: readNumber(attributes[WARD_FIELDS.populationFemale]),
+      populationSC: readNumber(attributes[WARD_FIELDS.populationSC]),
+      populationST: readNumber(attributes[WARD_FIELDS.populationST]),
+      geometry,
+      bounds: geometry ? featureBBox(geometry) : null,
+    };
+  }
+
+  // --- Spatial query -----------------------------------------------------
+
+  /**
+   * Layers the query engine can search.
+   *
+   * Derived from the catalogue rather than listed separately, so a layer becomes
+   * queryable by being published with a search field — there is no second list
+   * that can drift out of step and offer a query against a dataset that is not
+   * connected. Bulk datasets are excluded: they are server-rendered and carry no
+   * feature selection.
+   */
+  listQueryableLayers(): GISQueryableLayer[] {
+    return this.listSearchableLayers()
+      .filter((layer) => !layer.bulkDataset)
+      .map((layer) => ({
+        layerId: layer.id,
+        label: layer.label,
+        category: layer.category,
+        facilityKind: layer.facilityKind ?? null,
+        searchField: layer.searchField as string,
+        verifiedFeatureCount: layer.verifiedFeatureCount ?? null,
+      }));
+  }
+
+  /**
+   * True when a verified population dataset is connected.
+   *
+   * This is a statement about one specific thing: the ward dataset publishes
+   * `totalwardp`, `totalmalep`, `totalfemal`, `totalscpop`, `totalstpop` and
+   * `numberofho`, populated for all 67 wards — checked against the live service,
+   * not inferred from the field existing. Population queries at ward level are
+   * therefore real. It does not claim population data at any other geography;
+   * a query the dataset cannot answer must still report that it is unsupported.
+   */
+  hasPopulationDataset(): boolean {
+    return this.hasWardDataset();
+  }
+
+  /**
+   * Search one layer by name and return display-ready rows.
+   *
+   * An empty term lists the layer's features instead of matching nothing, which
+   * is what "show me the schools" means when no name has been typed.
+   */
+  async queryLayer(
+    layerId: string,
+    term: string,
+    options: { signal?: AbortSignal; limit?: number; bounds?: GISBounds } = {},
+  ): Promise<GISQueryResult[]> {
+    const layer = this.requireLayer(layerId);
+    if (layer.kind !== 'vector') {
+      throw new GISRequestError(
+        `Layer "${layer.id}" is drawn as a server image and cannot be queried for features.`,
+        '',
+      );
+    }
+    if (layer.bulkDataset) {
+      throw new GISRequestError(
+        `Layer "${layer.id}" is a bulk dataset and is not searchable feature by feature.`,
+        '',
+      );
+    }
+
+    const needle = term.trim();
+    const field = layer.searchField;
+
+    const result = await this.queryFeatures(layerId, {
+      bounds: options.bounds,
+      maxFeatures: options.limit ?? 50,
+      signal: options.signal,
+      attributeFilter: needle && field ? { field, value: needle, match: 'contains' } : undefined,
+    });
+
+    const rows: GISQueryResult[] = [];
+    for (const feature of result.featureCollection.features) {
+      const properties = (feature.properties ?? {}) as Record<string, unknown>;
+      const centre = featureCentroid(feature.geometry);
+      if (!centre || !isPlausibleLngLat(centre.lng, centre.lat)) continue;
+
+      rows.push({
+        layerId: layer.id,
+        layerLabel: layer.label,
+        label: featureLabel(layer, properties),
+        lat: centre.lat,
+        lng: centre.lng,
+        attributes: describeAttributes(layer, properties),
+        geometry: feature.geometry ?? null,
+      });
+    }
+
+    rows.sort((a, b) => a.label.localeCompare(b.label, 'en'));
+    return rows;
+  }
+
+  /** Readable attribute rows for one feature. Unknown layers yield nothing. */
+  describeFeature(layerId: string, properties: Record<string, unknown>): GISAttributeRow[] {
+    const layer = this.layers.get(layerId);
+    if (!layer) return [];
+    return describeAttributes(layer, properties);
   }
 }
 
