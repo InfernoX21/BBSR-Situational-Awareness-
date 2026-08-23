@@ -23,9 +23,9 @@ import type {
   CityGISProvider,
   GISBounds,
   GISLayerDef,
-  GISPopupField,
   GISVectorStyle,
 } from './types';
+import { formatValue as sharedFormatValue } from './formatAttributes';
 import { GISLayerRegistry } from './GISLayerRegistry';
 
 /**
@@ -139,35 +139,7 @@ function toPathStyle(style: GISVectorStyle | undefined, opacity: number): L.Path
 }
 
 /** Format a popup value using the field's declared unit. */
-function formatValue(value: unknown, format: GISPopupField['format']): string | null {
-  if (value === null || value === undefined) return null;
-
-  if (typeof value === 'string') {
-    // The source data uses a single space as a null marker in several tables.
-    const trimmed = value.trim();
-    return trimmed.length ? trimmed : null;
-  }
-
-  if (typeof value !== 'number' || !Number.isFinite(value)) return String(value);
-
-  switch (format) {
-    case 'integer':
-      return Math.round(value).toLocaleString('en-IN');
-    case 'decimal':
-      return value.toLocaleString('en-IN', { maximumFractionDigits: 2 });
-    case 'area-hectares':
-      return `${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })} ha`;
-    case 'area-sqm':
-      // Square metres in the source; hectares is what a planner reads.
-      return `${(value / 10_000).toLocaleString('en-IN', { maximumFractionDigits: 2 })} ha`;
-    case 'length-metres':
-      return value >= 1000
-        ? `${(value / 1000).toLocaleString('en-IN', { maximumFractionDigits: 2 })} km`
-        : `${Math.round(value).toLocaleString('en-IN')} m`;
-    default:
-      return value.toLocaleString('en-IN');
-  }
-}
+const formatValue = sharedFormatValue;
 
 /** Minimal HTML escape — feature attributes are third-party text. */
 function escapeHtml(value: string): string {
@@ -190,7 +162,7 @@ function buildPopupHtml(layer: GISLayerDef, properties: Record<string, unknown>,
   const rows: string[] = [];
 
   for (const field of layer.popupFields ?? []) {
-    const formatted = formatValue(properties[field.field], field.format);
+    const formatted = formatValue(properties[field.field], field);
     if (formatted === null) continue;
     rows.push(
       `<div class="flex gap-2 py-[3px] border-b border-line last:border-0">` +

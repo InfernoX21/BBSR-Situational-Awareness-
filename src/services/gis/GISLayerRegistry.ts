@@ -13,7 +13,7 @@
  * new state library.
  */
 
-import type { CityGISProvider, GISLayerDef, GISLayerRuntime, GISLoadState } from './types';
+import type { CityGISProvider, GISLayerDef, GISLayerRuntime, GISSourceState } from './types';
 import { bhubaneswarGIS } from './BhubaneswarGISService';
 
 type Listener = (state: Record<string, GISLayerRuntime>) => void;
@@ -25,6 +25,17 @@ interface PersistedLayer {
   visible: boolean;
   opacity: number;
 }
+
+/**
+ * Resting state for a layer nothing has been requested for yet.
+ *
+ * Every layer in the catalogue was verified against the live service before it
+ * was published, so "we have not asked yet" is `available-dataset` — a dataset
+ * ARKA knows exists. It only becomes `connected` once a request actually
+ * returns, and `unavailable` only if one fails. Nothing is ever described as
+ * connected on the strength of the catalogue alone.
+ */
+const RESTING_STATE: GISSourceState = 'available-dataset';
 
 export class GISLayerRegistry {
   private readonly provider: CityGISProvider;
@@ -41,7 +52,7 @@ export class GISLayerRegistry {
         layerId: layer.id,
         visible: saved ? saved.visible : layer.defaultVisible,
         opacity: saved ? saved.opacity : layer.defaultOpacity,
-        loadState: 'idle',
+        sourceState: RESTING_STATE,
         error: null,
         featureCount: null,
         lastLoadedAt: null,
@@ -92,13 +103,17 @@ export class GISLayerRegistry {
 
   /** True when any layer is mid-request, for a single toolbar spinner. */
   isAnyLoading(): boolean {
-    for (const value of this.runtime.values()) if (value.loadState === 'loading') return true;
+    for (const value of this.runtime.values()) if (value.sourceState === 'loading') return true;
     return false;
   }
 
-  /** Layers currently in error, so the toolbar can show a real count. */
-  erroredLayerIds(): string[] {
-    return [...this.runtime.values()].filter((v) => v.loadState === 'error').map((v) => v.layerId);
+  /**
+   * Layers whose source could not be reached, so the toolbar can show a real
+   * count. A layer that answered with zero features is not in this list — that
+   * is `no-data`, a fact about the city rather than a fault.
+   */
+  unavailableLayerIds(): string[] {
+    return [...this.runtime.values()].filter((v) => v.sourceState === 'unavailable').map((v) => v.layerId);
   }
 
   // --- Writes -----------------------------------------------------------
@@ -112,7 +127,7 @@ export class GISLayerRegistry {
             visible,
             // Hiding clears transient state so re-showing reports its own
             // outcome rather than a stale error from last time.
-            loadState: visible ? prev.loadState : 'idle',
+            sourceState: visible ? prev.sourceState : RESTING_STATE,
             error: visible ? prev.error : null,
           },
     );
@@ -134,7 +149,7 @@ export class GISLayerRegistry {
     let changed = false;
     for (const [id, value] of this.runtime) {
       if (!value.visible) continue;
-      this.runtime.set(id, { ...value, visible: false, loadState: 'idle', error: null });
+      this.runtime.set(id, { ...value, visible: false, sourceState: RESTING_STATE, error: null });
       changed = true;
     }
     if (changed) {
@@ -152,7 +167,7 @@ export class GISLayerRegistry {
         ...prev,
         visible: layer.defaultVisible,
         opacity: layer.defaultOpacity,
-        loadState: 'idle',
+        sourceState: RESTING_STATE,
         error: null,
       });
     }
@@ -170,7 +185,7 @@ export class GISLayerRegistry {
       this.runtime.set(layer.id, {
         ...prev,
         visible,
-        loadState: visible ? prev.loadState : 'idle',
+        sourceState: visible ? prev.sourceState : RESTING_STATE,
         error: visible ? prev.error : null,
       });
       changed = true;
@@ -181,21 +196,23 @@ export class GISLayerRegistry {
     }
   }
 
-  // --- Load reporting (called by the map adapter) -----------------------
+  // --- Source-state reporting (called by the map adapter) ---------------
 
   markLoading(layerId: string): void {
-    this.patch(layerId, (prev) => ({ ...prev, loadState: 'loading', error: null }));
+    this.patch(layerId, (prev) => ({ ...prev, sourceState: 'loading', error: null }));
   }
 
   markLoaded(layerId: string, detail: { featureCount?: number | null; truncated?: boolean } = {}): void {
     const featureCount = detail.featureCount ?? null;
-    // A layer that loaded cleanly but holds nothing is 'empty', not 'ready' —
-    // the operator needs to know the map is not hiding something.
-    const loadState: GISLoadState = featureCount === 0 ? 'empty' : 'ready';
+    // A request that succeeded but returned nothing is 'no-data', not
+    // 'connected'. The distinction is the difference between "the city has none
+    // of these here" and "the source answered" — an operator must be able to
+    // tell an empty map from a working one.
+    const sourceState: GISSourceState = featureCount === 0 ? 'no-data' : 'connected';
 
     this.patch(layerId, (prev) => ({
       ...prev,
-      loadState,
+      sourceState,
       error: null,
       featureCount,
       truncated: detail.truncated ?? false,
@@ -204,7 +221,9 @@ export class GISLayerRegistry {
   }
 
   markError(layerId: string, message: string): void {
-    this.patch(layerId, (prev) => ({ ...prev, loadState: 'error', error: message }));
+    // 'unavailable', never 'no-data': a failed request says nothing about
+    // whether the dataset holds features.
+    this.patch(layerId, (prev) => ({ ...prev, sourceState: 'unavailable', error: message }));
   }
 
   // --- Subscription -----------------------------------------------------
