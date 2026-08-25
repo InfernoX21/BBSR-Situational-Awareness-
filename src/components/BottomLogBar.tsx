@@ -1,6 +1,6 @@
 import React from 'react';
 import { LiveLog } from '../types';
-import { Terminal, Shield, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import { Terminal } from 'lucide-react';
 
 interface BottomLogBarProps {
   logs: LiveLog[];
@@ -11,7 +11,7 @@ export const BottomLogBar: React.FC<BottomLogBarProps> = ({ logs, onOpenLogsModa
   const getTypeBadge = (type: LiveLog['type']) => {
     switch (type) {
       case 'ALERT':
-        return <span className="text-[#EF4444] font-bold">[ALERT]</span>;
+        return <span className="text-[#EF4444] font-bold">[CRITICAL]</span>;
       case 'WARN':
         return <span className="text-[#F59E0B] font-bold">[WARN]</span>;
       case 'SUCCESS':
@@ -21,36 +21,59 @@ export const BottomLogBar: React.FC<BottomLogBarProps> = ({ logs, onOpenLogsModa
     }
   };
 
+  const getMessageColor = (type: LiveLog['type']) => {
+    switch (type) {
+      case 'ALERT':
+        return 'text-[#EF4444] font-medium';
+      case 'WARN':
+        return 'text-[#F59E0B] font-medium';
+      case 'SUCCESS':
+        return 'text-[#10B981] font-medium';
+      default:
+        return 'text-[#06B6D4] font-medium';
+    }
+  };
+
+  const renderLogItems = (logList: LiveLog[], keyPrefix: string) =>
+    logList.map((log, idx) => (
+      <span key={`${keyPrefix}-${log.id}-${idx}`} className="inline-flex items-center gap-1.5 shrink-0 whitespace-nowrap">
+        <span className="text-white/40 font-mono text-[10px]">{log.timestamp}</span>
+        {getTypeBadge(log.type)}
+        <span className={`text-[10px] ${getMessageColor(log.type)}`}>{log.message}</span>
+        <span className="text-white/25 mx-3 select-none">•</span>
+      </span>
+    ));
+
   return (
-    <div className="h-6 border-t border-white/10 bg-[#0A0A0A] flex items-center px-4 justify-between shrink-0 select-none font-mono text-[10px] overflow-hidden">
-      {/* Left Icon & Ticker */}
-      <div className="flex items-center space-x-3 flex-1 overflow-hidden">
-        <div className="flex items-center space-x-1 text-[#06B6D4] font-bold uppercase tracking-widest shrink-0">
-          <Terminal className="w-3 h-3" />
-          <span>Stream</span>
-        </div>
+    <div className="h-6 border-t border-white/10 bg-[#0A0A0A] flex items-center px-3 justify-between shrink-0 select-none font-mono text-[10px] overflow-hidden group">
+      {/* Left Header Tag */}
+      <div className="flex items-center gap-1.5 text-[#06B6D4] font-bold uppercase tracking-wider shrink-0 mr-2 z-10 bg-[#0A0A0A] pr-1">
+        <Terminal className="w-3.5 h-3.5 text-[#06B6D4]" aria-hidden="true" />
+        <span className="text-[11px] font-bold tracking-widest">&gt;_ STREAM</span>
+        <span className="text-white/20 ml-1 font-normal">|</span>
+      </div>
 
-        <div className="h-3 w-[1px] bg-white/10 shrink-0" />
-
-        {/* Log Ticker */}
-        <div className="flex items-center space-x-4 overflow-x-auto whitespace-nowrap py-0.5 text-white/70">
-          {logs.slice(0, 8).map((log) => (
-            <div key={log.id} className="flex items-center space-x-1 shrink-0">
-              <span className="text-white/30">{log.timestamp}</span>
-              {getTypeBadge(log.type)}
-              <span className="text-white/80">{log.message}</span>
-            </div>
-          ))}
+      {/* Ticker Stream Container */}
+      <div className="flex-1 overflow-hidden relative h-full flex items-center">
+        <div className="animate-ticker group-hover:[animation-play-state:paused] hover:[animation-play-state:paused] py-0.5">
+          <div className="flex items-center shrink-0">
+            {renderLogItems(logs, 'copy1')}
+          </div>
+          <div className="flex items-center shrink-0" aria-hidden="true">
+            {renderLogItems(logs, 'copy2')}
+          </div>
         </div>
       </div>
 
-      {/* Right Action */}
+      {/* Right Action Button */}
       <button
         onClick={onOpenLogsModal}
-        className="ml-3 px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-white/50 hover:text-[#06B6D4] transition-colors shrink-0 text-[9px] uppercase font-bold"
+        className="ml-3 px-2 py-0.5 rounded bg-white/5 hover:bg-white/15 border border-white/10 text-white/60 hover:text-[#06B6D4] transition-colors shrink-0 text-[9px] uppercase font-bold tracking-wider cursor-pointer z-10 bg-[#0A0A0A] pl-2"
+        title="Open complete log audit trail"
       >
-        Full Audit ({logs.length})
+        FULL AUDIT ({logs.length})
       </button>
     </div>
   );
 };
+
