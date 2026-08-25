@@ -263,73 +263,77 @@ export const LayerControlToolbar: React.FC<LayerControlToolbarProps> = ({
 
   return (
     <section aria-label="Map layers and basemap" className="bg-[#05070A] border-b border-white/10 select-none">
-      {/* --- Toolbar row --- */}
-      <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 px-3 py-1.5 min-h-[40px]">
-        {/* Box 1: Map Layers button */}
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          aria-expanded={expanded}
-          aria-controls="layer-toggle-panel"
-          className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#0D131B] hover:bg-[#141C28] border border-cyan-500/30 hover:border-cyan-400/60 text-white text-[11.5px] font-mono font-medium transition-all shadow-sm group cursor-pointer h-8"
-        >
-          <Layers className="w-3.5 h-3.5 text-cyan-400 group-hover:text-cyan-300 transition-colors" aria-hidden="true" />
-          <span>Map layers</span>
-          <span className="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[10px] font-mono font-bold uppercase tracking-wide">
-            {activeCount} OF {toggleableIds.length} ON
-          </span>
-          <ChevronDown
-            className={`w-3 h-3 text-white/50 transition-transform ${expanded ? 'rotate-180' : ''}`}
-            aria-hidden="true"
-          />
-        </button>
-
-        <div className="hidden sm:block h-4 w-px bg-white/15 mx-0.5" aria-hidden="true" />
-
-        {/* Box 2: Preset selector */}
-        <div className="flex items-center gap-1.5">
-          <label htmlFor="layer-preset" className="text-[10px] font-mono font-bold text-cyan-400/80 tracking-wider uppercase">
-            PRESET
-          </label>
-          <select
-            id="layer-preset"
-            defaultValue=""
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val) applyPreset(val as 'EMERGENCY' | 'TRAFFIC' | 'INFRASTRUCTURE' | 'ALL' | 'CLEAR');
-              e.target.value = '';
-            }}
-            className="bg-[#0D131B] hover:bg-[#141C28] border border-cyan-500/30 hover:border-cyan-400/60 text-white text-[11.5px] font-mono rounded-md px-2 py-1 h-8 focus:outline-none transition-all cursor-pointer shadow-sm"
+      {/* --- Toolbar row (Single line, no wrapping) --- */}
+      <div className="flex items-center justify-between gap-2 sm:gap-3 px-3 py-1 overflow-x-auto whitespace-nowrap min-h-[36px] gov-scroll-thin">
+        {/* Left Controls Stack */}
+        <div className="flex items-center gap-2 sm:gap-2.5">
+          {/* Box 1: Map Layers button */}
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
+            aria-controls="layer-toggle-panel"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-white/[0.03] hover:bg-white/[0.08] border border-white/15 hover:border-white/30 text-white text-[11px] font-mono font-medium transition-all shadow-sm group cursor-pointer h-7.5"
           >
-            <option value="">Select…</option>
-            {PRESETS.map((p) => (
-              <option key={p.value} value={p.value} className="bg-[#0A0D14] text-white">
-                {p.label}
-              </option>
-            ))}
-          </select>
+            <Layers className="w-3.5 h-3.5 text-white/70 group-hover:text-white transition-colors" aria-hidden="true" />
+            <span>Map layers</span>
+            <span className="px-1.5 py-0.2 rounded bg-white/10 text-white/80 border border-white/20 text-[9.5px] font-mono font-bold uppercase tracking-wide">
+              {activeCount} OF {toggleableIds.length} ON
+            </span>
+            <ChevronDown
+              className={`w-3 h-3 text-white/50 transition-transform ${expanded ? 'rotate-180' : ''}`}
+              aria-hidden="true"
+            />
+          </button>
+
+          <div className="hidden sm:block h-3.5 w-px bg-white/15" aria-hidden="true" />
+
+          {/* Box 2: Preset selector */}
+          <div className="flex items-center gap-1.5">
+            <label htmlFor="layer-preset" className="text-[10px] font-mono font-bold text-white/50 tracking-wider uppercase">
+              PRESET
+            </label>
+            <select
+              id="layer-preset"
+              defaultValue=""
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val) applyPreset(val as 'EMERGENCY' | 'TRAFFIC' | 'INFRASTRUCTURE' | 'ALL' | 'CLEAR');
+                e.target.value = '';
+              }}
+              className="bg-white/[0.03] hover:bg-white/[0.08] border border-white/15 hover:border-white/30 text-white text-[11px] font-mono rounded px-2 py-1 h-7.5 focus:outline-none transition-all cursor-pointer shadow-sm"
+            >
+              <option value="">Select…</option>
+              {PRESETS.map((p) => (
+                <option key={p.value} value={p.value} className="bg-[#0A0D14] text-white">
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Box 3: Basemap selector */}
+          <div className="flex items-center gap-1.5">
+            <label htmlFor="basemap-style" className="text-[10px] font-mono font-bold text-white/50 tracking-wider uppercase">
+              BASEMAP
+            </label>
+            <select
+              id="basemap-style"
+              value={layersState.basemapStyle || 'street'}
+              onChange={(e) => handleSelectBasemap(e.target.value as BasemapStyle)}
+              className="bg-white/[0.03] hover:bg-white/[0.08] border border-white/15 hover:border-white/30 text-white text-[11px] font-mono rounded px-2 py-1 h-7.5 focus:outline-none transition-all cursor-pointer shadow-sm"
+            >
+              {BASEMAPS.map((b) => (
+                <option key={b.style} value={b.style} className="bg-[#0A0D14] text-white">
+                  {b.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        {/* Box 3: Basemap selector */}
-        <div className="flex items-center gap-1.5">
-          <label htmlFor="basemap-style" className="text-[10px] font-mono font-bold text-amber-400/80 tracking-wider uppercase">
-            BASEMAP
-          </label>
-          <select
-            id="basemap-style"
-            value={layersState.basemapStyle || 'street'}
-            onChange={(e) => handleSelectBasemap(e.target.value as BasemapStyle)}
-            className="bg-[#0D131B] hover:bg-[#141C28] border border-amber-500/30 hover:border-amber-400/60 text-white text-[11.5px] font-mono rounded-md px-2 py-1 h-8 focus:outline-none transition-all cursor-pointer shadow-sm"
-          >
-            {BASEMAPS.map((b) => (
-              <option key={b.style} value={b.style} className="bg-[#0A0D14] text-white">
-                {b.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="ml-auto flex items-center gap-2.5">
+        {/* Right Controls Stack */}
+        <div className="flex items-center gap-2 shrink-0">
           {/* Box 4: Map intelligence dropdown button & panel */}
           <div className="relative" ref={mapIntelRef}>
             <button
@@ -343,11 +347,11 @@ export const LayerControlToolbar: React.FC<LayerControlToolbarProps> = ({
               }}
               aria-expanded={gisPanelOpen ?? mapIntelOpen}
               title="Toggle Map Intelligence panel"
-              className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#0D131B] hover:bg-[#141C28] border border-cyan-500/30 hover:border-cyan-400/60 text-white text-[11.5px] font-mono font-medium transition-all shadow-sm group cursor-pointer h-8"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-500/40 hover:border-cyan-400 text-cyan-200 text-[11px] font-mono font-medium transition-all shadow-sm group cursor-pointer h-7.5"
             >
               <Sliders className="w-3.5 h-3.5 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
               <span>Map intelligence</span>
-              <span className="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 font-mono text-[10px] font-bold border border-cyan-500/40">
+              <span className="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 font-mono text-[9.5px] font-bold border border-cyan-500/30">
                 {activeGisCount > 0 ? activeGisCount : activeCount}
               </span>
             </button>
@@ -383,11 +387,11 @@ export const LayerControlToolbar: React.FC<LayerControlToolbarProps> = ({
               onClick={() => setLegendOpen((prev) => !prev)}
               aria-expanded={legendOpen}
               title="Toggle Map Legends dropdown"
-              className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#0D131B] hover:bg-[#141C28] border border-indigo-500/30 hover:border-indigo-400/60 text-white text-[11.5px] font-mono font-bold uppercase transition-all shadow-sm cursor-pointer h-8"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-white/[0.05] hover:bg-white/[0.1] border border-white/20 hover:border-white/40 text-white text-[11px] font-mono font-bold uppercase transition-all shadow-sm cursor-pointer h-7.5"
             >
               <span>LEGEND</span>
               <div className="flex items-center gap-1">
-                <span className="px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-mono text-[10px] font-bold border border-indigo-500/40">
+                <span className="px-1.5 py-0.2 rounded bg-white/10 text-white/80 font-mono text-[9.5px] font-bold border border-white/20">
                   {activeGisCount > 0 ? activeGisCount : activeCount}
                 </span>
                 <ChevronDown
