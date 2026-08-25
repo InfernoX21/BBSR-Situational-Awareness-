@@ -167,6 +167,16 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
     };
   }, []);
 
+  // Trigger Leaflet invalidateSize when toggling 3D perspective mode
+  useEffect(() => {
+    if (mapInstanceRef.current) {
+      const timer = setTimeout(() => {
+        mapInstanceRef.current?.invalidateSize();
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [is3DMode]);
+
   const resetMapPaneTransform = () => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -1263,12 +1273,13 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
           style={
             is3DMode
               ? {
-                  transform: 'perspective(1000px) rotateX(25deg) scale(1.05)',
+                  transform: 'perspective(1000px) rotateX(25deg) scale(1.38)',
                   transformOrigin: 'center bottom',
-                  transition: 'transform 700ms ease-in-out',
+                  transition: 'transform 700ms cubic-bezier(0.16, 1, 0.3, 1)',
                 }
               : {
                   transform: 'none',
+                  transition: 'transform 700ms cubic-bezier(0.16, 1, 0.3, 1)',
                 }
           }
         />
