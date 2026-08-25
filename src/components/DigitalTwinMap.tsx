@@ -40,6 +40,7 @@ import {
   ZoomIn,
   ZoomOut,
   Compass,
+  RotateCw,
   Maximize2,
   Home,
   Search,
@@ -140,6 +141,73 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
   const measureMarkersRef = useRef<L.Marker[]>([]);
   const measuringModeRef = useRef<boolean>(false);
 
+  // --- Auto Map Rotation Tier ----------------------------------------------
+  const [isAutoRotateEnabled, setIsAutoRotateEnabled] = useState(false);
+  const [currentRotationAngle, setCurrentRotationAngle] = useState(0);
+
+  const autoRotateEnabledRef = useRef(isAutoRotateEnabled);
+  autoRotateEnabledRef.current = isAutoRotateEnabled;
+
+  const rotationAngleRef = useRef(0);
+  const animFrameIdRef = useRef<number | null>(null);
+  const inactivityTimerRef = useRef<number | null>(null);
+  const isUserInteractingRef = useRef(false);
+
+  const handleMapUserAction = () => {
+    if (autoRotateEnabledRef.current) {
+      isUserInteractingRef.current = true;
+      if (inactivityTimerRef.current !== null) {
+        window.clearTimeout(inactivityTimerRef.current);
+        inactivityTimerRef.current = null;
+      }
+      inactivityTimerRef.current = window.setTimeout(() => {
+        isUserInteractingRef.current = false;
+        inactivityTimerRef.current = null;
+      }, 12000);
+    }
+  };
+
+  // Continuous Auto-Rotation Animation Effect
+  useEffect(() => {
+    autoRotateEnabledRef.current = isAutoRotateEnabled;
+
+    if (!isAutoRotateEnabled) {
+      if (animFrameIdRef.current !== null) {
+        cancelAnimationFrame(animFrameIdRef.current);
+        animFrameIdRef.current = null;
+      }
+      if (inactivityTimerRef.current !== null) {
+        window.clearTimeout(inactivityTimerRef.current);
+        inactivityTimerRef.current = null;
+      }
+      isUserInteractingRef.current = false;
+      rotationAngleRef.current = 0;
+      setCurrentRotationAngle(0);
+      return;
+    }
+
+    const animate = () => {
+      if (autoRotateEnabledRef.current && !isUserInteractingRef.current) {
+        rotationAngleRef.current = (rotationAngleRef.current + 0.04) % 360;
+        setCurrentRotationAngle(rotationAngleRef.current);
+      }
+      animFrameIdRef.current = requestAnimationFrame(animate);
+    };
+
+    animFrameIdRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animFrameIdRef.current !== null) {
+        cancelAnimationFrame(animFrameIdRef.current);
+        animFrameIdRef.current = null;
+      }
+      if (inactivityTimerRef.current !== null) {
+        window.clearTimeout(inactivityTimerRef.current);
+        inactivityTimerRef.current = null;
+      }
+    };
+  }, [isAutoRotateEnabled]);
+
   // Active Selected Entity Modals
   const [selectedCamera, setSelectedCamera] = useState<CameraNode | null>(null);
   const [selectedHospital, setSelectedHospital] = useState<HospitalNode | null>(null);
@@ -232,6 +300,28 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
     };
     map.on('moveend', scheduleGISViewportRefresh);
     map.on('zoomend', scheduleGISViewportRefresh);
+
+    // Auto Rotate Pause Listeners on User Interaction
+    const handleInteraction = () => {
+      if (autoRotateEnabledRef.current) {
+        isUserInteractingRef.current = true;
+        if (inactivityTimerRef.current !== null) {
+          window.clearTimeout(inactivityTimerRef.current);
+          inactivityTimerRef.current = null;
+        }
+        inactivityTimerRef.current = window.setTimeout(() => {
+          isUserInteractingRef.current = false;
+          inactivityTimerRef.current = null;
+        }, 12000);
+      }
+    };
+
+    map.on('movestart', handleInteraction);
+    map.on('zoomstart', handleInteraction);
+    map.on('dragstart', handleInteraction);
+    map.on('mousedown', handleInteraction);
+    map.on('touchstart', handleInteraction);
+    map.on('click', handleInteraction);
 
     // Measurement Click Handler using Ref to avoid stale closure
     map.on('click', (e: L.LeafletMouseEvent) => {
@@ -1117,17 +1207,17 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
         {/* Leaflet Map Canvas Container */}
         <div
           ref={mapContainerRef}
-          className="w-full h-full z-0 transition-transform duration-700 ease-in-out origin-bottom"
-          style={
-            is3DMode
-              ? {
-                  transform: 'perspective(1000px) rotateX(25deg) scale(1.05)',
-                  transformOrigin: 'center bottom',
-                }
-              : {
-                  transform: 'none',
-                }
-          }
+          className="w-full h-full z-0 origin-center"
+          style={{
+            transform: is3DMode
+              ? `perspective(1000px) rotateX(25deg) rotate(${currentRotationAngle}deg) scale(1.05)`
+              : currentRotationAngle !== 0
+              ? `rotate(${currentRotationAngle}deg)`
+              : 'none',
+            transformOrigin: is3DMode ? 'center bottom' : 'center center',
+            willChange: isAutoRotateEnabled ? 'transform' : 'auto',
+            transition: isAutoRotateEnabled && !isUserInteractingRef.current ? 'none' : 'transform 700ms ease-in-out',
+          }}
         />
 
         {/* Floating Search Bar */}
@@ -1178,8 +1268,6 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
             </div>
           )}
 
-
-
         {/* Right Floating Map Control Tools */}
         <div className="absolute top-16 right-4 z-10 flex flex-col space-y-2 pointer-events-auto font-mono">
           <button
@@ -1221,6 +1309,36 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
             title="Toggle 3D Perspective Mode"
           >
             <Box className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => {
+              const nextState = !isAutoRotateEnabled;
+              setIsAutoRotateEnabled(nextState);
+              if (!nextState) {
+                if (inactivityTimerRef.current !== null) {
+                  window.clearTimeout(inactivityTimerRef.current);
+                  inactivityTimerRef.current = null;
+                }
+                isUserInteractingRef.current = false;
+                rotationAngleRef.current = 0;
+                setCurrentRotationAngle(0);
+              }
+            }}
+            className={`w-8 h-8 rounded border backdrop-blur-md flex items-center justify-center shadow-xl transition-all active:scale-95 relative ${
+              isAutoRotateEnabled
+                ? 'bg-[#06B6D4]/15 text-[#06B6D4] border-[#06B6D4]/60 shadow-[0_0_12px_rgba(6,182,212,0.3)] ring-1 ring-[#06B6D4]/40'
+                : 'bg-[#0A0A0A]/95 text-white/40 border-white/10 hover:text-white'
+            }`}
+            title={
+              isAutoRotateEnabled
+                ? 'Auto Rotate: ON (Slow Orbit - Pauses on interaction, resumes after 12s idle)'
+                : 'Auto Rotate: OFF (Click to enable slow continuous map rotation)'
+            }
+          >
+            <RotateCw className={`w-4 h-4 ${isAutoRotateEnabled ? 'text-[#06B6D4]' : ''}`} />
+            {isAutoRotateEnabled && (
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#06B6D4] ring-2 ring-[#0A0A0A] animate-pulse" />
+            )}
           </button>
           <button
             onClick={() => {
