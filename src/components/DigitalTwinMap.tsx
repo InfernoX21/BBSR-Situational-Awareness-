@@ -1375,15 +1375,21 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
           </form>
         </div>
 
-        {/* Feature info card when a feature is selected */}
-        {gisSelection && (
-          <div className="absolute top-14 left-4 z-30 pointer-events-auto">
-            <GISFeatureCard
-              selection={gisSelection}
-              provider={gis.provider}
-              actions={gisActions}
-              nearbyScope={gisNearbyScope}
-              basket={gisBasket}
+        {/*
+          Map-derived cards, in a row over the map rather than beside it: what each
+          one reports is about geography on this same canvas. The wrapper is
+          pointer-events-none so the gap between cards stays draggable map.
+        */}
+        <div className="absolute top-14 left-4 z-30 flex items-start gap-2 max-w-[calc(100%-2rem)] pointer-events-none">
+          {/* Feature info card when a feature is selected */}
+          {gisSelection && (
+            <div className="pointer-events-auto">
+              <GISFeatureCard
+                selection={gisSelection}
+                provider={gis.provider}
+                actions={gisActions}
+                nearbyScope={gisNearbyScope}
+                basket={gisBasket}
                 onAddToAnalysis={(entry) =>
                   setGisBasket((prev) =>
                     // Same identity test the card uses to disable its own button,
@@ -1432,6 +1438,7 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
               />
             </div>
           )}
+        </div>
 
         {/* Legend for the active base GIS layers. Renders nothing when none are on. */}
         {gisLegendVisible && (
