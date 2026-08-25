@@ -45,11 +45,11 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
 
   return (
     <aside className="hidden lg:flex w-64 xl:w-72 2xl:w-80 border-l border-white/10 bg-[#0A0A0A] flex-col p-3 xl:p-4 shrink-0 overflow-hidden select-none transition-all duration-300 min-h-0 min-w-0">
-      {/* Top Scrollable Section: Live Alerts & Live Intelligence */}
-      <div className="flex-1 space-y-4 overflow-y-auto pr-1 min-h-0 gov-scroll-thin">
+      {/* Dynamic Upper Section: Live Alerts & Live Intelligence (Fills space evenly) */}
+      <div className="flex-1 flex flex-col min-h-0 space-y-3 overflow-hidden">
         {/* Widget 1: LIVE ALERTS */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex items-center justify-between mb-1.5 shrink-0">
             <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">
               Live Alerts
             </span>
@@ -63,7 +63,7 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
           </div>
 
           {/* Severity Filter Tabs */}
-          <div className="flex items-center gap-1 mb-2 font-mono text-[9px]">
+          <div className="flex items-center gap-1 mb-2 font-mono text-[9px] shrink-0">
             {(['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const).map((lvl) => (
               <button
                 key={lvl}
@@ -79,9 +79,9 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
             ))}
           </div>
 
-          {/* Alert Cards Container */}
-          <div className="space-y-2 max-h-48 overflow-y-auto pr-1 gov-scroll-thin">
-            {filteredIncidents.slice(0, 4).map((inc) => (
+          {/* Alert Cards Container (Dynamic Height) */}
+          <div className="flex-1 overflow-y-auto pr-1 space-y-2 min-h-0 gov-scroll-thin">
+            {filteredIncidents.slice(0, 10).map((inc) => (
               <div
                 key={inc.id}
                 onClick={() => onSelectIncident(inc)}
@@ -113,8 +113,8 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
         </div>
 
         {/* Widget 2: INTELLIGENCE FEED */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex items-center justify-between mb-1.5 shrink-0">
             <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">
               Live Intelligence
             </span>
@@ -123,7 +123,8 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
             </span>
           </div>
 
-          <div className="space-y-2 max-h-48 overflow-y-auto pr-1 gov-scroll-thin">
+          {/* Intelligence Cards Container (Dynamic Height) */}
+          <div className="flex-1 overflow-y-auto pr-1 space-y-2 min-h-0 gov-scroll-thin">
             {intelligenceItems.map((item) => (
               <div
                 key={item.id}
@@ -166,7 +167,7 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
       </div>
 
       {/* Anchored Bottom Section: TACTICAL RESOURCE FLEET */}
-      <div className="shrink-0 pt-2.5 border-t border-white/15 bg-[#0A0A0A] mt-auto">
+      <div className="shrink-0 pt-2.5 border-t border-white/15 bg-[#0A0A0A] mt-2">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1.5">
             <Radio className="w-3 h-3 text-[#10B981] animate-pulse" />
