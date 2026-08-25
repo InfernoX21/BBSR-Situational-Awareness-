@@ -1100,7 +1100,17 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
   return (
     <div className="relative flex-1 h-full bg-[#050505] overflow-hidden select-none border-r border-white/10 flex flex-col">
       {/* TOP INTEGRATED LAYER CONTROL TOOLBAR */}
-      <LayerControlToolbar layersState={layersState} setLayersState={setLayersState} />
+      <LayerControlToolbar
+        layersState={layersState}
+        setLayersState={setLayersState}
+        gisPanelOpen={gisPanelOpen}
+        onToggleGisPanel={() => setGisPanelOpen((open) => !open)}
+        gisLegendVisible={gisLegendVisible}
+        onToggleGisLegend={() => setGisLegendVisible((visible) => !visible)}
+        gisLayers={gis.layers}
+        gisRuntime={gis.runtime}
+        gisActions={gisActions}
+      />
 
       <div className="relative flex-1 w-full h-full overflow-hidden">
         {/* Leaflet Map Canvas Container */}

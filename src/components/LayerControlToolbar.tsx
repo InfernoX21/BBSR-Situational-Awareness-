@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
   MapLayersState,
@@ -11,6 +11,12 @@ import {
   UtilityNode,
 } from '../types';
 import { CentralLayerManager } from '../services/LayerManager';
+import {
+  GISLayerDef,
+  GISLayerRuntime,
+} from '../services/gis/types';
+import type { GISMapActions } from './gis/gisMapActions';
+import { LegendSwatch } from './gis/GISLegend';
 import {
   Car,
   AlertTriangle,
@@ -39,6 +45,13 @@ interface LayerControlToolbarProps {
   onOpenPoliceModal?: (police: PoliceNode) => void;
   onOpenFireModal?: (fire: FireNode) => void;
   onOpenUtilityModal?: (utility: UtilityNode) => void;
+  gisPanelOpen?: boolean;
+  onToggleGisPanel?: () => void;
+  gisLegendVisible?: boolean;
+  onToggleGisLegend?: () => void;
+  gisLayers?: GISLayerDef[];
+  gisRuntime?: Record<string, GISLayerRuntime>;
+  gisActions?: GISMapActions;
 }
 
 interface LayerConfig {
@@ -77,11 +90,29 @@ const PRESETS: { value: string; label: string }[] = [
 export const LayerControlToolbar: React.FC<LayerControlToolbarProps> = ({
   layersState,
   setLayersState,
+  gisPanelOpen,
+  onToggleGisPanel,
+  gisLayers,
+  gisRuntime,
+  gisActions,
 }) => {
   const layerManager = CentralLayerManager.getInstance();
   const [activeSettingsLayer, setActiveSettingsLayer] = useState<LayerId | null>(null);
   const [loadingMap, setLoadingMap] = useState<Record<string, boolean>>({});
   const [expanded, setExpanded] = useState(false);
+  const [legendOpen, setLegendOpen] = useState(false);
+  const [mapIntelOpen, setMapIntelOpen] = useState(false);
+  const legendRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (legendRef.current && !legendRef.current.contains(e.target as Node)) {
+        setLegendOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = layerManager.subscribe((layerId, active, metadata) => {
@@ -203,6 +234,13 @@ export const LayerControlToolbar: React.FC<LayerControlToolbarProps> = ({
 
   const toggleableIds = LAYER_GROUPS.flatMap((g) => g.ids);
   const activeCount = toggleableIds.filter((id) => !!layersState[id]).length;
+  
+  const activeGisLayers = (gisLayers || [])
+    .filter((layer) => gisRuntime?.[layer.id]?.visible)
+    .sort((a, b) => b.order - a.order);
+
+  const activeGisCount = activeGisLayers.length;
+
   const settingsConfig = activeSettingsLayer ? LAYER_CONFIGS[activeSettingsLayer] : null;
   const settingsMetadata = activeSettingsLayer
     ? layerManager.getLayerMetadata(activeSettingsLayer)
@@ -274,8 +312,91 @@ export const LayerControlToolbar: React.FC<LayerControlToolbarProps> = ({
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          <span className="gov-tag">Central layer manager</span>
-          <span className="gov-tag is-sample">Seeded catalogue</span>
+          {/* Map intelligence dropdown button */}
+          <button
+            type="button"
+            onClick={() => {
+              if (onToggleGisPanel) {
+                onToggleGisPanel();
+              } else {
+                setMapIntelOpen((prev) => !prev);
+              }
+            }}
+            aria-expanded={gisPanelOpen ?? mapIntelOpen}
+            title="Toggle Map Intelligence panel"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#121824] hover:bg-[#1a2333] border border-[#2a364f] text-white text-[12px] font-medium transition-all shadow-sm group cursor-pointer"
+          >
+            <Sliders className="w-3.5 h-3.5 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
+            <span>Map intelligence</span>
+            <span className="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono text-[10px] font-bold border border-cyan-500/30 ml-0.5">
+              {activeGisCount > 0 ? activeGisCount : activeCount}
+            </span>
+          </button>
+
+          {/* Legends dropdown button & menu */}
+          <div className="relative" ref={legendRef}>
+            <button
+              type="button"
+              onClick={() => setLegendOpen((prev) => !prev)}
+              aria-expanded={legendOpen}
+              title="Toggle Map Legends dropdown"
+              className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#121824] hover:bg-[#1a2333] border border-[#2a364f] text-white text-[11px] font-bold tracking-wider uppercase transition-all shadow-sm cursor-pointer"
+            >
+              <span>LEGEND</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] font-mono text-white/60">
+                  {activeGisCount > 0 ? activeGisCount : activeCount}
+                </span>
+                <ChevronDown
+                  className={`w-3 h-3 text-white/60 transition-transform ${legendOpen ? 'rotate-180' : ''}`}
+                />
+              </div>
+            </button>
+
+            {legendOpen && (
+              <div className="absolute right-0 top-full mt-1.5 z-50 w-64 rounded-lg bg-[#0F172A] border border-[#1E293B] shadow-2xl p-2.5 text-white animate-in fade-in duration-150">
+                <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#1E293B]">
+                  <span className="text-[10px] font-bold tracking-wider text-white/50 uppercase">
+                    Active Layers Legend
+                  </span>
+                  <span className="text-[10px] font-mono text-cyan-400">
+                    {activeGisCount > 0 ? activeGisCount : activeCount} Active
+                  </span>
+                </div>
+
+                <div className="space-y-1 max-h-60 overflow-y-auto gov-scroll-thin pr-1">
+                  {activeGisLayers.length > 0 ? (
+                    activeGisLayers.map((layer) => (
+                      <div
+                        key={layer.id}
+                        onClick={() => gisActions?.zoomToLayer(layer.id)}
+                        className="flex items-center gap-2 px-2 py-1 rounded hover:bg-white/5 cursor-pointer text-[12px] transition-colors"
+                      >
+                        <LegendSwatch layer={layer} />
+                        <span className="truncate text-white/80 font-medium">{layer.label}</span>
+                      </div>
+                    ))
+                  ) : (
+                    toggleableIds
+                      .filter((id) => !!layersState[id])
+                      .map((id) => {
+                        const config = LAYER_CONFIGS[id];
+                        const Icon = config.icon;
+                        return (
+                          <div
+                            key={id}
+                            className="flex items-center gap-2 px-2 py-1 rounded hover:bg-white/5 text-[12px] transition-colors"
+                          >
+                            <Icon className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                            <span className="truncate text-white/80 font-medium">{config.label}</span>
+                          </div>
+                        );
+                      })
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

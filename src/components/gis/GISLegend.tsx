@@ -35,7 +35,7 @@ interface GISLegendProps {
  * are distinguished by dash pattern — `10 5` for an authority boundary, `4 3` for
  * a ward — and `border-top-style: dashed` cannot express a specific pattern.
  */
-const LegendSwatch: React.FC<{ layer: GISLayerDef }> = ({ layer }) => {
+export const LegendSwatch: React.FC<{ layer: GISLayerDef }> = ({ layer }) => {
   const style = layer.style;
 
   // Server-rendered layers carry no ARKA styling; show a filled block so the
