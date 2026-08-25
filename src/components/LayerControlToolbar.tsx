@@ -14,9 +14,11 @@ import { CentralLayerManager } from '../services/LayerManager';
 import {
   GISLayerDef,
   GISLayerRuntime,
+  GISProvider,
 } from '../services/gis/types';
 import type { GISMapActions } from './gis/gisMapActions';
 import { LegendSwatch } from './gis/GISLegend';
+import { MapIntelligencePanel } from './gis/MapIntelligencePanel';
 import {
   Car,
   AlertTriangle,
@@ -49,6 +51,7 @@ interface LayerControlToolbarProps {
   onToggleGisPanel?: () => void;
   gisLegendVisible?: boolean;
   onToggleGisLegend?: () => void;
+  gisProvider?: GISProvider;
   gisLayers?: GISLayerDef[];
   gisRuntime?: Record<string, GISLayerRuntime>;
   gisActions?: GISMapActions;
@@ -92,6 +95,9 @@ export const LayerControlToolbar: React.FC<LayerControlToolbarProps> = ({
   setLayersState,
   gisPanelOpen,
   onToggleGisPanel,
+  gisLegendVisible,
+  onToggleGisLegend,
+  gisProvider,
   gisLayers,
   gisRuntime,
   gisActions,
@@ -103,16 +109,25 @@ export const LayerControlToolbar: React.FC<LayerControlToolbarProps> = ({
   const [legendOpen, setLegendOpen] = useState(false);
   const [mapIntelOpen, setMapIntelOpen] = useState(false);
   const legendRef = useRef<HTMLDivElement>(null);
+  const mapIntelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (legendRef.current && !legendRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (legendRef.current && !legendRef.current.contains(target)) {
         setLegendOpen(false);
+      }
+      if (mapIntelRef.current && !mapIntelRef.current.contains(target)) {
+        if (gisPanelOpen && onToggleGisPanel) {
+          onToggleGisPanel();
+        } else {
+          setMapIntelOpen(false);
+        }
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [gisPanelOpen, onToggleGisPanel]);
 
   useEffect(() => {
     const unsubscribe = layerManager.subscribe((layerId, active, metadata) => {
@@ -241,11 +256,6 @@ export const LayerControlToolbar: React.FC<LayerControlToolbarProps> = ({
 
   const activeGisCount = activeGisLayers.length;
 
-  const settingsConfig = activeSettingsLayer ? LAYER_CONFIGS[activeSettingsLayer] : null;
-  const settingsMetadata = activeSettingsLayer
-    ? layerManager.getLayerMetadata(activeSettingsLayer)
-    : null;
-
   return (
     <section aria-label="Map layers and basemap" className="bg-surface border-b border-line">
       {/* --- Toolbar row --- */}
@@ -312,26 +322,51 @@ export const LayerControlToolbar: React.FC<LayerControlToolbarProps> = ({
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          {/* Map intelligence dropdown button */}
-          <button
-            type="button"
-            onClick={() => {
-              if (onToggleGisPanel) {
-                onToggleGisPanel();
-              } else {
-                setMapIntelOpen((prev) => !prev);
-              }
-            }}
-            aria-expanded={gisPanelOpen ?? mapIntelOpen}
-            title="Toggle Map Intelligence panel"
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#121824] hover:bg-[#1a2333] border border-[#2a364f] text-white text-[12px] font-medium transition-all shadow-sm group cursor-pointer"
-          >
-            <Sliders className="w-3.5 h-3.5 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
-            <span>Map intelligence</span>
-            <span className="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono text-[10px] font-bold border border-cyan-500/30 ml-0.5">
-              {activeGisCount > 0 ? activeGisCount : activeCount}
-            </span>
-          </button>
+          {/* Map intelligence dropdown button & panel */}
+          <div className="relative" ref={mapIntelRef}>
+            <button
+              type="button"
+              onClick={() => {
+                if (onToggleGisPanel) {
+                  onToggleGisPanel();
+                } else {
+                  setMapIntelOpen((prev) => !prev);
+                }
+              }}
+              aria-expanded={gisPanelOpen ?? mapIntelOpen}
+              title="Toggle Map Intelligence panel"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#121824] hover:bg-[#1a2333] border border-[#2a364f] text-white text-[12px] font-medium transition-all shadow-sm group cursor-pointer"
+            >
+              <Sliders className="w-3.5 h-3.5 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
+              <span>Map intelligence</span>
+              <span className="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono text-[10px] font-bold border border-cyan-500/30 ml-0.5">
+                {activeGisCount > 0 ? activeGisCount : activeCount}
+              </span>
+            </button>
+
+            {(gisPanelOpen ?? mapIntelOpen) && gisProvider && gisLayers && (
+              <div className="absolute right-0 top-full mt-1.5 z-50 animate-in fade-in duration-150">
+                <MapIntelligencePanel
+                  provider={gisProvider}
+                  layers={gisLayers}
+                  runtime={gisRuntime || {}}
+                  actions={gisActions!}
+                  basemapStyle={layersState.basemapStyle ?? (layersState.satellite ? 'satellite' : 'dark')}
+                  onBasemapChange={(style) => setLayersState((prev) => ({ ...prev, basemapStyle: style }))}
+                  legendVisible={gisLegendVisible ?? true}
+                  onToggleLegend={() => onToggleGisLegend?.()}
+                  open={true}
+                  onToggleOpen={() => {
+                    if (onToggleGisPanel) {
+                      onToggleGisPanel();
+                    } else {
+                      setMapIntelOpen(false);
+                    }
+                  }}
+                />
+              </div>
+            )}
+          </div>
 
           {/* Legends dropdown button & menu */}
           <div className="relative" ref={legendRef}>

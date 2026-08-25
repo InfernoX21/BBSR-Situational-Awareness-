@@ -1107,6 +1107,7 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
         onToggleGisPanel={() => setGisPanelOpen((open) => !open)}
         gisLegendVisible={gisLegendVisible}
         onToggleGisLegend={() => setGisLegendVisible((visible) => !visible)}
+        gisProvider={gis.provider}
         gisLayers={gis.layers}
         gisRuntime={gis.runtime}
         gisActions={gisActions}
@@ -1146,38 +1147,15 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
           </form>
         </div>
 
-        {/*
-          Base GIS tier.
-
-          The map intelligence panel and the selected-feature card sit over the
-          map, not beside it: every click in the panel puts geography on this same
-          canvas, so the controls belong on it. The wrapper is pointer-events-none
-          so the strip of empty space between the two cards stays draggable map.
-        */}
-        <div className="absolute top-14 left-4 z-30 flex items-start gap-2 max-w-[calc(100%-2rem)] pointer-events-none">
-          <div className="pointer-events-auto">
-            <MapIntelligencePanel
+        {/* Feature info card when a feature is selected */}
+        {gisSelection && (
+          <div className="absolute top-14 left-4 z-30 pointer-events-auto">
+            <GISFeatureCard
+              selection={gisSelection}
               provider={gis.provider}
-              layers={gis.layers}
-              runtime={gis.runtime}
               actions={gisActions}
-              basemapStyle={layersState.basemapStyle ?? (layersState.satellite ? 'satellite' : 'dark')}
-              onBasemapChange={(style) => setLayersState((prev) => ({ ...prev, basemapStyle: style }))}
-              legendVisible={gisLegendVisible}
-              onToggleLegend={() => setGisLegendVisible((visible) => !visible)}
-              open={gisPanelOpen}
-              onToggleOpen={() => setGisPanelOpen((open) => !open)}
-            />
-          </div>
-
-          {gisSelection && (
-            <div className="pointer-events-auto">
-              <GISFeatureCard
-                selection={gisSelection}
-                provider={gis.provider}
-                actions={gisActions}
-                nearbyScope={gisNearbyScope}
-                basket={gisBasket}
+              nearbyScope={gisNearbyScope}
+              basket={gisBasket}
                 onAddToAnalysis={(entry) =>
                   setGisBasket((prev) =>
                     // Same identity test the card uses to disable its own button,
@@ -1199,7 +1177,6 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
               />
             </div>
           )}
-        </div>
 
         {/* Legend for the active base GIS layers. Renders nothing when none are on. */}
         {gisLegendVisible && (
