@@ -49,7 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside
       aria-label="Primary navigation"
-      className="hidden md:flex md:w-64 flex-shrink-0 h-full bg-surface border-r border-line flex-col shrink-0"
+      className="hidden md:flex w-52 lg:w-56 xl:w-64 shrink-0 h-full bg-surface border-r border-line flex-col min-h-0 transition-all duration-300 select-none"
     >
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 gov-scroll-thin">

@@ -44,7 +44,7 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
   };
 
   return (
-    <aside className="w-72 border-l border-white/10 bg-[#0A0A0A] flex flex-col p-4 shrink-0 overflow-hidden select-none">
+    <aside className="hidden lg:flex w-64 xl:w-72 2xl:w-80 border-l border-white/10 bg-[#0A0A0A] flex-col p-3 xl:p-4 shrink-0 overflow-hidden select-none transition-all duration-300 min-h-0 min-w-0">
       <div className="flex-1 space-y-4 overflow-y-auto pr-1">
         {/* Widget 1: LIVE ALERTS */}
         <div>

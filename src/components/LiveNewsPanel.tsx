@@ -85,7 +85,7 @@ export const LiveNewsPanel: React.FC<LiveNewsPanelProps> = ({ className = '' }) 
   };
 
   return (
-    <div className={`border border-white/10 bg-white/[0.02] rounded p-2 flex flex-col justify-between overflow-hidden ${className}`}>
+    <div className={`border border-white/10 bg-white/[0.02] rounded p-2 flex flex-col justify-between overflow-hidden min-w-0 min-h-0 ${className}`}>
       {/* Header & Dropdown Channel Selector Bar */}
       <div className="flex items-center justify-between border-b border-white/5 pb-1 text-[9px] font-bold uppercase tracking-widest gap-1">
         <div className="flex items-center gap-1.5 min-w-0">

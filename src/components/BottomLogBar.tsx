@@ -45,7 +45,7 @@ export const BottomLogBar: React.FC<BottomLogBarProps> = ({ logs, onOpenLogsModa
     ));
 
   return (
-    <div className="h-6 border-t border-white/10 bg-[#0A0A0A] flex items-center px-3 justify-between shrink-0 select-none font-mono text-[10px] overflow-hidden group">
+    <div className="h-6 border-t border-white/10 bg-[#0A0A0A] flex items-center px-2 sm:px-3 justify-between shrink-0 select-none font-mono text-[10px] overflow-hidden group z-20 min-w-0">
       {/* Left Header Tag */}
       <div className="flex items-center gap-1.5 text-[#06B6D4] font-bold uppercase tracking-wider shrink-0 mr-2 z-10 bg-[#0A0A0A] pr-1">
         <Terminal className="w-3.5 h-3.5 text-[#06B6D4]" aria-hidden="true" />

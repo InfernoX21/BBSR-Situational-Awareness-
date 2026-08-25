@@ -95,8 +95,8 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
   const allStreamsUp = degradedStreams.length === 0;
 
   return (
-    <header className="bg-navy text-white border-b border-navy-700 shrink-0 relative z-30">
-      <div className="h-14 flex items-center gap-2 sm:gap-4 px-2 sm:px-4 overflow-x-auto">
+    <header className="bg-navy text-white border-b border-navy-700 shrink-0 relative z-30 font-sans min-w-0">
+      <div className="h-12 sm:h-14 flex items-center justify-between gap-1.5 sm:gap-3 px-2 sm:px-4 overflow-hidden min-w-0">
         {/* --- Identity --- */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {onOpenMobileMenu && (

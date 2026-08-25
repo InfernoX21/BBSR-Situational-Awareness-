@@ -264,7 +264,7 @@ export default function App() {
   };
 
   return (
-    <div className="w-screen h-screen bg-canvas flex flex-col overflow-hidden text-ink font-sans">
+    <div className="w-full h-full min-h-screen max-h-screen bg-canvas flex flex-col overflow-hidden text-ink font-sans">
       {/* Offline Alert Banner */}
       {isOffline && (
         <div
@@ -300,7 +300,7 @@ export default function App() {
       <MobileAIBottomSheet />
 
       {/* MAIN CONTAINER: SIDEBAR + DIGITAL TWIN + INTELLIGENCE CENTER */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex overflow-hidden relative min-w-0 min-h-0">
         {/* LAYER 1: LEFT SIDEBAR (260px) */}
         <Sidebar
           activeTab={activeTab}
@@ -315,7 +315,7 @@ export default function App() {
         {activeTab === 'Dashboard' || activeTab === 'Live Map' ? (
           <>
             {/* MAIN DIGITAL TWIN MAP */}
-            <div className="flex-1 flex flex-col relative overflow-hidden">
+            <div className="flex-1 flex flex-col relative overflow-hidden min-w-0 min-h-0">
               <DigitalTwinMap
                 incidents={incidents}
                 landmarks={landmarks}
