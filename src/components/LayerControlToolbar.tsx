@@ -14,7 +14,7 @@ import { CentralLayerManager } from '../services/LayerManager';
 import {
   GISLayerDef,
   GISLayerRuntime,
-  GISProvider,
+  CityGISProvider,
 } from '../services/gis/types';
 import type { GISMapActions } from './gis/gisMapActions';
 import { LegendSwatch } from './gis/GISLegend';
@@ -51,7 +51,7 @@ interface LayerControlToolbarProps {
   onToggleGisPanel?: () => void;
   gisLegendVisible?: boolean;
   onToggleGisLegend?: () => void;
-  gisProvider?: GISProvider;
+  gisProvider?: CityGISProvider;
   gisLayers?: GISLayerDef[];
   gisRuntime?: Record<string, GISLayerRuntime>;
   gisActions?: GISMapActions;
@@ -255,6 +255,11 @@ export const LayerControlToolbar: React.FC<LayerControlToolbarProps> = ({
     .sort((a, b) => b.order - a.order);
 
   const activeGisCount = activeGisLayers.length;
+
+  const settingsConfig = activeSettingsLayer ? LAYER_CONFIGS[activeSettingsLayer] : null;
+  const settingsMetadata = activeSettingsLayer
+    ? layerManager.getLayerMetadata(activeSettingsLayer)
+    : null;
 
   return (
     <section aria-label="Map layers and basemap" className="bg-surface border-b border-line">
