@@ -1438,7 +1438,6 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
               />
             </div>
           )}
-        </div>
 
         {/* Legend for the active base GIS layers. Renders nothing when none are on. */}
         {gisLegendVisible && (
