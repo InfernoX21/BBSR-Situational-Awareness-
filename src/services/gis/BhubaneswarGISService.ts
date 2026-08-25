@@ -34,6 +34,7 @@
 
 import type {
   CityGISProvider,
+  CityRoadNetworkSource,
   GISAttributeRow,
   GISBounds,
   GISFeatureResult,
@@ -51,6 +52,7 @@ import { BOUNDARY_DASH, PALETTE } from './palette';
 import { describeAttributes, featureLabel } from './formatAttributes';
 import { BOUNDARY_LAYERS, WARD_DATASET, WARD_FIELDS } from './catalogue/boundaries';
 import { THEMATIC_LAYERS } from './catalogue/thematic';
+import { bhubaneswarRoadNetwork } from './BhubaneswarRoadNetwork';
 
 // ---------------------------------------------------------------------------
 // Endpoint configuration
@@ -1482,6 +1484,18 @@ export class BhubaneswarGISService implements CityGISProvider {
    */
   get wardLayerId(): string | null {
     return this.layers.has(WARD_LAYER_ID) ? WARD_LAYER_ID : null;
+  }
+
+  /**
+   * Routable road geometry for this city.
+   *
+   * Deliberately separate from the catalogue's `road-network` layer: that one is
+   * a server-rendered image for the map backdrop, and an image cannot be routed
+   * through. This exposes the same roads as line features so the routing engine
+   * can build a graph from them.
+   */
+  get roadNetwork(): CityRoadNetworkSource | null {
+    return bhubaneswarRoadNetwork;
   }
 
   /**

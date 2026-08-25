@@ -513,6 +513,116 @@ export interface GISAttributeRow {
   value: string;
 }
 
+// ---------------------------------------------------------------------------
+// Road network (routing)
+// ---------------------------------------------------------------------------
+
+/**
+ * One published road classification.
+ *
+ * `rank` orders classes by capacity — 1 is the highest — and the routing engine
+ * uses it both to prefer arterials over lanes and to decide which classes are
+ * small enough to hold city-wide.
+ */
+export interface RoadClassDef {
+  /** Stable id, e.g. `national-highway`. */
+  id: string;
+  label: string;
+  /** 1 = highest capacity. Ties are allowed. */
+  rank: number;
+  /**
+   * Segment count verified against the live service when the catalogue was
+   * compiled. Provenance for the coverage report, never presented as live.
+   */
+  verifiedSegmentCount: number;
+  /**
+   * True when the class is small enough to fetch for the whole city and keep,
+   * so the engine can build a permanent arterial skeleton instead of refetching
+   * it for every route.
+   */
+  cityWide: boolean;
+}
+
+/**
+ * A single road segment exactly as the city published it.
+ *
+ * `coordinates` is never resampled, smoothed or interpolated — the vertices are
+ * the source's own, because the whole point of this pipeline is that the drawn
+ * line is the city's road geometry and nothing else.
+ */
+export interface RoadSegmentRecord {
+  /** Provider feature id, unique within its class. */
+  id: string;
+  classId: string;
+  /** Street name as published, or null when the source leaves it blank. */
+  street: string | null;
+  /** Ordered [lat, lng] vertices as published. */
+  coordinates: [number, number][];
+  /** Provider's own length in metres, when published. */
+  publishedLengthM: number | null;
+}
+
+export interface RoadNetworkFetchResult {
+  segments: RoadSegmentRecord[];
+  /**
+   * True when at least one class hit the provider's record cap and paging could
+   * not complete, so the network is a subset and any route drawn from it may be
+   * missing a shorter option.
+   */
+  truncated: boolean;
+  /** Classes that actually returned data, for the coverage report. */
+  classIds: string[];
+  fetchedAt: string;
+}
+
+/**
+ * A city's road network exposed as routable line data rather than as a picture.
+ *
+ * The base GIS tier already draws roads as a server-rendered image, which is
+ * the right thing for cartography and useless for routing. This is the separate
+ * capability: connected polylines with classification and length, which the
+ * routing engine turns into a graph.
+ *
+ * Everything the routing engine needs to be honest about its own limits is
+ * declared here. A source that does not publish travel direction must say so,
+ * because the difference between a directed and an undirected graph is the
+ * difference between a legal route and one that sends an ambulance the wrong way
+ * up a one-way street.
+ */
+export interface CityRoadNetworkSource {
+  /** Dataset name for attribution and the route provenance line. */
+  readonly datasetLabel: string;
+  readonly attribution: string;
+  /** Published classes, highest capacity first. */
+  listClasses(): RoadClassDef[];
+  /**
+   * True only when the source publishes a travel-direction attribute ARKA has
+   * verified. False means the graph is bidirectional and the UI must disclose
+   * that one-way restrictions are not modelled.
+   */
+  readonly publishesDirection: boolean;
+  /** True when the source publishes a speed limit or free-flow speed per road. */
+  readonly publishesSpeedLimit: boolean;
+  /**
+   * True when the provider deployment exposes its own routing solver (an ArcGIS
+   * Network Analysis service or equivalent). When false, ARKA must build the
+   * graph and solve locally.
+   */
+  readonly hasServerRoutingEngine: boolean;
+  /**
+   * Fetch every segment matching the request, paging until the provider is
+   * exhausted. Bounds are strongly recommended: the full network is far too
+   * large to hold for the smaller classes.
+   */
+  fetchSegments(options: {
+    bounds?: GISBounds;
+    classIds?: string[];
+    signal?: AbortSignal;
+    /** Stop paging past this many segments and report `truncated`. */
+    maxSegments?: number;
+  }): Promise<RoadNetworkFetchResult>;
+}
+
 /**
  * A city GIS provider. `BhubaneswarGISService` is the first implementation;
  * the map and layer panel talk only to this interface.
@@ -590,4 +700,16 @@ export interface CityGISProvider {
 
   /** Convert raw provider attributes into readable rows for one layer. */
   describeFeature(layerId: string, properties: Record<string, unknown>): GISAttributeRow[];
+
+  // --- Road network ------------------------------------------------------
+
+  /**
+   * Routable road network, or null when this city publishes roads only as
+   * pictures.
+   *
+   * Null is a real answer, not a defect: a provider with no line-geometry road
+   * layer cannot support routing, and the routing surface must report that
+   * rather than fall back to drawing straight lines.
+   */
+  readonly roadNetwork: CityRoadNetworkSource | null;
 }

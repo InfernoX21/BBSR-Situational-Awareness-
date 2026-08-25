@@ -601,12 +601,15 @@ app.get('/api/traffic/live', (req, res) => {
   const randSpeed = (base: number) => Math.max(5, Math.min(60, Math.round(base + (Math.random() * 6 - 3))));
   const randCount = (base: number) => Math.max(10, Math.round(base + (Math.random() * 20 - 10)));
 
+  // Corridor `waypoints` are real junction anchors and are authoritative; the
+  // drawable `path` is resolved client-side by the routing engine from published
+  // road segments, so the server never ships straight-line corridor geometry.
   const corridors = [
     {
       id: 'corridor-nh16',
       name: 'NH-16 Express Arterial [DEMO]',
       roadName: 'National Highway 16 (Patia - Jayadev Vihar - Rasulgarh)',
-      path: [
+      waypoints: [
         [20.3533, 85.8189],
         [20.3200, 85.8220],
         [20.3023, 85.8252],
@@ -614,6 +617,8 @@ app.get('/api/traffic/live', (req, res) => {
         [20.2882, 85.8647],
         [20.2750, 85.8750],
       ] as [number, number][],
+      path: [] as [number, number][],
+      pathStatus: 'UNRESOLVED' as const,
       avgSpeedKmh: randSpeed(14),
       freeFlowSpeedKmh: 55,
       congestionLevel: 'SEVERE' as const,
@@ -627,13 +632,15 @@ app.get('/api/traffic/live', (req, res) => {
       id: 'corridor-janpath',
       name: 'Janpath Commercial Corridor [DEMO]',
       roadName: 'Janpath (Jayadev Vihar - Saheed Nagar - Master Canteen - Kalpana)',
-      path: [
+      waypoints: [
         [20.3023, 85.8252],
         [20.2912, 85.8450],
         [20.2800, 85.8420],
         [20.2678, 85.8402],
         [20.2550, 85.8380],
       ] as [number, number][],
+      path: [] as [number, number][],
+      pathStatus: 'UNRESOLVED' as const,
       avgSpeedKmh: randSpeed(18),
       freeFlowSpeedKmh: 45,
       congestionLevel: 'JAMMED' as const,

@@ -250,12 +250,27 @@ export const INITIAL_LOGS: LiveLog[] = [
   { id: 'log-6', timestamp: '11:00:05', message: 'TPCODL SCADA system confirmed grid load stable at 420 MW.', type: 'INFO' },
 ];
 
+/**
+ * City traffic corridors.
+ *
+ * `waypoints` are surveyed junction anchors — real rotaries, squares and
+ * interchanges — and are authoritative configuration, kept verbatim. They are not
+ * drawable geometry: these are the ends of a corridor, not the road between them.
+ *
+ * `path` is filled in at runtime by the routing engine, which resolves the road
+ * segments that actually join consecutive waypoints. Until that succeeds a
+ * corridor stays `UNRESOLVED` and the map draws nothing for it, rather than
+ * drawing a straight line across the intervening city.
+ *
+ * The congestion telemetry below is seed data and is replaced by the traffic feed
+ * on first poll; it is unrelated to geometry and is left as it was.
+ */
 export const INITIAL_TRAFFIC_CORRIDORS: TrafficCorridor[] = [
   {
     id: 'corridor-nh16',
     name: 'NH-16 Express Arterial',
     roadName: 'National Highway 16 (Patia - Jayadev Vihar - Rasulgarh)',
-    path: [
+    waypoints: [
       [20.3533, 85.8189],
       [20.3200, 85.8220],
       [20.3023, 85.8252],
@@ -263,6 +278,8 @@ export const INITIAL_TRAFFIC_CORRIDORS: TrafficCorridor[] = [
       [20.2882, 85.8647],
       [20.2750, 85.8750],
     ],
+    path: [],
+    pathStatus: 'UNRESOLVED',
     avgSpeedKmh: 14,
     freeFlowSpeedKmh: 55,
     congestionLevel: 'SEVERE',
@@ -276,13 +293,15 @@ export const INITIAL_TRAFFIC_CORRIDORS: TrafficCorridor[] = [
     id: 'corridor-janpath',
     name: 'Janpath Commercial Corridor',
     roadName: 'Janpath (Jayadev Vihar - Saheed Nagar - Master Canteen - Kalpana)',
-    path: [
+    waypoints: [
       [20.3023, 85.8252],
       [20.2912, 85.8450],
       [20.2800, 85.8420],
       [20.2678, 85.8402],
       [20.2550, 85.8380],
     ],
+    path: [],
+    pathStatus: 'UNRESOLVED',
     avgSpeedKmh: 18,
     freeFlowSpeedKmh: 45,
     congestionLevel: 'JAMMED',
@@ -296,13 +315,15 @@ export const INITIAL_TRAFFIC_CORRIDORS: TrafficCorridor[] = [
     id: 'corridor-nandankanan',
     name: 'Nandankanan IT Corridor',
     roadName: 'Jayadev Vihar - NALCO Square - Damana - Patia Infocity',
-    path: [
+    waypoints: [
       [20.3023, 85.8252],
       [20.3150, 85.8220],
       [20.3320, 85.8190],
       [20.3533, 85.8189],
       [20.3700, 85.8170],
     ],
+    path: [],
+    pathStatus: 'UNRESOLVED',
     avgSpeedKmh: 24,
     freeFlowSpeedKmh: 50,
     congestionLevel: 'SLOW',
@@ -316,12 +337,14 @@ export const INITIAL_TRAFFIC_CORRIDORS: TrafficCorridor[] = [
     id: 'corridor-sachivalaya',
     name: 'Sachivalaya Administrative Axis',
     roadName: 'Sachivalaya Marg (AG Square - Secretariat - Power House - Jayadev Vihar)',
-    path: [
+    waypoints: [
       [20.2600, 85.8300],
       [20.2745, 85.8340],
       [20.2880, 85.8300],
       [20.3023, 85.8252],
     ],
+    path: [],
+    pathStatus: 'UNRESOLVED',
     avgSpeedKmh: 36,
     freeFlowSpeedKmh: 45,
     congestionLevel: 'CLEAR',
@@ -334,12 +357,14 @@ export const INITIAL_TRAFFIC_CORRIDORS: TrafficCorridor[] = [
     id: 'corridor-puri-cuttack',
     name: 'Cuttack-Puri Arterial Link',
     roadName: 'Puri Road (Rasulgarh - Bomikhal - Laxmisagar - Kalpana)',
-    path: [
+    waypoints: [
       [20.2882, 85.8647],
       [20.2780, 85.8520],
       [20.2650, 85.8450],
       [20.2550, 85.8380],
     ],
+    path: [],
+    pathStatus: 'UNRESOLVED',
     avgSpeedKmh: 21,
     freeFlowSpeedKmh: 45,
     congestionLevel: 'SLOW',
@@ -352,12 +377,14 @@ export const INITIAL_TRAFFIC_CORRIDORS: TrafficCorridor[] = [
     id: 'corridor-khandagiri',
     name: 'Khandagiri Western Bypass',
     roadName: 'NH-16 Bypass (Khandagiri Sq - Baramunda ISBT - AIIMS Bypass)',
-    path: [
+    waypoints: [
       [20.2500, 85.7800],
       [20.2600, 85.7900],
       [20.2780, 85.7980],
       [20.2950, 85.8050],
     ],
+    path: [],
+    pathStatus: 'UNRESOLVED',
     avgSpeedKmh: 42,
     freeFlowSpeedKmh: 50,
     congestionLevel: 'CLEAR',
