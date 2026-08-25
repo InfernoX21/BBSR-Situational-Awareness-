@@ -349,4 +349,43 @@ export class CentralLayerManager {
     });
     return nearest;
   }
+
+  /**
+   * The `count` nearest hospitals by great-circle distance.
+   *
+   * Distinct from `findNearestHospital`, which compares raw degrees and returns
+   * one result. Routing needs a short list, not a single guess: crow-fly order is
+   * only a shortlist heuristic, and which facility is actually closest is decided
+   * afterwards by real road distance. It also needs true metres — a degree of
+   * longitude here is ~94% of a degree of latitude, so a planar comparison biases
+   * the shortlist east-west.
+   */
+  public nearestHospitals(lat: number, lng: number, count: number): HospitalNode[] {
+    return [...this.hospitals]
+      .map((h) => ({ node: h, distanceM: greatCircleMeters(lat, lng, h.lat, h.lng) }))
+      .sort((a, b) => a.distanceM - b.distanceM)
+      .slice(0, Math.max(0, count))
+      .map((entry) => entry.node);
+  }
+
+  /** The `count` nearest dispatchable police units, by great-circle distance. */
+  public nearestPolicePatrols(lat: number, lng: number, count: number): PoliceNode[] {
+    return this.police
+      .filter((p) => p.status === 'AVAILABLE' || p.status === 'PATROLLING')
+      .map((p) => ({ node: p, distanceM: greatCircleMeters(lat, lng, p.lat, p.lng) }))
+      .sort((a, b) => a.distanceM - b.distanceM)
+      .slice(0, Math.max(0, count))
+      .map((entry) => entry.node);
+  }
+}
+
+/** Great-circle distance in metres, on the same sphere the routing engine uses. */
+function greatCircleMeters(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const R = 6371008.8;
+  const rad = Math.PI / 180;
+  const dLat = (bLat - aLat) * rad;
+  const dLng = (bLng - aLng) * rad;
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(aLat * rad) * Math.cos(bLat * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }

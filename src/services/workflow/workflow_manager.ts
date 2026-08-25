@@ -223,14 +223,11 @@ export class WorkflowManagerService {
       agencyPerformanceScore: 96,
     };
 
-    // Route coordinates animation path
-    const routeCoordinates: [number, number][] = incident.routeCoordinates || [
-      [20.269, 85.836],
-      [20.275, 85.834],
-      [20.282, 85.831],
-      [20.289, 85.828],
-      [lat, lng],
-    ];
+    // Dispatch route geometry is deliberately NOT set here. It used to be a
+    // hardcoded four-point ladder ending at the incident, which drew a line
+    // across whatever lay between. Routes are now calculated on demand by
+    // RoadNetworkService from published road segments, so the workflow record
+    // carries no geometry at all.
 
     const updated: Incident = {
       ...incident,
@@ -243,7 +240,6 @@ export class WorkflowManagerService {
       agenciesWorkflow,
       timeline,
       analytics,
-      routeCoordinates,
     };
 
     this.workflowCache.set(incident.id, updated);

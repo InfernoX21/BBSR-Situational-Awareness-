@@ -35,6 +35,15 @@ import { MapIntelligencePanel } from './gis/MapIntelligencePanel';
 import { GISLegend } from './gis/GISLegend';
 import { GISFeatureCard } from './gis/GISFeatureCard';
 import type { GISMapActions, GISSelection } from './gis/gisMapActions';
+// Routing tier: geometry comes from the road-network engine, ranking from the
+// intelligence layer, and this component only ever hands the result to the
+// renderer. Nothing below computes a route coordinate.
+import { LeafletRouteRenderer } from '../services/routing/leafletRouteRenderer';
+import type { RouteRenderEntry } from '../services/routing/leafletRouteRenderer';
+import { useCorridorGeometry } from './routing/useCorridorGeometry';
+import { useDispatchRoutes } from './routing/useDispatchRoutes';
+import type { DispatchRouteView } from './routing/useDispatchRoutes';
+import { RoutePanel } from './routing/RoutePanel';
 import {
   Layers,
   ZoomIn,
@@ -67,6 +76,7 @@ import {
   X,
   Play,
   CheckCircle,
+  Route as RouteIcon,
 } from 'lucide-react';
 
 interface DigitalTwinMapProps {
@@ -131,6 +141,32 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
   const [gisLegendCollapsed, setGisLegendCollapsed] = useState(false);
   const [gisSelection, setGisSelection] = useState<GISSelection | null>(null);
   const [gisBasket, setGisBasket] = useState<GISSelection[]>([]);
+
+  // --- Routing tier -------------------------------------------------------
+  // The renderer owns its own Leaflet pane and layer group, so calculated routes
+  // are never caught by the marker group's `clearLayers()` sweep and never have to
+  // be redrawn just because a telemetry tick moved a sensor badge.
+  const routeRendererRef = useRef<LeafletRouteRenderer | null>(null);
+  const [routePanelOpen, setRoutePanelOpen] = useState(false);
+
+  const trafficVisible = layersState.traffic || activeTab === 'Traffic Management';
+
+  /**
+   * Corridors with real road geometry resolved onto the published road network.
+   *
+   * The corridors handed in carry surveyed junction anchors, not a drawable line.
+   * This is where they become drawable — or stay undrawn, if the road network
+   * cannot join their anchors.
+   */
+  const corridorGeometry = useCorridorGeometry(trafficCorridors, trafficVisible);
+  const resolvedCorridors = corridorGeometry.corridors;
+
+  const dispatchRoutes = useDispatchRoutes({
+    selectedIncident,
+    incidents,
+    corridors: resolvedCorridors,
+    enabled: layersState.incidents,
+  });
 
   const [searchQuery, setSearchQuery] = useState('');
   const [is3DMode, setIs3DMode] = useState(false);
@@ -355,6 +391,11 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
     gisControllerRef.current = gisController;
     void gisController.sync();
 
+    // Mount the route renderer. Its pane sits above the overlay pane and below the
+    // marker pane, so a calculated route reads clearly over corridor lines and city
+    // GIS layers while every unit marker stays on top of it.
+    routeRendererRef.current = new LeafletRouteRenderer(map);
+
     // Vector GIS layers are fetched per viewport, so a pan or zoom has to re-ask.
     // Debounced: an operator dragging across the city would otherwise fire a
     // request for every intermediate frame.
@@ -443,6 +484,8 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
       }
       gisControllerRef.current?.dispose();
       gisControllerRef.current = null;
+      routeRendererRef.current?.dispose();
+      routeRendererRef.current = null;
       basemapRef.current = null;
       map.remove();
       mapInstanceRef.current = null;
@@ -486,6 +529,7 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
 
     // The new backdrop is added last, so re-assert the GIS pane stack.
     gisControllerRef.current?.refreshPanes();
+    routeRendererRef.current?.refreshPane();
   }, [layersState.satellite, layersState.basemapStyle]);
 
   /**
@@ -527,6 +571,59 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
     }
   }, [selectedIncident]);
 
+  /**
+   * Draw the calculated routes.
+   *
+   * Deliberately its own effect. The marker engine below begins with
+   * `group.clearLayers()`, so anything drawn there is thrown away and rebuilt on
+   * every entity change; a route costs a network fetch and a graph search, and must
+   * not be tied to that cycle. This effect only ever hands the renderer what the
+   * routing engine returned — it draws nothing when there is nothing valid to draw,
+   * which is the correct appearance for NO VALID ROUTE AVAILABLE.
+   */
+  useEffect(() => {
+    const renderer = routeRendererRef.current;
+    if (!renderer) return;
+
+    const entries: RouteRenderEntry[] = [];
+    for (const route of dispatchRoutes.routes) {
+      const recommended = route.ranking?.recommended;
+      if (route.status !== 'VALID' || !recommended) continue;
+      entries.push({
+        key: route.key,
+        label: route.label,
+        ranked: recommended,
+        onClick: () => setRoutePanelOpen(true),
+      });
+    }
+
+    renderer.render(entries);
+  }, [dispatchRoutes.routes]);
+
+  /** Fit the map to a calculated route, using the geometry the engine returned. */
+  const focusRoute = (route: DispatchRouteView) => {
+    const map = mapInstanceRef.current;
+    const coordinates = route.ranking?.recommended?.candidate.coordinates;
+    if (!map || !coordinates || coordinates.length < 2) return;
+    map.fitBounds(L.latLngBounds(coordinates.map(([lat, lng]) => L.latLng(lat, lng))), {
+      padding: [72, 72],
+      maxZoom: 17,
+    });
+  };
+
+  /**
+   * Which corridors have geometry worth redrawing.
+   *
+   * Keyed on resolution state rather than the corridor array itself: the traffic
+   * poll hands over a fresh array every few seconds, and rebuilding every marker on
+   * the map at that cadence would be a regression. This changes only when a
+   * corridor actually gains or loses road geometry.
+   */
+  const corridorGeometryKey = useMemo(
+    () => resolvedCorridors.map((c) => `${c.id}:${c.pathStatus}:${c.path.length}`).join('|'),
+    [resolvedCorridors],
+  );
+
   // Comprehensive Entity Rendering Engine for ALL 11 Layers
   useEffect(() => {
     const map = mapInstanceRef.current;
@@ -539,7 +636,13 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
     // LAYER 1 — TRAFFIC (Polylines, IoT Speed Sensors, Flow Vectors)
     // ----------------------------------------------------------------------
     if (layersState.traffic || activeTab === 'Traffic Management') {
-      trafficCorridors.forEach((corridor) => {
+      resolvedCorridors.forEach((corridor) => {
+        // A corridor is drawn only once the routing engine has joined its surveyed
+        // junction anchors along published road segments. Until then there is no
+        // honest line to draw, so none is drawn — the old behaviour of connecting
+        // the anchors directly is what put corridors through buildings and water.
+        if (corridor.pathStatus !== 'ROAD_NETWORK' || corridor.path.length < 2) return;
+
         let color = '#10B981'; // CLEAR
         let weight = 4;
         let dashArray: string | undefined = undefined;
@@ -577,6 +680,9 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
             <div class="flex justify-between text-[9px] mt-0.5">
               <span>CONGESTION: <strong style="color: ${color}">${corridor.congestionLevel} (${corridor.congestionScore}%)</strong></span>
             </div>
+            <div class="text-white/35 text-[9px] mt-0.5">GEOMETRY: ${corridor.path.length} ROAD VERTICES${
+              corridor.pathLengthM ? ` · ${(corridor.pathLengthM / 1000).toFixed(2)} KM BY ROAD` : ''
+            }</div>
           </div>
           `,
           { sticky: true, opacity: 0.95 }
@@ -680,20 +786,10 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
             { sticky: true }
           );
 
-          // Responder Dispatch Route Vector Polyline
-          const routeCoords = inc.routeCoordinates || [
-            [20.269, 85.836],
-            [20.278, 85.832],
-            [20.288, 85.828],
-            [inc.location.lat, inc.location.lng],
-          ];
-
-          L.polyline(routeCoords, {
-            color: '#10B981',
-            weight: 4,
-            opacity: 0.85,
-            dashArray: '8, 8',
-          }).addTo(group);
+          // Dispatch geometry is not drawn here. It used to be a hardcoded
+          // four-point ladder ending at the incident, which drew a line across
+          // whatever lay between. Routes are now calculated by the road-network
+          // engine and drawn by `LeafletRouteRenderer` in its own pane.
 
           marker.bindTooltip(
             `
@@ -939,23 +1035,10 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
         marker.addTo(group);
       });
 
-      // If an Incident is selected, draw shortest casualty ambulance route from nearest hospital!
-      if (selectedIncident) {
-        const nearestHosp = layerManager.findNearestHospital(selectedIncident.location.lat, selectedIncident.location.lng);
-        if (nearestHosp) {
-          L.polyline(
-            [
-              [nearestHosp.lat, nearestHosp.lng],
-              [selectedIncident.location.lat, selectedIncident.location.lng],
-            ],
-            {
-              color: '#F43F5E',
-              weight: 3,
-              dashArray: '4, 4',
-            }
-          ).addTo(group);
-        }
-      }
+      // The casualty evacuation route is calculated against the road network and
+      // drawn by the route renderer. The nearest hospital is chosen there too, by
+      // road distance rather than by crow-fly: a straight line between two markers
+      // says nothing about whether an ambulance can drive it.
     }
 
     // ----------------------------------------------------------------------
@@ -992,23 +1075,9 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
         marker.addTo(group);
       });
 
-      // Route nearest police patrol to selected incident
-      if (selectedIncident) {
-        const nearestPatrol = layerManager.findNearestPolicePatrol(selectedIncident.location.lat, selectedIncident.location.lng);
-        if (nearestPatrol) {
-          L.polyline(
-            [
-              [nearestPatrol.lat, nearestPatrol.lng],
-              [selectedIncident.location.lat, selectedIncident.location.lng],
-            ],
-            {
-              color: '#3B82F6',
-              weight: 3,
-              dashArray: '6, 6',
-            }
-          ).addTo(group);
-        }
-      }
+      // The responder dispatch route is calculated against the road network and
+      // drawn by the route renderer, which also decides which patrol is actually
+      // nearest by road.
     }
 
     // ----------------------------------------------------------------------
@@ -1121,7 +1190,10 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
       }
     });
 
-  }, [incidents, landmarks, drones, layersState, selectedIncident, selectedCorridor]);
+    // `corridorGeometryKey` rather than the corridor array: this redraws when a
+    // corridor gains real road geometry, not on every five-second traffic poll.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incidents, landmarks, drones, layersState, selectedIncident, selectedCorridor, corridorGeometryKey]);
 
   // Handle Search Location in Bhubaneswar
   const handleSearch = (e: React.FormEvent) => {
@@ -1334,6 +1406,47 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
             </div>
           )}
 
+          {/*
+            Route calculation.
+
+            Sits with the other map-derived cards rather than in a dispatch sidebar:
+            what it reports — snapped start and end, segments traversed, validation
+            checks — is about geometry on this canvas.
+          */}
+          {routePanelOpen && (
+            <div className="pointer-events-auto">
+              <RoutePanel
+                routes={dispatchRoutes.routes}
+                calculating={dispatchRoutes.calculating}
+                capability={dispatchRoutes.capability}
+                advisories={dispatchRoutes.advisories}
+                incidentTitle={selectedIncident ? `${selectedIncident.id} · ${selectedIncident.title}` : null}
+                corridorStatus={{
+                  resolving: corridorGeometry.resolving,
+                  resolvedCount: corridorGeometry.resolvedCount,
+                  unresolvedCount: corridorGeometry.unresolvedCount,
+                  unresolved: corridorGeometry.unresolved,
+                }}
+                onFocusRoute={focusRoute}
+                onClose={() => setRoutePanelOpen(false)}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Legend for the active base GIS layers. Renders nothing when none are on. */}
+        {gisLegendVisible && (
+          <div className="absolute bottom-14 right-4 z-20 pointer-events-auto">
+            <GISLegend
+              layers={gis.layers}
+              runtime={gis.runtime}
+              actions={gisActions}
+              collapsed={gisLegendCollapsed}
+              onToggleCollapsed={() => setGisLegendCollapsed((collapsed) => !collapsed)}
+            />
+          </div>
+        )}
+
         {/* Right Floating Map Control Tools */}
         <div className="absolute top-16 right-4 z-10 flex flex-col space-y-2 pointer-events-auto font-mono">
           <button
@@ -1418,6 +1531,21 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
             title="Distance Measurement Tool"
           >
             <Ruler className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setRoutePanelOpen((open) => !open)}
+            className={`relative w-8 h-8 rounded border backdrop-blur-md flex items-center justify-center shadow-xl transition-all active:scale-95 ${
+              routePanelOpen
+                ? 'bg-[#06B6D4]/15 text-[#06B6D4] border-[#06B6D4]/60 shadow-[0_0_12px_rgba(6,182,212,0.3)] ring-1 ring-[#06B6D4]/40'
+                : 'bg-[#0A0A0A]/95 text-white/40 border-white/10 hover:text-white'
+            }`}
+            title="Route calculation — road-network routing for the selected incident"
+          >
+            <RouteIcon className="w-4 h-4" />
+            {/* Only lit when a route has actually been calculated and validated. */}
+            {dispatchRoutes.routes.some((route) => route.status === 'VALID') && (
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#06B6D4] border border-[#0A0A0A]" />
+            )}
           </button>
         </div>
 

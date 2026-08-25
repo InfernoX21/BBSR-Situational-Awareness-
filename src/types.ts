@@ -214,7 +214,6 @@ export interface Incident {
   resourceRecommendations?: ResourceRecommendation[];
   contextData?: IncidentContextData;
   analytics?: IncidentAnalytics;
-  routeCoordinates?: [number, number][];
 }
 
 export interface IntelligenceItem {
@@ -416,7 +415,29 @@ export interface TrafficCorridor {
   id: string;
   name: string;
   roadName: string;
+  /**
+   * The real named junctions this corridor runs between, in order.
+   *
+   * These are surveyed anchor points — rotaries, squares, flyover ramps — and are
+   * authoritative configuration. They are *not* drawable geometry: joining them
+   * directly draws a straight line across whatever lies in between.
+   */
+  waypoints: [number, number][];
+  /**
+   * Drawable geometry, produced by the routing engine from published road
+   * segments between consecutive `waypoints`.
+   *
+   * Empty until resolved. Nothing may populate this by interpolating, smoothing
+   * or connecting waypoints — if the road network cannot join two anchors, the
+   * corridor stays unresolved and is not drawn.
+   */
   path: [number, number][];
+  /** Whether `path` holds real road geometry, and how completely. */
+  pathStatus: 'UNRESOLVED' | 'RESOLVING' | 'ROAD_NETWORK' | 'PARTIAL' | 'NO_ROUTE';
+  /** Road distance along `path`, in metres. Null until resolved. */
+  pathLengthM?: number | null;
+  /** Why resolution failed, for the operator. Set only on PARTIAL / NO_ROUTE. */
+  pathNote?: string;
   avgSpeedKmh: number;
   freeFlowSpeedKmh: number;
   congestionLevel: 'CLEAR' | 'SLOW' | 'JAMMED' | 'SEVERE';
