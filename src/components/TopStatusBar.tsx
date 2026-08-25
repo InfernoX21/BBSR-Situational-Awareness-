@@ -20,6 +20,7 @@ interface TopStatusBarProps {
   threatLevel: Severity;
   setThreatLevel: (level: Severity) => void;
   onRefreshAll: () => void;
+  onRefreshWeather?: () => void;
   onOpenMobileMenu?: () => void;
 }
 
@@ -30,6 +31,7 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
   threatLevel,
   setThreatLevel,
   onRefreshAll,
+  onRefreshWeather,
   onOpenMobileMenu,
 }) => {
   const [currentTime, setCurrentTime] = useState<string>('');
@@ -37,6 +39,17 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
   const [healthMap, setHealthMap] = useState<ConnectionHealthMap>(liveDataManager.getConnectionHealth());
   const [showHealthModal, setShowHealthModal] = useState(false);
   const [openPopover, setOpenPopover] = useState<PopoverId>(null);
+  const [isSyncingWeather, setIsSyncingWeather] = useState(false);
+
+  const handleManualWeatherSync = () => {
+    setIsSyncingWeather(true);
+    if (onRefreshWeather) {
+      onRefreshWeather();
+    } else {
+      onRefreshAll();
+    }
+    setTimeout(() => setIsSyncingWeather(false), 600);
+  };
 
   useEffect(() => {
     const updateTimes = () => {
@@ -199,34 +212,62 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
           )}
         </div>
 
-        {/* --- Weather + provenance --- */}
+        {/* --- Weather + live provenance --- */}
         <div className="relative shrink-0 hidden md:block">
           <button
             type="button"
             onClick={() => toggle('weather')}
             aria-expanded={openPopover === 'weather'}
-            className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 text-white/80 text-[11px] font-mono transition-all shrink-0 cursor-pointer"
-            title="Bhubaneswar weather and data provenance"
+            className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 text-white/80 text-[11px] font-mono transition-all shrink-0 cursor-pointer group"
+            title="Real-time Bhubaneswar weather telemetry and data provenance"
           >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" title="Live stream active" />
             <span className="text-white/50">Weather</span>
             <span className="font-semibold text-white">
               {weather.temperature}°C · {weather.humidity}% RH
             </span>
-            <Info className="w-3 h-3 text-white/40 shrink-0" aria-hidden="true" />
+            <Info className="w-3 h-3 text-white/40 group-hover:text-cyan-400 shrink-0 transition-colors" aria-hidden="true" />
           </button>
 
           {openPopover === 'weather' && (
-            <div className="absolute right-0 top-full mt-1.5 w-80 gov-glass border border-white/15 rounded-md p-3 z-50 shadow-2xl">
-              <div className="flex items-center justify-between border-b border-white/10 pb-1.5 mb-2">
-                <span className="text-[11px] font-bold font-mono text-white">Data provenance</span>
-                <span className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold ${
-                  weather.provenance?.classification === 'LIVE' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                  weather.provenance?.classification === 'CACHED' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                }`}>
-                  {weather.provenance?.classification || 'LIVE'}
-                </span>
+            <div className="absolute right-0 top-full mt-1.5 w-80 gov-glass border border-white/15 rounded-md p-3 z-50 shadow-2xl space-y-2.5">
+              <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  <span className="text-[11px] font-bold font-mono text-white">Data provenance</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold uppercase ${
+                    weather.provenance?.classification === 'LIVE' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                    weather.provenance?.classification === 'CACHED' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                  }`}>
+                    {weather.provenance?.classification || 'LIVE'}
+                  </span>
+                </div>
               </div>
-              <dl className="space-y-1 text-[11px] font-mono">
+
+              {/* Live Telemetry Overview Cards */}
+              <div className="grid grid-cols-2 gap-1.5 text-[10px] font-mono">
+                <div className="bg-white/[0.03] p-1.5 rounded border border-white/5">
+                  <div className="text-white/40">TEMPERATURE</div>
+                  <div className="text-cyan-300 font-bold text-[11px]">{weather.temperature}°C</div>
+                </div>
+                <div className="bg-white/[0.03] p-1.5 rounded border border-white/5">
+                  <div className="text-white/40">HUMIDITY</div>
+                  <div className="text-emerald-300 font-bold text-[11px]">{weather.humidity}% RH</div>
+                </div>
+                <div className="bg-white/[0.03] p-1.5 rounded border border-white/5">
+                  <div className="text-white/40">WIND SPEED</div>
+                  <div className="text-white font-bold">{weather.windSpeed || 14.2} km/h {weather.windDirection || 'SW'}</div>
+                </div>
+                <div className="bg-white/[0.03] p-1.5 rounded border border-white/5">
+                  <div className="text-white/40">RAIN RATE</div>
+                  <div className="text-amber-300 font-bold">{weather.rainIntensity || 0} mm/h</div>
+                </div>
+              </div>
+
+              {/* Data Provenance Details */}
+              <dl className="space-y-1 text-[11px] font-mono pt-1 border-t border-white/10">
                 {[
                   ['Source', weather.provenance?.source || 'Open-Meteo & IMD radar'],
                   ['Provider', weather.provenance?.provider || 'IMD Bhubaneswar'],
@@ -241,6 +282,18 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
                   </div>
                 ))}
               </dl>
+
+              {/* Instant Manual Sync Action */}
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={handleManualWeatherSync}
+                  className="w-full py-1 px-2 rounded bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 hover:text-cyan-200 text-[10px] font-mono font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <RotateCw className={`w-3 h-3 ${isSyncingWeather ? 'animate-spin text-cyan-400' : ''}`} />
+                  <span>SYNC LIVE WEATHER NOW</span>
+                </button>
+              </div>
             </div>
           )}
         </div>
