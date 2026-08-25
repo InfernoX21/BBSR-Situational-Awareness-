@@ -373,140 +373,144 @@ export default function App() {
               />
             )}
           </>
-        ) : activeTab === 'AI Operations' ? (
-          <AIOperationsView
-            incidents={incidents}
-            landmarks={landmarks}
-            drones={drones}
-            weather={weather}
-            trafficCorridors={trafficCorridors}
-            intelligenceItems={intelligenceItems}
-            onApplyStateChanges={(changes) => {
-              if (changes?.targetLocation) {
-                setSelectedIncident({
-                  id: `TARGET-OPENCLAW-${Date.now()}`,
-                  title: changes.targetLocation.name,
-                  category: 'FLOOD',
-                  priority: 'CRITICAL',
-                  status: 'ACTIVE',
-                  description: `Target location selected by OpenClaw Autonomous Operations: ${changes.targetLocation.name}`,
-                  location: {
-                    name: changes.targetLocation.name,
-                    lat: changes.targetLocation.lat,
-                    lng: changes.targetLocation.lng,
-                    address: `${changes.targetLocation.name}, Bhubaneswar`,
-                  },
-                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                  agencyAssigned: 'OpenClaw Autonomous Task Force',
-                  aiConfidence: 98,
-                  recommendedAction: 'Execute multi-agent response protocol.',
-                  affectedRoads: ['Central Corridor'],
-                  estimatedImpact: 'High Priority Target',
-                });
-              }
-              if (changes?.layersToEnable) {
-                setLayersState((prev) => {
-                  const next = { ...prev };
-                  changes.layersToEnable?.forEach((lId) => {
-                    if (lId in next) (next as any)[lId] = true;
+        ) : (
+          <div className="flex-1 h-full overflow-y-auto bg-canvas min-w-0 min-h-0 gov-scroll-thin">
+            {activeTab === 'AI Operations' ? (
+              <AIOperationsView
+                incidents={incidents}
+                landmarks={landmarks}
+                drones={drones}
+                weather={weather}
+                trafficCorridors={trafficCorridors}
+                intelligenceItems={intelligenceItems}
+                onApplyStateChanges={(changes) => {
+                  if (changes?.targetLocation) {
+                    setSelectedIncident({
+                      id: `TARGET-OPENCLAW-${Date.now()}`,
+                      title: changes.targetLocation.name,
+                      category: 'FLOOD',
+                      priority: 'CRITICAL',
+                      status: 'ACTIVE',
+                      description: `Target location selected by OpenClaw Autonomous Operations: ${changes.targetLocation.name}`,
+                      location: {
+                        name: changes.targetLocation.name,
+                        lat: changes.targetLocation.lat,
+                        lng: changes.targetLocation.lng,
+                        address: `${changes.targetLocation.name}, Bhubaneswar`,
+                      },
+                      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                      agencyAssigned: 'OpenClaw Autonomous Task Force',
+                      aiConfidence: 98,
+                      recommendedAction: 'Execute multi-agent response protocol.',
+                      affectedRoads: ['Central Corridor'],
+                      estimatedImpact: 'High Priority Target',
+                    });
+                  }
+                  if (changes?.layersToEnable) {
+                    setLayersState((prev) => {
+                      const next = { ...prev };
+                      changes.layersToEnable?.forEach((lId) => {
+                        if (lId in next) (next as any)[lId] = true;
+                      });
+                      return next;
+                    });
+                  }
+                  addLog(`OpenClaw Autonomous Operations executed multi-agent task workflow.`, 'SUCCESS');
+                }}
+                onJumpToMap={() => setActiveTab('Dashboard')}
+              />
+            ) : activeTab === 'Intelligence Feed' ? (
+              <IntelligenceFeedView
+                intelligenceItems={intelligenceItems}
+                onSelectArticle={(item) => setSelectedArticle(item)}
+                onFuseIntelligence={handleFuseIntelligence}
+                isFusing={isFusing}
+              />
+            ) : activeTab === 'Incident Center' ? (
+              <IncidentCenterView
+                incidents={incidents}
+                onSelectIncident={(inc) => setSelectedIncident(inc)}
+                onUpdateStatus={handleUpdateIncidentStatus}
+                onJumpToMap={(inc) => {
+                  setSelectedIncident(inc);
+                  setActiveTab('Dashboard');
+                }}
+              />
+            ) : activeTab === 'Traffic Management' ? (
+              <TrafficManagementView
+                corridors={trafficCorridors}
+                sensors={trafficSensors}
+                summary={trafficSummary}
+                onSelectCorridor={(corridor) => setSelectedCorridor(corridor)}
+                onJumpToMap={() => setActiveTab('Dashboard')}
+              />
+            ) : activeTab === 'Traffic Cameras' ? (
+              <TrafficCamerasView
+                incidents={incidents}
+                landmarks={landmarks}
+                onSelectCameraOnMap={(cam) => {
+                  setSelectedLandmark({
+                    id: cam.id,
+                    name: cam.name,
+                    type: 'CAMERA' as any,
+                    lat: cam.lat,
+                    lng: cam.lng,
+                    status: cam.status === 'ONLINE' ? 'OPERATIONAL' : 'ALERT',
+                    details: `Traffic CCTV Feed: ${cam.name} (${cam.resolution}, ${cam.fps} FPS, Direction: ${cam.directionDeg}°).`,
                   });
-                  return next;
-                });
-              }
-              addLog(`OpenClaw Autonomous Operations executed multi-agent task workflow.`, 'SUCCESS');
-            }}
-            onJumpToMap={() => setActiveTab('Dashboard')}
-          />
-        ) : activeTab === 'Intelligence Feed' ? (
-          <IntelligenceFeedView
-            intelligenceItems={intelligenceItems}
-            onSelectArticle={(item) => setSelectedArticle(item)}
-            onFuseIntelligence={handleFuseIntelligence}
-            isFusing={isFusing}
-          />
-        ) : activeTab === 'Incident Center' ? (
-          <IncidentCenterView
-            incidents={incidents}
-            onSelectIncident={(inc) => setSelectedIncident(inc)}
-            onUpdateStatus={handleUpdateIncidentStatus}
-            onJumpToMap={(inc) => {
-              setSelectedIncident(inc);
-              setActiveTab('Dashboard');
-            }}
-          />
-        ) : activeTab === 'Traffic Management' ? (
-          <TrafficManagementView
-            corridors={trafficCorridors}
-            sensors={trafficSensors}
-            summary={trafficSummary}
-            onSelectCorridor={(corridor) => setSelectedCorridor(corridor)}
-            onJumpToMap={() => setActiveTab('Dashboard')}
-          />
-        ) : activeTab === 'Traffic Cameras' ? (
-          <TrafficCamerasView
-            incidents={incidents}
-            landmarks={landmarks}
-            onSelectCameraOnMap={(cam) => {
-              setSelectedLandmark({
-                id: cam.id,
-                name: cam.name,
-                type: 'CAMERA' as any,
-                lat: cam.lat,
-                lng: cam.lng,
-                status: cam.status === 'ONLINE' ? 'OPERATIONAL' : 'ALERT',
-                details: `Traffic CCTV Feed: ${cam.name} (${cam.resolution}, ${cam.fps} FPS, Direction: ${cam.directionDeg}°).`,
-              });
-              addLog(`CCTV Feed Selected: ${cam.name} (${cam.junction}).`, 'INFO');
-            }}
-            onJumpToMap={() => setActiveTab('Dashboard')}
-          />
-        ) : activeTab === 'Weather & Disaster' ? (
-          <WeatherDisasterView
-            weather={weather}
-            onJumpToMap={() => setActiveTab('Dashboard')}
-          />
-        ) : activeTab === 'Infrastructure' ? (
-          <InfrastructureView
-            landmarks={landmarks}
-            onSelectLandmark={(lm) => {
-              setSelectedLandmark(lm);
-              addLog(`Inspecting Landmark: ${lm.name}`, 'INFO');
-            }}
-            onJumpToMap={() => setActiveTab('Dashboard')}
-          />
-        ) : activeTab === 'Utilities' ? (
-          <UtilitiesView onJumpToMap={() => setActiveTab('Dashboard')} />
-        ) : activeTab === 'Resource Tracker' ? (
-          <ResourceTrackerView
-            resources={resources}
-            incidents={incidents}
-            onDispatchUnit={(uId, iId) => addLog(`Dispatched Unit ${uId} to Incident ${iId}`, 'SUCCESS')}
-            onJumpToMap={() => setActiveTab('Dashboard')}
-          />
-        ) : activeTab === 'Drone Feed' ? (
-          <DroneFeedView
-            drones={drones}
-            onSelectDrone={(d) => setSelectedDrone(d)}
-            onJumpToMap={() => setActiveTab('Dashboard')}
-          />
-        ) : activeTab === 'Analytics' ? (
-          <AnalyticsView
-            incidents={incidents}
-            trafficCorridors={trafficCorridors}
-            weather={weather}
-          />
-        ) : activeTab === 'Reports' ? (
-          <ReportsView
-            incidents={incidents}
-            weather={weather}
-            trafficSummary={trafficSummary}
-          />
-        ) : activeTab === 'Settings' ? (
-          <SettingsView
-            layersState={layersState}
-            setLayersState={setLayersState}
-          />
-        ) : null}
+                  addLog(`CCTV Feed Selected: ${cam.name} (${cam.junction}).`, 'INFO');
+                }}
+                onJumpToMap={() => setActiveTab('Dashboard')}
+              />
+            ) : activeTab === 'Weather & Disaster' ? (
+              <WeatherDisasterView
+                weather={weather}
+                onJumpToMap={() => setActiveTab('Dashboard')}
+              />
+            ) : activeTab === 'Infrastructure' ? (
+              <InfrastructureView
+                landmarks={landmarks}
+                onSelectLandmark={(lm) => {
+                  setSelectedLandmark(lm);
+                  addLog(`Inspecting Landmark: ${lm.name}`, 'INFO');
+                }}
+                onJumpToMap={() => setActiveTab('Dashboard')}
+              />
+            ) : activeTab === 'Utilities' ? (
+              <UtilitiesView onJumpToMap={() => setActiveTab('Dashboard')} />
+            ) : activeTab === 'Resource Tracker' ? (
+              <ResourceTrackerView
+                resources={resources}
+                incidents={incidents}
+                onDispatchUnit={(uId, iId) => addLog(`Dispatched Unit ${uId} to Incident ${iId}`, 'SUCCESS')}
+                onJumpToMap={() => setActiveTab('Dashboard')}
+              />
+            ) : activeTab === 'Drone Feed' ? (
+              <DroneFeedView
+                drones={drones}
+                onSelectDrone={(d) => setSelectedDrone(d)}
+                onJumpToMap={() => setActiveTab('Dashboard')}
+              />
+            ) : activeTab === 'Analytics' ? (
+              <AnalyticsView
+                incidents={incidents}
+                trafficCorridors={trafficCorridors}
+                weather={weather}
+              />
+            ) : activeTab === 'Reports' ? (
+              <ReportsView
+                incidents={incidents}
+                weather={weather}
+                trafficSummary={trafficSummary}
+              />
+            ) : activeTab === 'Settings' ? (
+              <SettingsView
+                layersState={layersState}
+                setLayersState={setLayersState}
+              />
+            ) : null}
+          </div>
+        )}
       </div>
 
       {/* LAYER 7: BOTTOM LIVE LOG BAR */}

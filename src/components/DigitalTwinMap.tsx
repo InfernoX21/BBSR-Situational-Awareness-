@@ -1261,7 +1261,7 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
   }, [gis.layers, gis.runtime, gis.provider]);
 
   return (
-    <div className="relative flex-1 h-full bg-[#050505] overflow-hidden select-none border-r border-white/10 flex flex-col">
+    <div className="relative flex-1 h-full bg-[#050505] overflow-hidden select-none flex flex-col">
       {/* TOP INTEGRATED LAYER CONTROL TOOLBAR */}
       <LayerControlToolbar
         layersState={layersState}
