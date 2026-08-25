@@ -110,17 +110,13 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
             </button>
           )}
 
-          <div className="flex items-center gap-2">
-            <img
-              src="/favicon.png"
-              alt="ARKA Logo"
-              className="w-6 h-6 rounded object-cover border border-cyan-500/40 shadow-[0_0_8px_rgba(6,182,212,0.25)] hidden sm:block shrink-0 select-none"
-            />
-            <div className="flex items-center leading-none min-w-0">
-              <span className="text-[13px] font-bold tracking-widest text-white font-mono uppercase">ARKA</span>
-              <span className="text-[10px] text-white/40 tracking-tight hidden xl:inline font-sans ml-2.5 border-l border-white/15 pl-2.5">
-                Geospatial Situational Awareness Platform
-              </span>
+          <div className="flex flex-col justify-center leading-none min-w-0 select-none">
+            <div className="flex items-center text-[14px] sm:text-[15px] font-extrabold tracking-tight font-mono">
+              <span className="text-white">ARKA</span>
+              <span className="text-cyan-400 font-bold ml-0.5">.OS</span>
+            </div>
+            <div className="text-[7.5px] sm:text-[8.5px] text-white/50 tracking-[0.22em] uppercase font-mono mt-0.5 whitespace-nowrap">
+              GEOSPATIAL SITUATIONAL AWARENESS
             </div>
           </div>
         </div>
