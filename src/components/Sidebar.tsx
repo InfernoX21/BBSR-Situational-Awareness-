@@ -28,7 +28,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   agencies,
   onAgencyClick,
 }) => {
-  const [isAgencyExpanded, setIsAgencyExpanded] = useState(true);
+  const [isAgencyExpanded, setIsAgencyExpanded] = useState(false);
 
   const getAgencyIcon = (iconName: string) => {
     const cls = 'w-4 h-4 text-ink-subtle';
