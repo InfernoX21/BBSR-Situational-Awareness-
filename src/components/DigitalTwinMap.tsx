@@ -152,6 +152,9 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
   const inactivityTimerRef = useRef<number | null>(null);
   const isUserInteractingRef = useRef(false);
 
+  const is3DModeRef = useRef(is3DMode);
+  is3DModeRef.current = is3DMode;
+
   // ResizeObserver to automatically notify Leaflet when container dimensions change
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -167,16 +170,6 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
     };
   }, []);
 
-  // Trigger Leaflet invalidateSize when toggling 3D perspective mode
-  useEffect(() => {
-    if (mapInstanceRef.current) {
-      const timer = setTimeout(() => {
-        mapInstanceRef.current?.invalidateSize();
-      }, 350);
-      return () => clearTimeout(timer);
-    }
-  }, [is3DMode]);
-
   const resetMapPaneTransform = () => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -186,14 +179,30 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
       const pos = L.DomUtil.getPosition(mapPane);
       const x = pos ? pos.x : 0;
       const y = pos ? pos.y : 0;
-      mapPane.style.transform = `translate3d(${x}px, ${y}px, 0px)`;
       mapPane.style.transformOrigin = 'center center';
+      if (is3DModeRef.current) {
+        mapPane.style.transform = `translate3d(${x}px, ${y}px, 0px) perspective(1000px) rotateX(25deg) scale(1.38)`;
+      } else {
+        mapPane.style.transform = `translate3d(${x}px, ${y}px, 0px)`;
+      }
     } catch {
       // Ignore if pane destroyed during unmount
     }
   };
 
-  // Continuous Auto-Rotation Animation Effect (native Leaflet mapPane transform)
+  // Trigger Leaflet transform update & invalidateSize when toggling 3D perspective mode
+  useEffect(() => {
+    is3DModeRef.current = is3DMode;
+    resetMapPaneTransform();
+    if (mapInstanceRef.current) {
+      const timer = setTimeout(() => {
+        mapInstanceRef.current?.invalidateSize();
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [is3DMode]);
+
+  // Continuous Auto-Rotation Animation Effect (native single-axis mapPane transform)
   useEffect(() => {
     autoRotateEnabledRef.current = isAutoRotateEnabled;
 
@@ -216,7 +225,7 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
       const map = mapInstanceRef.current;
       if (autoRotateEnabledRef.current && map) {
         if (!isUserInteractingRef.current) {
-          rotationAngleRef.current = (rotationAngleRef.current + 0.0175) % 360;
+          rotationAngleRef.current = (rotationAngleRef.current + 0.005) % 360;
         }
         try {
           const mapPane = map.getPanes().mapPane;
@@ -226,8 +235,10 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
             const y = pos ? pos.y : 0;
             const angle = rotationAngleRef.current;
             mapPane.style.transformOrigin = 'center center';
-            if (angle !== 0) {
-              mapPane.style.transform = `translate3d(${x}px, ${y}px, 0px) rotate(${angle}deg) scale(1.42)`;
+            if (is3DModeRef.current) {
+              mapPane.style.transform = `translate3d(${x}px, ${y}px, 0px) perspective(1000px) rotateX(25deg) rotateZ(${angle}deg) scale(1.42)`;
+            } else if (angle !== 0) {
+              mapPane.style.transform = `translate3d(${x}px, ${y}px, 0px) rotateZ(${angle}deg) scale(1.42)`;
             } else {
               mapPane.style.transform = `translate3d(${x}px, ${y}px, 0px)`;
             }
@@ -1270,18 +1281,9 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
         <div
           ref={mapContainerRef}
           className="w-full h-full z-0 overflow-hidden"
-          style={
-            is3DMode
-              ? {
-                  transform: 'perspective(1000px) rotateX(25deg) scale(1.38)',
-                  transformOrigin: 'center bottom',
-                  transition: 'transform 700ms cubic-bezier(0.16, 1, 0.3, 1)',
-                }
-              : {
-                  transform: 'none',
-                  transition: 'transform 700ms cubic-bezier(0.16, 1, 0.3, 1)',
-                }
-          }
+          style={{
+            transform: 'none',
+          }}
         />
 
         {/* Floating Search Bar */}
