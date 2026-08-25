@@ -199,11 +199,22 @@ app.get('/api/news/bhubaneswar', async (req, res) => {
                 : headline.toLowerCase().includes('power') || headline.toLowerCase().includes('electricity') ? 'POWER_GRID' 
                 : 'CIVIC_UPDATE';
       const pubTime = item.pubDate ? new Date(item.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently';
+      // The machine-readable publication moment, alongside the display string.
+      // `publishedTime` is formatted for the operator and loses the date, so it
+      // cannot be used to order or age an item; consumers that need to know when
+      // something was actually published read this. Null when the feed omitted a
+      // pubDate — an absent date must not become "now".
+      const pubIso = (() => {
+        if (!item.pubDate) return null;
+        const parsed = new Date(item.pubDate);
+        return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+      })();
 
       return {
         id: `rss-${index}-${Date.now()}`,
         publisherName: publisher,
         publishedTime: pubTime,
+        publishedAt: pubIso,
         headline: headline,
         summary: summaryText,
         url: item.link || 'https://news.google.com',

@@ -220,7 +220,16 @@ export interface IntelligenceItem {
   id: string;
   publisherName: string;
   publisherLogo?: string;
+  /** Display string, e.g. '14:32' or '12 mins ago'. Not orderable. */
   publishedTime: string;
+  /**
+   * ISO 8601 publication moment, when the upstream feed supplied one.
+   *
+   * Separate from `publishedTime` because that field is formatted for reading and
+   * has lost the date. Null or absent means the feed did not say when this was
+   * published — which must not be read as "just now".
+   */
+  publishedAt?: string | null;
   headline: string;
   summary: string;
   url: string;
@@ -231,14 +240,74 @@ export interface IntelligenceItem {
   classification?: string;
 }
 
+/**
+ * A *pool* summary — how many of a class of asset exist and how many are free.
+ *
+ * Note this is not an individual vehicle: it cannot be dispatched, located or
+ * assigned. Pool counts are derived from `FieldUnit` records by the store, so
+ * the strip on the dashboard and the roster on the tracker can never disagree.
+ */
 export interface ResourceUnit {
   id: string;
   name: string;
-  type: 'Fire Engines' | 'Police Vehicles' | 'Ambulances' | 'Response Teams' | 'Drone Units';
+  type: ResourceClass;
   total: number;
   available: number;
   dispatched: number;
   maintenance: number;
+}
+
+export type ResourceClass =
+  | 'Fire Engines'
+  | 'Police Vehicles'
+  | 'Ambulances'
+  | 'Response Teams'
+  | 'Drone Units';
+
+/**
+ * Operational status of a single field asset.
+ *
+ * Ordered as the response lifecycle runs, which is also the order the tracker
+ * presents them in.
+ */
+export type FieldUnitStatus =
+  | 'AVAILABLE'
+  | 'ASSIGNED'
+  | 'EN_ROUTE'
+  | 'ACTIVE'
+  | 'RETURNING'
+  | 'OFFLINE';
+
+/**
+ * One dispatchable asset: a specific ambulance, tender, PCR van or team.
+ *
+ * `position` is deliberately nullable and separate from `homeBase`. ARKA has no
+ * vehicle-telematics feed, so for every unit in the committed roster the live
+ * position is genuinely unknown — and that must render as unknown rather than
+ * as the depot it is garaged at. A unit only gains a `position` when a telemetry
+ * source actually reports one.
+ */
+export interface FieldUnit {
+  id: string;
+  /** Radio callsign, if the agency publishes one. */
+  callsign: string;
+  name: string;
+  type: ResourceClass;
+  /** Owning agency, matched against `Agency.shortName` where possible. */
+  agency: string;
+  status: FieldUnitStatus;
+  /** Named station or depot this unit belongs to. Reference data, not a reading. */
+  homeBase: string;
+  /** Last reported position. Null when no telemetry source reports this unit. */
+  position: { lat: number; lng: number } | null;
+  /** Incident currently assigned, if any. Authoritative field is the store's assignment table. */
+  assignedIncidentId: string | null;
+  /** ISO 8601 of the last status change ARKA is aware of. */
+  lastUpdated: string;
+  /** Crew size, where the roster records one. */
+  crew: number | null;
+  /** Free-text capability tags used to match a unit to an incident category. */
+  capabilities: string[];
 }
 
 export interface DroneUnit {
