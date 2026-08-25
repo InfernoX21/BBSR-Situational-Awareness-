@@ -600,13 +600,44 @@
     box-shadow: inset 3px 0 0 0 var(--color-accent);
   }
 
-  /* --- Map floating chrome --- */
+  /* --- Map floating chrome & Tactical Glassmorphism --- */
+  .gov-glass {
+    background: rgba(8, 12, 16, 0.78);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+  }
+
+  .gov-glass-interactive {
+    background: rgba(8, 12, 16, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .gov-glass-interactive:hover {
+    background: rgba(14, 20, 28, 0.88);
+    border-color: rgba(6, 182, 212, 0.35);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
+  }
+
+  .gov-glass-header {
+    background: rgba(5, 5, 5, 0.82);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
   .gov-map-card {
-    background-color: rgba(5, 5, 5, 0.96);
-    border: 1px solid var(--color-line-strong);
+    background: rgba(8, 12, 16, 0.82);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
-    backdrop-filter: blur(8px);
     color: var(--color-ink);
   }
 
@@ -614,11 +645,12 @@
   .gov-map-group {
     display: flex;
     flex-direction: column;
-    background-color: rgba(5, 5, 5, 0.96);
-    border: 1px solid var(--color-line-strong);
+    background: rgba(8, 12, 16, 0.82);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-sm);
-    backdrop-filter: blur(8px);
     overflow: hidden;
   }
 
@@ -670,11 +702,12 @@
 
   /* Standalone map button (not inside a group) keeps its own border. */
   .gov-map-btn-solo {
-    border: 1px solid var(--color-line-strong);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: var(--radius-md);
-    background-color: rgba(5, 5, 5, 0.96);
+    background: rgba(8, 12, 16, 0.82);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     box-shadow: var(--shadow-sm);
-    backdrop-filter: blur(8px);
   }
 
   /* Thin scrollbar utility for sidebars and feeds */

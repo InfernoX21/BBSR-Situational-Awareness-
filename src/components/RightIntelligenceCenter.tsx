@@ -79,15 +79,15 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
           </div>
 
           {/* Alert Cards Container */}
-          <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-52 overflow-y-auto pr-1 gov-scroll-thin">
             {filteredIncidents.slice(0, 4).map((inc) => (
               <div
                 key={inc.id}
                 onClick={() => onSelectIncident(inc)}
-                className={`p-2 rounded border cursor-pointer transition-all space-y-1 ${
+                className={`p-2 rounded cursor-pointer space-y-1 gov-glass-interactive ${
                   inc.priority === 'CRITICAL'
-                    ? 'border-[#EF4444]/30 bg-[#EF4444]/5'
-                    : 'border-white/10 bg-white/[0.02] hover:bg-white/5'
+                    ? '!border-[#EF4444]/40 !bg-[#EF4444]/10'
+                    : ''
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -122,12 +122,12 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
             </span>
           </div>
 
-          <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-60 overflow-y-auto pr-1 gov-scroll-thin">
             {intelligenceItems.map((item) => (
               <div
                 key={item.id}
                 onClick={() => onOpenArticle(item)}
-                className="p-2 border border-white/10 bg-white/[0.02] hover:border-[#06B6D4]/50 rounded space-y-1 hover:bg-white/5 transition-all cursor-pointer group"
+                className="p-2 gov-glass-interactive rounded space-y-1 cursor-pointer group"
               >
                 <div className="flex items-center justify-between text-[9px] font-mono">
                   <span className="text-[#06B6D4] font-bold truncate max-w-[130px] group-hover:text-cyan-300 transition-colors">
@@ -175,7 +175,7 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
             </span>
           </div>
 
-          <div className="space-y-1.5 bg-white/[0.02] border border-white/10 rounded p-2 text-[9px] font-mono">
+          <div className="space-y-1.5 gov-glass rounded-md p-2 text-[9px] font-mono">
             {resources.map((res) => {
               const pct = Math.round((res.available / res.total) * 100);
               return (

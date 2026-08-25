@@ -1290,7 +1290,7 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
         <div className="absolute top-3 left-4 z-10 pointer-events-auto">
           <form
             onSubmit={handleSearch}
-            className="flex items-center bg-[#0A0A0A]/95 backdrop-blur-md border border-white/10 rounded px-3 py-1.5 w-72 shadow-2xl font-mono text-xs"
+            className="flex items-center gov-glass-interactive rounded-md px-3 py-1.5 w-72 shadow-2xl font-mono text-xs"
           >
             <Search className="w-3.5 h-3.5 text-white/40 mr-2" />
             <input
@@ -1628,7 +1628,7 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
         )}
 
         {/* Bottom Center Coordinate HUD */}
-        <div className="absolute bottom-2 right-4 z-10 px-3 py-1 rounded bg-[#0A0A0A]/90 backdrop-blur-sm border border-white/10 text-[10px] font-mono text-white/40 flex items-center space-x-4 shadow-lg pointer-events-none uppercase">
+        <div className="absolute bottom-2 right-4 z-10 px-3 py-1 rounded-md gov-glass text-[10px] font-mono text-white/40 flex items-center space-x-4 shadow-lg pointer-events-none uppercase">
           <div>
             LAT: <span className="text-[#06B6D4]">20.2961° N</span>
           </div>

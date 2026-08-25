@@ -80,7 +80,7 @@ export const BottomAnalytics: React.FC<BottomAnalyticsProps> = ({
   return (
     <div className="w-full h-40 sm:h-44 md:h-48 lg:h-52 xl:h-56 border-t border-white/10 bg-[#0A0A0A] grid grid-cols-2 md:grid-cols-4 gap-2 xl:gap-3 p-2 xl:p-3 shrink-0 select-none overflow-hidden font-mono min-w-0 min-h-0">
       {/* Widget 1: Incident Distribution */}
-      <div className="border border-white/10 bg-white/[0.02] rounded p-2 flex flex-col justify-between min-w-0 min-h-0">
+      <div className="gov-glass rounded-md p-2 flex flex-col justify-between min-w-0 min-h-0">
         <div className="flex items-center justify-between border-b border-white/5 pb-1 text-[8.5px] sm:text-[9px] font-bold uppercase tracking-widest gap-1">
           <span className="text-white/40 truncate">Incident Distribution</span>
           <span className="text-[#06B6D4] shrink-0">TOTAL: {incidents.length}</span>
@@ -133,7 +133,7 @@ export const BottomAnalytics: React.FC<BottomAnalyticsProps> = ({
       </div>
 
       {/* Widget 2: Traffic Flow & Corridor Speeds / Incident Timeline */}
-      <div className="border border-white/10 bg-white/[0.02] rounded p-2 flex flex-col justify-between min-w-0 min-h-0">
+      <div className="gov-glass rounded-md p-2 flex flex-col justify-between min-w-0 min-h-0">
         <div className="flex items-center justify-between border-b border-white/5 pb-1 text-[9px] font-bold uppercase tracking-widest">
           <div className="flex items-center space-x-1">
             <button
