@@ -45,7 +45,8 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
 
   return (
     <aside className="hidden lg:flex w-64 xl:w-72 2xl:w-80 border-l border-white/10 bg-[#0A0A0A] flex-col p-3 xl:p-4 shrink-0 overflow-hidden select-none transition-all duration-300 min-h-0 min-w-0">
-      <div className="flex-1 space-y-4 overflow-y-auto pr-1">
+      {/* Top Scrollable Section: Live Alerts & Live Intelligence */}
+      <div className="flex-1 space-y-4 overflow-y-auto pr-1 min-h-0 gov-scroll-thin">
         {/* Widget 1: LIVE ALERTS */}
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -79,7 +80,7 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
           </div>
 
           {/* Alert Cards Container */}
-          <div className="space-y-2 max-h-52 overflow-y-auto pr-1 gov-scroll-thin">
+          <div className="space-y-2 max-h-48 overflow-y-auto pr-1 gov-scroll-thin">
             {filteredIncidents.slice(0, 4).map((inc) => (
               <div
                 key={inc.id}
@@ -122,7 +123,7 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
             </span>
           </div>
 
-          <div className="space-y-2 max-h-60 overflow-y-auto pr-1 gov-scroll-thin">
+          <div className="space-y-2 max-h-48 overflow-y-auto pr-1 gov-scroll-thin">
             {intelligenceItems.map((item) => (
               <div
                 key={item.id}
@@ -162,42 +163,42 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
             ))}
           </div>
         </div>
+      </div>
 
-        {/* Section 3: TACTICAL RESOURCE FLEET */}
-        <div className="mt-auto pt-2.5 border-t border-white/10">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1.5">
-              <Radio className="w-3 h-3 text-[#10B981] animate-pulse" />
-              <span>Resource Fleet</span>
-            </span>
-            <span className="text-[8px] font-mono text-amber-400 bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-800/40">
-              STATIC ROSTER
-            </span>
-          </div>
+      {/* Anchored Bottom Section: TACTICAL RESOURCE FLEET */}
+      <div className="shrink-0 pt-2.5 border-t border-white/15 bg-[#0A0A0A] mt-auto">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1.5">
+            <Radio className="w-3 h-3 text-[#10B981] animate-pulse" />
+            <span>Resource Fleet</span>
+          </span>
+          <span className="text-[8px] font-mono text-amber-400 bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-800/40">
+            STATIC ROSTER
+          </span>
+        </div>
 
-          <div className="space-y-1.5 gov-glass rounded-md p-2 text-[9px] font-mono">
-            {resources.map((res) => {
-              const pct = Math.round((res.available / res.total) * 100);
-              return (
-                <div key={res.id} className="space-y-0.5">
-                  <div className="flex justify-between text-white/80">
-                    <span className="truncate max-w-[130px] font-medium">{res.name}</span>
-                    <span className="text-white/40">
-                      <strong className="text-[#10B981] font-bold">{res.available}</strong>/{res.total}
-                    </span>
-                  </div>
-                  <div className="w-full h-1 bg-black rounded-full overflow-hidden border border-white/10">
-                    <div
-                      className={`h-full rounded-full transition-all duration-300 ${
-                        pct > 70 ? 'bg-[#10B981]' : pct > 40 ? 'bg-[#F59E0B]' : 'bg-[#EF4444]'
-                      }`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
+        <div className="space-y-1.5 gov-glass rounded-md p-2 text-[9px] font-mono">
+          {resources.map((res) => {
+            const pct = Math.round((res.available / res.total) * 100);
+            return (
+              <div key={res.id} className="space-y-0.5">
+                <div className="flex justify-between text-white/80">
+                  <span className="truncate max-w-[130px] font-medium">{res.name}</span>
+                  <span className="text-white/40">
+                    <strong className="text-[#10B981] font-bold">{res.available}</strong>/{res.total}
+                  </span>
                 </div>
-              );
-            })}
-          </div>
+                <div className="w-full h-1 bg-black rounded-full overflow-hidden border border-white/10">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${
+                      pct > 70 ? 'bg-[#10B981]' : pct > 40 ? 'bg-[#F59E0B]' : 'bg-[#EF4444]'
+                    }`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </aside>

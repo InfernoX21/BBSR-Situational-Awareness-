@@ -95,8 +95,8 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
   const allStreamsUp = degradedStreams.length === 0;
 
   return (
-    <header className="gov-glass-header text-white shrink-0 relative z-30 font-sans min-w-0">
-      <div className="h-9 sm:h-10 flex items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-3 overflow-hidden min-w-0">
+    <header className="gov-glass-header text-white shrink-0 relative z-[100] font-sans min-w-0">
+      <div className="h-9 sm:h-10 flex items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-3 min-w-0 relative z-[100]">
         {/* --- Identity --- */}
         <div className="flex items-center gap-2 shrink-0">
           {onOpenMobileMenu && (
@@ -158,7 +158,7 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
         </button>
 
         {/* --- Threat level --- */}
-        <div className="relative shrink-0">
+        <div className="relative shrink-0 z-[100]">
           <button
             type="button"
             onClick={() => toggle('threat')}
@@ -176,7 +176,7 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
           </button>
 
           {openPopover === 'threat' && (
-            <div role="menu" className="absolute right-0 top-full mt-1.5 w-44 gov-glass border border-white/15 rounded-md p-1 z-50 shadow-2xl">
+            <div role="menu" className="absolute right-0 top-full mt-1.5 w-44 bg-[#090D14] border border-amber-500/40 rounded-md p-1.5 z-[9999] shadow-2xl animate-in fade-in duration-150">
               <p className="gov-label px-2 py-1 text-[10px] font-mono text-white/40">City alert level</p>
               {(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as Severity[]).map((lvl) => (
                 <button
