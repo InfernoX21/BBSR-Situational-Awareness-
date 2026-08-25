@@ -1474,6 +1474,17 @@ export class BhubaneswarGISService implements CityGISProvider {
   }
 
   /**
+   * Catalogue id of the ward boundary layer, or null when it is not published.
+   *
+   * Derived from the same catalogue lookup as `hasWardDataset` so the two can
+   * never disagree, and exposed on the interface so the ward module can show
+   * boundary context without hardcoding a Bhubaneswar-specific layer id.
+   */
+  get wardLayerId(): string | null {
+    return this.layers.has(WARD_LAYER_ID) ? WARD_LAYER_ID : null;
+  }
+
+  /**
    * Every ward, without geometry.
    *
    * Geometry is the expensive part of a ward request — 67 polygons at city

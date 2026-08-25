@@ -811,6 +811,130 @@
   background-color: rgba(230, 234, 240, 0.7) !important;
 }
 
+/* ==========================================================================
+   Leaflet — dark cartographic chrome
+   The live ARKA map is Leaflet, and the base GIS tier binds its own popups and
+   tooltips through it. Leaflet ships white chrome by default, so without these
+   rules a GIS popup built from ARKA's dark tokens renders light text on white.
+   ========================================================================== */
+.leaflet-container {
+  font-family: var(--font-sans);
+  background: var(--color-map-void);
+}
+
+.leaflet-container:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+/* Feature popups bound by the GIS adapter. */
+.leaflet-popup-content-wrapper {
+  background: var(--color-surface-raised);
+  color: var(--color-ink);
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.leaflet-popup-content {
+  margin: 9px 11px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.leaflet-popup-tip {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-line-strong);
+  box-shadow: none;
+}
+
+.leaflet-container a.leaflet-popup-close-button {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font: 700 15px/22px var(--font-sans);
+  color: var(--color-ink-subtle);
+}
+
+.leaflet-container a.leaflet-popup-close-button:hover,
+.leaflet-container a.leaflet-popup-close-button:focus {
+  background: var(--color-sunken-strong);
+  color: var(--color-ink);
+  border-radius: var(--radius-sm);
+}
+
+/* A popup tall enough to scroll keeps its own edges rather than Leaflet's grey. */
+.leaflet-popup-scrolled {
+  border-top: 1px solid var(--color-line);
+  border-bottom: 1px solid var(--color-line);
+}
+
+/* Tooltips — cluster counts and selected-feature labels. */
+.leaflet-tooltip {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  color: var(--color-ink);
+  font-size: 11px;
+  padding: 3px 7px;
+}
+
+.leaflet-tooltip-top::before {
+  border-top-color: var(--color-line-strong);
+}
+
+.leaflet-tooltip-bottom::before {
+  border-bottom-color: var(--color-line-strong);
+}
+
+.leaflet-tooltip-left::before {
+  border-left-color: var(--color-line-strong);
+}
+
+.leaflet-tooltip-right::before {
+  border-right-color: var(--color-line-strong);
+}
+
+/* --------------------------------------------------------------------------
+   Base GIS overlay chrome
+   Styling for the elements the GIS adapter emits. Colour, size and counts are
+   set inline from each layer's own style record and its real feature count;
+   only the shell lives here, so the legend and the map can never disagree.
+
+   Deliberately absent: any filter on .arka-gis-raster-tile. Server-rendered
+   city imagery is authoritative — recolouring it to suit the dark theme would
+   misrepresent what the source published.
+   -------------------------------------------------------------------------- */
+.arka-gis-highlight-tip {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.arka-gis-cluster {
+  background: transparent;
+  border: 0;
+}
+
+.arka-gis-cluster-dot {
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border-width: 2px;
+  border-style: solid;
+  box-shadow: var(--shadow-sm);
+  color: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  /* The bubble is a translucent tint of the layer colour, so the count is
+     shadowed rather than given an opaque plate — the tint has to stay readable
+     as a colour cue. */
+  text-shadow: 0 1px 2px rgba(11, 13, 16, 0.92);
+}
+
 /* --------------------------------------------------------------------------
    Map overlay markers
    Data features are drawn as GPU layers so they tilt with the 3D scene.

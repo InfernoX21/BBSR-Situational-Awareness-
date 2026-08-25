@@ -31,11 +31,18 @@ import { GISLayerRegistry } from './GISLayerRegistry';
 /**
  * Pane z-indexes. Leaflet puts `tilePane` at 200 and `overlayPane` at 400;
  * base GIS occupies the gap so it can never cover an ARKA overlay.
+ *
+ * Within that gap the order is raster cartography, then vector features, then
+ * the selection highlight — so a highlighted ward outline is never buried under
+ * the layer that produced it, while ARKA's incidents and units still draw above
+ * everything.
  */
 const PANE_RASTER = 'arka-gis-raster';
 const PANE_VECTOR = 'arka-gis-vector';
+const PANE_SELECT = 'arka-gis-select';
 const PANE_RASTER_Z = 250;
 const PANE_VECTOR_Z = 350;
+const PANE_SELECT_Z = 380;
 
 /** Half the Web Mercator circumference, in metres. */
 const WEB_MERCATOR_EXTENT = 20037508.342789244;
@@ -45,6 +52,19 @@ const MAX_FEATURES_PER_LAYER = 1000;
 
 /** Extra room around the viewport, so a small pan does not trigger a refetch. */
 const VIEWPORT_PAD = 0.25;
+
+/**
+ * Point count at which a layer switches to clustered rendering.
+ *
+ * Below this, individual markers stay readable and clustering only gets in the
+ * way. Above it — 354 schools or 355 anganwadi centres at city zoom — the
+ * markers merge into an unreadable mass, and a cluster bubble carrying the real
+ * count is both faster to draw and more informative.
+ */
+const CLUSTER_MIN_POINTS = 120;
+
+/** Grid cell used for clustering, in screen pixels at the current zoom. */
+const CLUSTER_CELL_PX = 58;
 
 // ---------------------------------------------------------------------------
 // Raster: dynamic export as tiles
@@ -138,6 +158,113 @@ function toPathStyle(style: GISVectorStyle | undefined, opacity: number): L.Path
   };
 }
 
+/**
+ * Visit every drawable path in a layer tree.
+ *
+ * A vector layer may be a plain `L.GeoJSON`, or — once clustering kicks in — a
+ * group mixing circle markers, cluster icons and a nested GeoJSON layer for the
+ * non-point features. Restyling and reordering have to reach the paths inside
+ * either shape, so the walk is recursive rather than a single `eachLayer`.
+ */
+function eachPath(layer: L.Layer, visit: (path: L.Path) => void): void {
+  if (layer instanceof L.Path) {
+    visit(layer);
+    return;
+  }
+  if (layer instanceof L.LayerGroup) {
+    layer.eachLayer((child) => eachPath(child, visit));
+  }
+}
+
+/**
+ * Style for the selection highlight.
+ *
+ * Deliberately brighter and heavier than any catalogue style, and drawn in its
+ * own pane, so a selected feature reads as selected regardless of which layer it
+ * came from. The fill stays light: the point is to outline the feature, not to
+ * hide the cartography underneath it.
+ */
+const HIGHLIGHT_STYLE: L.PathOptions = {
+  color: '#6ba3e4',
+  weight: 3,
+  opacity: 1,
+  fillColor: '#4c8dd9',
+  fillOpacity: 0.14,
+  dashArray: undefined,
+};
+
+/** Highlight radius for point features, large enough to ring a 4px marker. */
+const HIGHLIGHT_POINT_RADIUS = 11;
+
+/** One cluster of nearby point features, plus the members it stands for. */
+interface PointCluster {
+  lat: number;
+  lng: number;
+  members: GeoJSON.Feature[];
+}
+
+/**
+ * Group point features into screen-space cells at the current zoom.
+ *
+ * Clustering is done in projected pixels rather than degrees so cells stay
+ * square and consistent on screen. Projecting at an explicit zoom (rather than
+ * using `latLngToLayerPoint`) keeps the result independent of where the map is
+ * currently panned, so the same features always cluster the same way.
+ */
+function clusterPoints(map: L.Map, features: GeoJSON.Feature[], zoom: number): PointCluster[] {
+  const cells = new Map<string, { sumLat: number; sumLng: number; members: GeoJSON.Feature[] }>();
+
+  for (const feature of features) {
+    const geometry = feature.geometry;
+    if (!geometry || geometry.type !== 'Point') continue;
+    const [lng, lat] = geometry.coordinates as [number, number];
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+
+    const projected = map.project(L.latLng(lat, lng), zoom);
+    const key = `${Math.floor(projected.x / CLUSTER_CELL_PX)}:${Math.floor(projected.y / CLUSTER_CELL_PX)}`;
+
+    const cell = cells.get(key);
+    if (cell) {
+      cell.sumLat += lat;
+      cell.sumLng += lng;
+      cell.members.push(feature);
+    } else {
+      cells.set(key, { sumLat: lat, sumLng: lng, members: [feature] });
+    }
+  }
+
+  const clusters: PointCluster[] = [];
+  for (const cell of cells.values()) {
+    clusters.push({
+      lat: cell.sumLat / cell.members.length,
+      lng: cell.sumLng / cell.members.length,
+      members: cell.members,
+    });
+  }
+  return clusters;
+}
+
+/**
+ * Icon for a cluster bubble.
+ *
+ * The number is the exact count of features ARKA holds in that cell — not an
+ * estimate and not a density score. Size scales in three coarse steps so a
+ * dense cell is visibly larger without the label becoming unreadable.
+ */
+function clusterIcon(count: number, colour: string): L.DivIcon {
+  const size = count >= 100 ? 40 : count >= 25 ? 34 : 28;
+  const label = count > 999 ? '999+' : String(count);
+
+  return L.divIcon({
+    className: 'arka-gis-cluster',
+    html:
+      `<span class="arka-gis-cluster-dot" style="width:${size}px;height:${size}px;` +
+      `border-color:${colour};background:color-mix(in srgb, ${colour} 26%, transparent)">${label}</span>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
 /** Format a popup value using the field's declared unit. */
 const formatValue = sharedFormatValue;
 
@@ -177,7 +304,7 @@ function buildPopupHtml(layer: GISLayerDef, properties: Record<string, unknown>,
     : `<p class="mt-1.5 text-[12px] text-ink-muted">This feature carries no published attributes.</p>`;
 
   const caveat = layer.caveat
-    ? `<p class="mt-2 pt-2 border-t border-line text-[11px] text-caution-ink">${escapeHtml(layer.caveat)}</p>`
+    ? `<p class="mt-2 pt-2 border-t border-line text-[11px] text-caution">${escapeHtml(layer.caveat)}</p>`
     : '';
 
   return (
@@ -206,6 +333,39 @@ interface ManagedLayer {
   abort: AbortController | null;
 }
 
+/** Geometry handed to `showHighlight`, with an optional label for a tooltip. */
+export interface GISHighlightTarget {
+  geometry: GeoJSON.Geometry;
+  label?: string;
+}
+
+/** Called when an operator clicks a rendered GIS feature. */
+export type GISFeatureClickHandler = (
+  layer: GISLayerDef,
+  properties: Record<string, unknown>,
+  geometry: GeoJSON.Geometry | null,
+) => void;
+
+/**
+ * Reject an extent that cannot be a WGS84 box.
+ *
+ * Provider metadata is third-party input. A service that reports its extent in
+ * Web Mercator instead of degrees would otherwise throw the map somewhere in the
+ * Atlantic; refusing to fit is the safer failure.
+ */
+function isPlausibleExtent(extent: [number, number, number, number]): boolean {
+  const [west, south, east, north] = extent;
+  return (
+    [west, south, east, north].every((v) => Number.isFinite(v)) &&
+    Math.abs(west) <= 180 &&
+    Math.abs(east) <= 180 &&
+    Math.abs(south) <= 85 &&
+    Math.abs(north) <= 85 &&
+    east > west &&
+    north > south
+  );
+}
+
 /**
  * Reconciles base GIS layers onto a Leaflet map.
  *
@@ -220,12 +380,25 @@ export class BaseGISMapController {
   private readonly provider: CityGISProvider;
   private readonly managed = new Map<string, ManagedLayer>();
   private disposed = false;
-  private onFeatureClick?: (layer: GISLayerDef, properties: Record<string, unknown>) => void;
+  private onFeatureClick?: GISFeatureClickHandler;
+
+  /** Current selection outline. Replaced wholesale, never patched. */
+  private highlight: L.GeoJSON | null = null;
+
+  /**
+   * Serialises reconciliation.
+   *
+   * A layer toggle notifies the registry, which triggers a `sync()` from React,
+   * while the click handler that caused it may also call `sync()` directly. Left
+   * concurrent, both would see an empty slot and both would fetch. Chaining means
+   * the second call observes the first one's signature and skips the request.
+   */
+  private syncChain: Promise<void> = Promise.resolve();
 
   constructor(
     map: L.Map,
     registry: GISLayerRegistry,
-    options: { onFeatureClick?: (layer: GISLayerDef, properties: Record<string, unknown>) => void } = {},
+    options: { onFeatureClick?: GISFeatureClickHandler } = {},
   ) {
     this.map = map;
     this.registry = registry;
@@ -235,10 +408,10 @@ export class BaseGISMapController {
   }
 
   /**
-   * Create the two base GIS panes if they do not exist.
+   * Create the base GIS panes if they do not exist.
    *
-   * Both sit between Leaflet's `tilePane` (200) and `overlayPane` (400), which
-   * is what structurally guarantees ARKA's own overlays stay on top.
+   * All three sit between Leaflet's `tilePane` (200) and `overlayPane` (400),
+   * which is what structurally guarantees ARKA's own overlays stay on top.
    */
   private ensurePanes(): void {
     if (!this.map.getPane(PANE_RASTER)) {
@@ -251,6 +424,13 @@ export class BaseGISMapController {
       const pane = this.map.createPane(PANE_VECTOR);
       pane.style.zIndex = String(PANE_VECTOR_Z);
     }
+    if (!this.map.getPane(PANE_SELECT)) {
+      const pane = this.map.createPane(PANE_SELECT);
+      pane.style.zIndex = String(PANE_SELECT_Z);
+      // The highlight marks what is already selected; clicks must fall through
+      // to the feature beneath it so the next selection still works.
+      pane.style.pointerEvents = 'none';
+    }
   }
 
   /** True when the pane exists and holds nothing — used by the map's guards. */
@@ -259,18 +439,24 @@ export class BaseGISMapController {
   }
 
   /**
-   * Bring the panes back to the correct z-index.
+   * Re-assert the pane stack.
    *
-   * ARKA's basemap effect removes every `L.TileLayer` on the map when the
-   * basemap changes. Panes survive that, but this is the hook for restoring
-   * anything that does not.
+   * Called after ARKA swaps its basemap. Panes themselves survive a tile-layer
+   * swap, so today this is idempotent — it exists so that a future change to the
+   * map's own layer handling cannot silently leave city geography drawing above
+   * ARKA's operational overlays.
    */
   refreshPanes(): void {
     this.ensurePanes();
   }
 
   /** Reconcile the map against current registry state. */
-  async sync(): Promise<void> {
+  sync(): Promise<void> {
+    this.syncChain = this.syncChain.then(() => this.syncNow()).catch(() => undefined);
+    return this.syncChain;
+  }
+
+  private async syncNow(): Promise<void> {
     if (this.disposed) return;
 
     const wanted = new Set(this.registry.visibleLayerIds());
@@ -292,8 +478,41 @@ export class BaseGISMapController {
     this.applyOrdering();
   }
 
+  /**
+   * Show a layer and move the map so its data is actually in view.
+   *
+   * This is the click-to-display path: activating a layer from the panel must put
+   * geography on the map, not merely tick a checkbox. The fit happens *before*
+   * the fetch on purpose — vector layers are queried by viewport, so fitting
+   * first means the request asks for the area the operator is about to be looking
+   * at rather than the one they are leaving.
+   *
+   * Returns false when the provider published no usable extent, in which case
+   * the layer is still shown at the current view.
+   */
+  async activateLayer(layerId: string): Promise<boolean> {
+    const def = this.provider.getLayer(layerId);
+    if (!def) return false;
+
+    const fitted = this.registry.isVisible(layerId) ? false : await this.zoomToLayer(layerId);
+    this.registry.setVisible(layerId, true);
+    await this.sync();
+    return fitted;
+  }
+
+  /** Hide a layer and drop it from the map. */
+  async deactivateLayer(layerId: string): Promise<void> {
+    this.registry.setVisible(layerId, false);
+    await this.sync();
+  }
+
   /** Re-run vector queries for the new viewport. Raster tiles handle this natively. */
-  async refreshViewport(): Promise<void> {
+  refreshViewport(): Promise<void> {
+    this.syncChain = this.syncChain.then(() => this.refreshViewportNow()).catch(() => undefined);
+    return this.syncChain;
+  }
+
+  private async refreshViewportNow(): Promise<void> {
     if (this.disposed) return;
 
     const tasks: Promise<void>[] = [];
@@ -311,12 +530,10 @@ export class BaseGISMapController {
     if (!managed || !def) return;
 
     if (def.kind === 'vector') {
-      const group = managed.leafletLayer as L.GeoJSON;
-      group.setStyle(toPathStyle(def.style, opacity));
-      // Circle markers carry their own fill, so restyle them explicitly.
-      group.eachLayer((child) => {
-        if (child instanceof L.CircleMarker) child.setStyle(toPathStyle(def.style, opacity));
-      });
+      const style = toPathStyle(def.style, opacity);
+      // `CircleMarker.setStyle` preserves its own radius when the patch omits
+      // one, so the marker size stays as the catalogue set it.
+      eachPath(managed.leafletLayer, (path) => path.setStyle(style));
     } else {
       (managed.leafletLayer as L.TileLayer).setOpacity(opacity);
     }
@@ -326,7 +543,7 @@ export class BaseGISMapController {
   async zoomToLayer(layerId: string): Promise<boolean> {
     const description = await this.provider.describeLayer(layerId).catch(() => null);
     const extent = description?.extent;
-    if (!extent) return false;
+    if (!extent || !isPlausibleExtent(extent)) return false;
 
     const [west, south, east, north] = extent;
     this.map.fitBounds(
@@ -336,9 +553,150 @@ export class BaseGISMapController {
     return true;
   }
 
+  /**
+   * Fit the map to whatever a layer currently has drawn.
+   *
+   * Preferred over `zoomToLayer` once features are on screen: the published
+   * extent covers the whole service, while this covers the features ARKA
+   * actually holds. Falls back to the published extent when nothing is drawn or
+   * the drawn bounds are degenerate.
+   */
+  async zoomToLayerData(layerId: string): Promise<boolean> {
+    const managed = this.managed.get(layerId);
+    if (managed?.leafletLayer instanceof L.FeatureGroup) {
+      const bounds = managed.leafletLayer.getBounds();
+      if (bounds.isValid()) {
+        this.map.fitBounds(bounds, { padding: [32, 32], maxZoom: 17 });
+        return true;
+      }
+    }
+    return this.zoomToLayer(layerId);
+  }
+
+  /**
+   * Fit the map to the combined extent of several layers.
+   *
+   * Used when a whole theme group is switched on: the operator asked to see
+   * "Health", so the view should frame every health layer rather than whichever
+   * one happened to resolve last. Drawn bounds are preferred; published extents
+   * fill in for raster layers, which have no client-side geometry.
+   */
+  async zoomToLayers(layerIds: string[]): Promise<boolean> {
+    let union: L.LatLngBounds | null = null;
+
+    const extend = (bounds: L.LatLngBounds) => {
+      if (!bounds.isValid()) return;
+      union = union ? union.extend(bounds) : L.latLngBounds(bounds.getSouthWest(), bounds.getNorthEast());
+    };
+
+    for (const layerId of layerIds) {
+      const managed = this.managed.get(layerId);
+      if (managed?.leafletLayer instanceof L.FeatureGroup) {
+        extend(managed.leafletLayer.getBounds());
+        continue;
+      }
+
+      const description = await this.provider.describeLayer(layerId).catch(() => null);
+      const extent = description?.extent;
+      if (extent && isPlausibleExtent(extent)) {
+        const [west, south, east, north] = extent;
+        extend(L.latLngBounds(L.latLng(south, west), L.latLng(north, east)));
+      }
+    }
+
+    if (!union) return false;
+    this.map.fitBounds(union, { padding: [32, 32], maxZoom: 17 });
+    return true;
+  }
+
+  // --- Selection highlight ----------------------------------------------
+
+  /**
+   * Outline one or more features as the current selection.
+   *
+   * Drawn from the geometry ARKA already holds, into its own click-through pane,
+   * rather than by mutating the source layer's style. That keeps the highlight
+   * independent of whether the layer that produced it is still visible, makes
+   * clearing it a single removal, and works identically for a ward polygon, a
+   * clicked feature and a set of spatial-query results.
+   */
+  showHighlight(targets: GISHighlightTarget[], options: { fit?: boolean; maxZoom?: number } = {}): void {
+    this.clearHighlight();
+    this.ensurePanes();
+
+    const usable = targets.filter((t) => t.geometry);
+    if (!usable.length) return;
+
+    const collection: GeoJSON.FeatureCollection = {
+      type: 'FeatureCollection',
+      features: usable.map((target) => ({
+        type: 'Feature' as const,
+        geometry: target.geometry,
+        properties: target.label ? { label: target.label } : {},
+      })),
+    };
+
+    const layer = L.geoJSON(collection, {
+      pane: PANE_SELECT,
+      interactive: false,
+      style: () => HIGHLIGHT_STYLE,
+      pointToLayer: (_feature, latlng) =>
+        L.circleMarker(latlng, {
+          ...HIGHLIGHT_STYLE,
+          fillOpacity: 0,
+          radius: HIGHLIGHT_POINT_RADIUS,
+          pane: PANE_SELECT,
+          interactive: false,
+        }),
+      onEachFeature: (feature, child) => {
+        const label = (feature.properties as { label?: string } | null)?.label;
+        if (label) {
+          child.bindTooltip(label, {
+            className: 'arka-gis-highlight-tip',
+            direction: 'top',
+            offset: [0, -8],
+          });
+        }
+      },
+    });
+
+    layer.addTo(this.map);
+    this.highlight = layer;
+
+    if (options.fit) {
+      const bounds = layer.getBounds();
+      if (bounds.isValid()) {
+        this.map.fitBounds(bounds, { padding: [40, 40], maxZoom: options.maxZoom ?? 16 });
+      }
+    }
+  }
+
+  /** Remove the selection outline. Safe to call when nothing is selected. */
+  clearHighlight(): void {
+    if (!this.highlight) return;
+    this.map.removeLayer(this.highlight);
+    this.highlight = null;
+  }
+
+  /** Fit the map to a WGS84 box, e.g. a ward's precomputed bounds. */
+  fitBounds(bounds: GISBounds, options: { maxZoom?: number } = {}): void {
+    const latLngBounds = L.latLngBounds(
+      L.latLng(bounds.south, bounds.west),
+      L.latLng(bounds.north, bounds.east),
+    );
+    if (!latLngBounds.isValid()) return;
+    this.map.fitBounds(latLngBounds, { padding: [40, 40], maxZoom: options.maxZoom ?? 16 });
+  }
+
+  /** Current viewport as a WGS84 box, for a query scoped to what is on screen. */
+  currentBounds(): GISBounds {
+    return this.viewportBounds();
+  }
+
   /** Remove everything and stop all in-flight work. */
   dispose(): void {
     this.disposed = true;
+    this.clearHighlight();
     for (const layerId of [...this.managed.keys()]) this.remove(layerId);
   }
 
@@ -438,36 +796,124 @@ export class BaseGISMapController {
     // The layer may have been hidden while the request was in flight.
     if (!this.registry.isVisible(def.id)) return;
 
-    const geoJsonLayer = L.geoJSON(result.featureCollection, {
-      pane: PANE_VECTOR,
-      style: () => toPathStyle(def.style, opacity),
-      pointToLayer: (_feature, latlng) =>
-        L.circleMarker(latlng, {
-          ...toPathStyle(def.style, opacity),
-          radius: def.style?.pointRadius ?? 4,
-          pane: PANE_VECTOR,
-        }),
-      onEachFeature: (feature, leafletLayer) => {
-        const properties = (feature.properties ?? {}) as Record<string, unknown>;
-
-        leafletLayer.bindPopup(buildPopupHtml(def, properties, this.provider.attribution), {
-          className: 'arka-gis-popup',
-          maxWidth: 340,
-          autoPanPadding: [24, 24],
-        });
-
-        if (this.onFeatureClick) {
-          leafletLayer.on('click', () => this.onFeatureClick?.(def, properties));
-        }
-      },
-    });
+    const rendered = this.buildVectorLayer(def, result.featureCollection, opacity);
 
     // Swap only once the replacement is built, so the layer never blinks.
     this.remove(def.id);
-    geoJsonLayer.addTo(this.map);
-    this.managed.set(def.id, { leafletLayer: geoJsonLayer, signature, abort });
+    rendered.addTo(this.map);
+    this.managed.set(def.id, { leafletLayer: rendered, signature, abort });
 
     this.registry.markLoaded(def.id, { featureCount: result.count, truncated: result.truncated });
+  }
+
+  /**
+   * Render a fetched collection, clustering dense point layers.
+   *
+   * Non-point geometries always draw individually — a boundary is not something
+   * you cluster. Point layers draw individually too until there are enough of
+   * them that they would overlap into a solid mass, at which point nearby points
+   * collapse into a bubble carrying their exact count.
+   */
+  private buildVectorLayer(
+    def: GISLayerDef,
+    collection: GeoJSON.FeatureCollection,
+    opacity: number,
+  ): L.FeatureGroup {
+    const style = toPathStyle(def.style, opacity);
+    const pointRadius = def.style?.pointRadius ?? 4;
+
+    const points = collection.features.filter((f) => f?.geometry?.type === 'Point');
+    const others = collection.features.filter((f) => f?.geometry && f.geometry.type !== 'Point');
+    const shouldCluster = points.length >= CLUSTER_MIN_POINTS;
+
+    const group = L.featureGroup([], { pane: PANE_VECTOR });
+
+    // Anything that is not a lone point, plus every point when not clustering.
+    const direct = shouldCluster ? others : collection.features;
+    if (direct.length) {
+      group.addLayer(
+        L.geoJSON(
+          { type: 'FeatureCollection', features: direct } as GeoJSON.FeatureCollection,
+          {
+            pane: PANE_VECTOR,
+            style: () => style,
+            pointToLayer: (_feature, latlng) =>
+              L.circleMarker(latlng, { ...style, radius: pointRadius, pane: PANE_VECTOR }),
+            onEachFeature: (feature, child) => this.bindFeature(child, def, feature),
+          },
+        ),
+      );
+    }
+
+    if (!shouldCluster) return group;
+
+    for (const cluster of clusterPoints(this.map, points, this.map.getZoom())) {
+      if (cluster.members.length === 1) {
+        const feature = cluster.members[0];
+        const [lng, lat] = (feature.geometry as GeoJSON.Point).coordinates as [number, number];
+        const marker = L.circleMarker(L.latLng(lat, lng), {
+          ...style,
+          radius: pointRadius,
+          pane: PANE_VECTOR,
+        });
+        this.bindFeature(marker, def, feature);
+        group.addLayer(marker);
+        continue;
+      }
+
+      const members = cluster.members;
+      const marker = L.marker(L.latLng(cluster.lat, cluster.lng), {
+        icon: clusterIcon(members.length, def.style?.color ?? '#4c8dd9'),
+        pane: PANE_VECTOR,
+        keyboard: false,
+      });
+
+      marker.bindTooltip(`${members.length.toLocaleString('en-IN')} ${def.label}`, {
+        className: 'arka-gis-highlight-tip',
+        direction: 'top',
+        offset: [0, -10],
+      });
+
+      // Fitting the members' own bounds splits the cluster deterministically,
+      // where a fixed zoom step might leave it merged.
+      marker.on('click', () => {
+        const bounds = L.latLngBounds(
+          members.map((member) => {
+            const [lng, lat] = (member.geometry as GeoJSON.Point).coordinates as [number, number];
+            return L.latLng(lat, lng);
+          }),
+        );
+        if (bounds.isValid()) {
+          this.map.fitBounds(bounds.pad(0.2), { maxZoom: 18 });
+        }
+      });
+
+      group.addLayer(marker);
+    }
+
+    return group;
+  }
+
+  /**
+   * Wire a popup and selection behaviour onto one rendered feature.
+   *
+   * The click both outlines the feature and reports it upward, so the compact
+   * info card and the map highlight can never disagree about what is selected.
+   */
+  private bindFeature(target: L.Layer, def: GISLayerDef, feature: GeoJSON.Feature): void {
+    const properties = (feature.properties ?? {}) as Record<string, unknown>;
+    const geometry = feature.geometry ?? null;
+
+    target.bindPopup(buildPopupHtml(def, properties, this.provider.attribution), {
+      className: 'arka-gis-popup',
+      maxWidth: 340,
+      autoPanPadding: [24, 24],
+    });
+
+    target.on('click', () => {
+      if (geometry) this.showHighlight([{ geometry }]);
+      this.onFeatureClick?.(def, properties, geometry);
+    });
   }
 
   /** Current viewport, padded, as a WGS84 box. */
@@ -509,16 +955,17 @@ export class BaseGISMapController {
       if (!managed) continue;
 
       if (def.kind === 'vector') {
-        const group = managed.leafletLayer as L.GeoJSON;
-        group.eachLayer((child) => {
-          if ('bringToFront' in child) (child as L.Path).bringToFront();
-        });
+        eachPath(managed.leafletLayer, (path) => path.bringToFront());
       } else {
         rasterZ += 1;
         (managed.leafletLayer as L.TileLayer).setZIndex(rasterZ);
       }
     }
+
+    // The selection outline is drawn in its own pane, but a fresh sync can still
+    // reorder the DOM beneath it; re-raise it so it stays legible.
+    this.highlight?.bringToFront();
   }
 }
 
-export { PANE_RASTER, PANE_VECTOR };
+export { PANE_RASTER, PANE_VECTOR, PANE_SELECT };
