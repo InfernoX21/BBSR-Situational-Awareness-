@@ -78,7 +78,7 @@ export const BottomAnalytics: React.FC<BottomAnalyticsProps> = ({
   ];
 
   return (
-    <div className="w-full h-40 sm:h-44 md:h-48 lg:h-52 xl:h-56 border-t border-white/10 bg-[#0A0A0A] grid grid-cols-2 md:grid-cols-4 gap-2 xl:gap-3 p-2 xl:p-3 shrink-0 select-none overflow-hidden font-mono min-w-0 min-h-0">
+    <div className="w-full h-36 sm:h-40 md:h-44 lg:h-44 xl:h-48 border-t border-white/10 bg-[#0A0A0A] grid grid-cols-2 md:grid-cols-4 gap-2 xl:gap-2.5 p-2 shrink-0 select-none overflow-hidden font-mono min-w-0 min-h-0">
       {/* Widget 1: Incident Distribution */}
       <div className="gov-glass rounded-md p-2 flex flex-col justify-between min-w-0 min-h-0">
         <div className="flex items-center justify-between border-b border-white/5 pb-1 text-[8.5px] sm:text-[9px] font-bold uppercase tracking-widest gap-1">

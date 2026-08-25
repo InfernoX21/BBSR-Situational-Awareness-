@@ -87,15 +87,23 @@
 }
 
 @layer base {
-  html {
+  *, ::before, ::after {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
     -webkit-text-size-adjust: 100%;
-    /* Native controls (scrollbars, selects, focus rings) follow the theme. */
     color-scheme: dark;
     width: 100%;
     height: 100%;
     max-width: 100vw;
     max-height: 100vh;
     overflow: hidden;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
   }
 
   body {
@@ -104,13 +112,6 @@
     color: var(--color-ink);
     font-size: 14px;
     line-height: 1.45;
-    width: 100%;
-    height: 100%;
-    max-width: 100vw;
-    max-height: 100vh;
-    overflow: hidden;
-    margin: 0;
-    padding: 0;
   }
 
   /* Visible, consistent keyboard focus everywhere. */

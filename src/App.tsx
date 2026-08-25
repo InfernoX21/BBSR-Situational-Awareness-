@@ -264,7 +264,7 @@ export default function App() {
   };
 
   return (
-    <div className="w-full h-full min-h-screen max-h-screen bg-canvas flex flex-col overflow-hidden text-ink font-sans">
+    <div className="w-full h-screen max-h-screen bg-canvas flex flex-col overflow-hidden text-ink font-sans">
       {/* Offline Alert Banner */}
       {isOffline && (
         <div
