@@ -206,7 +206,7 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
       const map = mapInstanceRef.current;
       if (autoRotateEnabledRef.current && map) {
         if (!isUserInteractingRef.current) {
-          rotationAngleRef.current = (rotationAngleRef.current + 0.035) % 360;
+          rotationAngleRef.current = (rotationAngleRef.current + 0.0175) % 360;
         }
         try {
           const mapPane = map.getPanes().mapPane;
