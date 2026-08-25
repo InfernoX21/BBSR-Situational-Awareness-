@@ -81,7 +81,7 @@ export const LayerControlToolbar: React.FC<LayerControlToolbarProps> = ({
   const layerManager = CentralLayerManager.getInstance();
   const [activeSettingsLayer, setActiveSettingsLayer] = useState<LayerId | null>(null);
   const [loadingMap, setLoadingMap] = useState<Record<string, boolean>>({});
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     const unsubscribe = layerManager.subscribe((layerId, active, metadata) => {
