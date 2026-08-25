@@ -49,6 +49,7 @@ import {
   ZoomIn,
   ZoomOut,
   Compass,
+  RotateCw,
   Maximize2,
   Home,
   Search,
@@ -176,6 +177,130 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
   const measureMarkersRef = useRef<L.Marker[]>([]);
   const measuringModeRef = useRef<boolean>(false);
 
+  // --- Auto Map Rotation Tier ----------------------------------------------
+  const [isAutoRotateEnabled, setIsAutoRotateEnabled] = useState(false);
+
+  const autoRotateEnabledRef = useRef(isAutoRotateEnabled);
+  autoRotateEnabledRef.current = isAutoRotateEnabled;
+
+  const rotationAngleRef = useRef(0);
+  const animFrameIdRef = useRef<number | null>(null);
+  const inactivityTimerRef = useRef<number | null>(null);
+  const isUserInteractingRef = useRef(false);
+
+  const is3DModeRef = useRef(is3DMode);
+  is3DModeRef.current = is3DMode;
+
+  // ResizeObserver to automatically notify Leaflet when container dimensions change
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+    const container = mapContainerRef.current;
+    const observer = new ResizeObserver(() => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    });
+    observer.observe(container);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  const resetMapPaneTransform = () => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    try {
+      const mapPane = map.getPanes().mapPane;
+      if (!mapPane) return;
+      const pos = L.DomUtil.getPosition(mapPane);
+      const x = pos ? pos.x : 0;
+      const y = pos ? pos.y : 0;
+      mapPane.style.transformOrigin = 'center center';
+      if (is3DModeRef.current) {
+        mapPane.style.transform = `translate3d(${x}px, ${y}px, 0px) perspective(1000px) rotateX(25deg) scale(1.38)`;
+      } else {
+        mapPane.style.transform = `translate3d(${x}px, ${y}px, 0px)`;
+      }
+    } catch {
+      // Ignore if pane destroyed during unmount
+    }
+  };
+
+  // Trigger Leaflet transform update & invalidateSize when toggling 3D perspective mode
+  useEffect(() => {
+    is3DModeRef.current = is3DMode;
+    resetMapPaneTransform();
+    if (mapInstanceRef.current) {
+      const timer = setTimeout(() => {
+        mapInstanceRef.current?.invalidateSize();
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [is3DMode]);
+
+  // Continuous Auto-Rotation Animation Effect (native single-axis mapPane transform)
+  useEffect(() => {
+    autoRotateEnabledRef.current = isAutoRotateEnabled;
+
+    if (!isAutoRotateEnabled) {
+      if (animFrameIdRef.current !== null) {
+        cancelAnimationFrame(animFrameIdRef.current);
+        animFrameIdRef.current = null;
+      }
+      if (inactivityTimerRef.current !== null) {
+        window.clearTimeout(inactivityTimerRef.current);
+        inactivityTimerRef.current = null;
+      }
+      isUserInteractingRef.current = false;
+      rotationAngleRef.current = 0;
+      resetMapPaneTransform();
+      return;
+    }
+
+    const animate = () => {
+      const map = mapInstanceRef.current;
+      if (autoRotateEnabledRef.current && map) {
+        if (!isUserInteractingRef.current) {
+          rotationAngleRef.current = (rotationAngleRef.current + 0.005) % 360;
+        }
+        try {
+          const mapPane = map.getPanes().mapPane;
+          if (mapPane) {
+            const pos = L.DomUtil.getPosition(mapPane);
+            const x = pos ? pos.x : 0;
+            const y = pos ? pos.y : 0;
+            const angle = rotationAngleRef.current;
+            mapPane.style.transformOrigin = 'center center';
+            if (is3DModeRef.current) {
+              mapPane.style.transform = `translate3d(${x}px, ${y}px, 0px) perspective(1000px) rotateX(25deg) rotateZ(${angle}deg) scale(1.42)`;
+            } else if (angle !== 0) {
+              mapPane.style.transform = `translate3d(${x}px, ${y}px, 0px) rotateZ(${angle}deg) scale(1.42)`;
+            } else {
+              mapPane.style.transform = `translate3d(${x}px, ${y}px, 0px)`;
+            }
+          }
+        } catch {
+          // Ignore if map unmounted
+        }
+      }
+      animFrameIdRef.current = requestAnimationFrame(animate);
+    };
+
+    animFrameIdRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animFrameIdRef.current !== null) {
+        cancelAnimationFrame(animFrameIdRef.current);
+        animFrameIdRef.current = null;
+      }
+      if (inactivityTimerRef.current !== null) {
+        window.clearTimeout(inactivityTimerRef.current);
+        inactivityTimerRef.current = null;
+      }
+      resetMapPaneTransform();
+    };
+  }, [isAutoRotateEnabled]);
+
   // Active Selected Entity Modals
   const [selectedCamera, setSelectedCamera] = useState<CameraNode | null>(null);
   const [selectedHospital, setSelectedHospital] = useState<HospitalNode | null>(null);
@@ -219,6 +344,10 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
       zoom: 13,
       zoomControl: false,
       attributionControl: false,
+      preferCanvas: true,
+      fadeAnimation: true,
+      zoomAnimation: true,
+      markerZoomAnimation: true,
     });
 
     mapInstanceRef.current = map;
@@ -228,7 +357,13 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
       ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
       : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
-    basemapRef.current = L.tileLayer(tileUrl, { maxZoom: 19, subdomains: 'abcd' }).addTo(map);
+    basemapRef.current = L.tileLayer(tileUrl, {
+      maxZoom: 19,
+      subdomains: 'abcd',
+      keepBuffer: 6,
+      updateWhenIdle: false,
+      updateInterval: 100,
+    }).addTo(map);
 
     const markersGroup = L.layerGroup().addTo(map);
     markersGroupRef.current = markersGroup;
@@ -269,10 +404,32 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
       gisViewportTimerRef.current = window.setTimeout(() => {
         gisViewportTimerRef.current = null;
         void gisControllerRef.current?.refreshViewport();
-      }, 450);
+      }, 150);
     };
     map.on('moveend', scheduleGISViewportRefresh);
     map.on('zoomend', scheduleGISViewportRefresh);
+
+    // Auto Rotate Pause Listeners on User Interaction
+    const handleInteraction = () => {
+      if (autoRotateEnabledRef.current) {
+        isUserInteractingRef.current = true;
+        if (inactivityTimerRef.current !== null) {
+          window.clearTimeout(inactivityTimerRef.current);
+          inactivityTimerRef.current = null;
+        }
+        inactivityTimerRef.current = window.setTimeout(() => {
+          isUserInteractingRef.current = false;
+          inactivityTimerRef.current = null;
+        }, 12000);
+      }
+    };
+
+    map.on('movestart', handleInteraction);
+    map.on('zoomstart', handleInteraction);
+    map.on('dragstart', handleInteraction);
+    map.on('mousedown', handleInteraction);
+    map.on('touchstart', handleInteraction);
+    map.on('click', handleInteraction);
 
     // Measurement Click Handler using Ref to avoid stale closure
     map.on('click', (e: L.LeafletMouseEvent) => {
@@ -362,7 +519,13 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
       url = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
     }
 
-    basemapRef.current = L.tileLayer(url, { maxZoom: 19, subdomains: 'abcd' }).addTo(map);
+    basemapRef.current = L.tileLayer(url, {
+      maxZoom: 19,
+      subdomains: 'abcd',
+      keepBuffer: 6,
+      updateWhenIdle: false,
+      updateInterval: 100,
+    }).addTo(map);
 
     // The new backdrop is added last, so re-assert the GIS pane stack.
     gisControllerRef.current?.refreshPanes();
@@ -1170,32 +1333,36 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
   }, [gis.layers, gis.runtime, gis.provider]);
 
   return (
-    <div className="relative flex-1 h-full bg-[#050505] overflow-hidden select-none border-r border-white/10 flex flex-col">
+    <div className="relative flex-1 h-full bg-[#050505] overflow-hidden select-none flex flex-col">
       {/* TOP INTEGRATED LAYER CONTROL TOOLBAR */}
-      <LayerControlToolbar layersState={layersState} setLayersState={setLayersState} />
+      <LayerControlToolbar
+        layersState={layersState}
+        setLayersState={setLayersState}
+        gisPanelOpen={gisPanelOpen}
+        onToggleGisPanel={() => setGisPanelOpen((open) => !open)}
+        gisLegendVisible={gisLegendVisible}
+        onToggleGisLegend={() => setGisLegendVisible((visible) => !visible)}
+        gisProvider={gis.provider}
+        gisLayers={gis.layers}
+        gisRuntime={gis.runtime}
+        gisActions={gisActions}
+      />
 
       <div className="relative flex-1 w-full h-full overflow-hidden">
         {/* Leaflet Map Canvas Container */}
         <div
           ref={mapContainerRef}
-          className="w-full h-full z-0 transition-transform duration-700 ease-in-out origin-bottom"
-          style={
-            is3DMode
-              ? {
-                  transform: 'perspective(1000px) rotateX(25deg) scale(1.05)',
-                  transformOrigin: 'center bottom',
-                }
-              : {
-                  transform: 'none',
-                }
-          }
+          className="w-full h-full z-0 overflow-hidden"
+          style={{
+            transform: 'none',
+          }}
         />
 
         {/* Floating Search Bar */}
         <div className="absolute top-3 left-4 z-10 pointer-events-auto">
           <form
             onSubmit={handleSearch}
-            className="flex items-center bg-[#0A0A0A]/95 backdrop-blur-md border border-white/10 rounded px-3 py-1.5 w-72 shadow-2xl font-mono text-xs"
+            className="flex items-center gov-glass-interactive rounded-md px-3 py-1.5 w-72 shadow-2xl font-mono text-xs"
           >
             <Search className="w-3.5 h-3.5 text-white/40 mr-2" />
             <input
@@ -1208,38 +1375,15 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
           </form>
         </div>
 
-        {/*
-          Base GIS tier.
-
-          The map intelligence panel and the selected-feature card sit over the
-          map, not beside it: every click in the panel puts geography on this same
-          canvas, so the controls belong on it. The wrapper is pointer-events-none
-          so the strip of empty space between the two cards stays draggable map.
-        */}
-        <div className="absolute top-14 left-4 z-30 flex items-start gap-2 max-w-[calc(100%-2rem)] pointer-events-none">
-          <div className="pointer-events-auto">
-            <MapIntelligencePanel
+        {/* Feature info card when a feature is selected */}
+        {gisSelection && (
+          <div className="absolute top-14 left-4 z-30 pointer-events-auto">
+            <GISFeatureCard
+              selection={gisSelection}
               provider={gis.provider}
-              layers={gis.layers}
-              runtime={gis.runtime}
               actions={gisActions}
-              basemapStyle={layersState.basemapStyle ?? (layersState.satellite ? 'satellite' : 'dark')}
-              onBasemapChange={(style) => setLayersState((prev) => ({ ...prev, basemapStyle: style }))}
-              legendVisible={gisLegendVisible}
-              onToggleLegend={() => setGisLegendVisible((visible) => !visible)}
-              open={gisPanelOpen}
-              onToggleOpen={() => setGisPanelOpen((open) => !open)}
-            />
-          </div>
-
-          {gisSelection && (
-            <div className="pointer-events-auto">
-              <GISFeatureCard
-                selection={gisSelection}
-                provider={gis.provider}
-                actions={gisActions}
-                nearbyScope={gisNearbyScope}
-                basket={gisBasket}
+              nearbyScope={gisNearbyScope}
+              basket={gisBasket}
                 onAddToAnalysis={(entry) =>
                   setGisBasket((prev) =>
                     // Same identity test the card uses to disable its own button,
@@ -1344,6 +1488,36 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
             title="Toggle 3D Perspective Mode"
           >
             <Box className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => {
+              const nextState = !isAutoRotateEnabled;
+              setIsAutoRotateEnabled(nextState);
+              if (!nextState) {
+                if (inactivityTimerRef.current !== null) {
+                  window.clearTimeout(inactivityTimerRef.current);
+                  inactivityTimerRef.current = null;
+                }
+                isUserInteractingRef.current = false;
+                rotationAngleRef.current = 0;
+                resetMapPaneTransform();
+              }
+            }}
+            className={`w-8 h-8 rounded border backdrop-blur-md flex items-center justify-center shadow-xl transition-all active:scale-95 relative ${
+              isAutoRotateEnabled
+                ? 'bg-[#06B6D4]/15 text-[#06B6D4] border-[#06B6D4]/60 shadow-[0_0_12px_rgba(6,182,212,0.3)] ring-1 ring-[#06B6D4]/40'
+                : 'bg-[#0A0A0A]/95 text-white/40 border-white/10 hover:text-white'
+            }`}
+            title={
+              isAutoRotateEnabled
+                ? 'Auto Rotate: ON (Slow Orbit - Pauses on interaction, resumes after 12s idle)'
+                : 'Auto Rotate: OFF (Click to enable slow continuous map rotation)'
+            }
+          >
+            <RotateCw className={`w-4 h-4 ${isAutoRotateEnabled ? 'text-[#06B6D4]' : ''}`} />
+            {isAutoRotateEnabled && (
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#06B6D4] ring-2 ring-[#0A0A0A] animate-pulse" />
+            )}
           </button>
           <button
             onClick={() => {
@@ -1582,7 +1756,7 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
         )}
 
         {/* Bottom Center Coordinate HUD */}
-        <div className="absolute bottom-2 right-4 z-10 px-3 py-1 rounded bg-[#0A0A0A]/90 backdrop-blur-sm border border-white/10 text-[10px] font-mono text-white/40 flex items-center space-x-4 shadow-lg pointer-events-none uppercase">
+        <div className="absolute bottom-2 right-4 z-10 px-3 py-1 rounded-md gov-glass text-[10px] font-mono text-white/40 flex items-center space-x-4 shadow-lg pointer-events-none uppercase">
           <div>
             LAT: <span className="text-[#06B6D4]">20.2961° N</span>
           </div>

@@ -44,11 +44,12 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
   };
 
   return (
-    <aside className="w-72 border-l border-white/10 bg-[#0A0A0A] flex flex-col p-4 shrink-0 overflow-hidden select-none">
-      <div className="flex-1 space-y-4 overflow-y-auto pr-1">
+    <aside className="hidden lg:flex w-64 xl:w-72 2xl:w-80 border-l border-white/10 bg-[#0A0A0A] flex-col p-3 xl:p-4 shrink-0 overflow-hidden select-none transition-all duration-300 min-h-0 min-w-0">
+      {/* Dynamic Upper Section: Live Alerts & Live Intelligence (Fills space evenly) */}
+      <div className="flex-1 flex flex-col min-h-0 space-y-3 overflow-hidden">
         {/* Widget 1: LIVE ALERTS */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex items-center justify-between mb-1.5 shrink-0">
             <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">
               Live Alerts
             </span>
@@ -62,7 +63,7 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
           </div>
 
           {/* Severity Filter Tabs */}
-          <div className="flex items-center gap-1 mb-2 font-mono text-[9px]">
+          <div className="flex items-center gap-1 mb-2 font-mono text-[9px] shrink-0">
             {(['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const).map((lvl) => (
               <button
                 key={lvl}
@@ -78,16 +79,16 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
             ))}
           </div>
 
-          {/* Alert Cards Container */}
-          <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-            {filteredIncidents.slice(0, 4).map((inc) => (
+          {/* Alert Cards Container (Dynamic Height) */}
+          <div className="flex-1 overflow-y-auto pr-1 space-y-2 min-h-0 gov-scroll-thin">
+            {filteredIncidents.slice(0, 10).map((inc) => (
               <div
                 key={inc.id}
                 onClick={() => onSelectIncident(inc)}
-                className={`p-2 rounded border cursor-pointer transition-all space-y-1 ${
+                className={`p-2 rounded cursor-pointer space-y-1 gov-glass-interactive ${
                   inc.priority === 'CRITICAL'
-                    ? 'border-[#EF4444]/30 bg-[#EF4444]/5'
-                    : 'border-white/10 bg-white/[0.02] hover:bg-white/5'
+                    ? '!border-[#EF4444]/40 !bg-[#EF4444]/10'
+                    : ''
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -112,8 +113,8 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
         </div>
 
         {/* Widget 2: INTELLIGENCE FEED */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex items-center justify-between mb-1.5 shrink-0">
             <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">
               Live Intelligence
             </span>
@@ -122,82 +123,98 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
             </span>
           </div>
 
-          <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-            {intelligenceItems.map((item) => (
-              <div
-                key={item.id}
-                onClick={() => onOpenArticle(item)}
-                className="p-2 border border-white/10 bg-white/[0.02] hover:border-[#06B6D4]/50 rounded space-y-1 hover:bg-white/5 transition-all cursor-pointer group"
-              >
-                <div className="flex items-center justify-between text-[9px] font-mono">
-                  <span className="text-[#06B6D4] font-bold truncate max-w-[130px] group-hover:text-cyan-300 transition-colors">
-                    {item.publisherName}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-[7px] px-1 py-0.2 rounded bg-zinc-800 text-zinc-300 font-mono">
-                      {item.classification || 'LIVE'}
-                    </span>
-                    <span className="text-white/40 text-[8px]">{item.publishedTime}</span>
-                  </div>
-                </div>
-
-                <h4 className="text-[11px] font-medium text-white leading-tight group-hover:text-[#06B6D4] transition-colors">
-                  {item.headline}
-                </h4>
-
-                <p className="text-[10px] text-white/70 line-clamp-2 leading-tight">
-                  {item.summary}
-                </p>
-
-                <div className="flex items-center justify-between pt-1">
-                  <span className="text-[8px] font-mono text-white/40 bg-black/40 px-1 py-0.5 rounded">
-                    {item.category}
-                  </span>
-                  <div className="text-[9px] font-mono text-[#06B6D4] group-hover:underline flex items-center gap-1">
-                    <span>Read Summary</span>
-                    <ExternalLink className="w-2.5 h-2.5" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Section 3: TACTICAL RESOURCE FLEET */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1.5">
-              <Radio className="w-3 h-3 text-[#10B981] animate-pulse" />
-              <span>Resource Fleet</span>
-            </span>
-            <span className="text-[8px] font-mono text-[#10B981] bg-[#10B981]/10 px-1.5 py-0.5 rounded border border-[#10B981]/30">
-              ONLINE
-            </span>
-          </div>
-
-          <div className="space-y-1.5 bg-white/[0.02] border border-white/10 rounded p-2 text-[9px] font-mono">
-            {resources.map((res) => {
-              const pct = Math.round((res.available / res.total) * 100);
+          {/* Intelligence Cards Container (Dynamic Height) */}
+          <div className="flex-1 overflow-y-auto pr-1 space-y-2 min-h-0 gov-scroll-thin">
+            {intelligenceItems.map((item) => {
+              const isJustNow = item.publishedTime === 'Just now';
               return (
-                <div key={res.id} className="space-y-0.5">
-                  <div className="flex justify-between text-white/80">
-                    <span className="truncate max-w-[130px] font-medium">{res.name}</span>
-                    <span className="text-white/40">
-                      <strong className="text-[#10B981] font-bold">{res.available}</strong>/{res.total}
+                <div
+                  key={item.id}
+                  onClick={() => onOpenArticle(item)}
+                  className={`p-2 rounded space-y-1 cursor-pointer group transition-all duration-300 ${
+                    isJustNow
+                      ? 'border border-cyan-500/50 bg-cyan-950/20 shadow-[0_0_12px_rgba(6,182,212,0.15)] animate-in fade-in slide-in-from-top-2 duration-300'
+                      : 'gov-glass-interactive'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-[9px] font-mono">
+                    <span className="text-[#06B6D4] font-bold truncate max-w-[130px] group-hover:text-cyan-300 transition-colors">
+                      {item.publisherName}
                     </span>
+                    <div className="flex items-center gap-1">
+                      <span
+                        className={`text-[7px] px-1 py-0.2 rounded font-mono ${
+                          isJustNow
+                            ? 'bg-cyan-500/30 text-cyan-200 border border-cyan-500/50 animate-pulse font-bold'
+                            : 'bg-zinc-800 text-zinc-300'
+                        }`}
+                      >
+                        {isJustNow ? 'NEW' : item.classification || 'LIVE'}
+                      </span>
+                      <span className={`text-[8px] ${isJustNow ? 'text-cyan-300 font-bold' : 'text-white/40'}`}>
+                        {item.publishedTime}
+                      </span>
+                    </div>
                   </div>
-                  <div className="w-full h-1 bg-black rounded-full overflow-hidden border border-white/10">
-                    <div
-                      className={`h-full rounded-full transition-all duration-300 ${
-                        pct > 70 ? 'bg-[#10B981]' : pct > 40 ? 'bg-[#F59E0B]' : 'bg-[#EF4444]'
-                      }`}
-                      style={{ width: `${pct}%` }}
-                    />
+
+                  <h4 className="text-[11px] font-medium text-white leading-tight group-hover:text-[#06B6D4] transition-colors">
+                    {item.headline}
+                  </h4>
+
+                  <p className="text-[10px] text-white/70 line-clamp-2 leading-tight">
+                    {item.summary}
+                  </p>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[8px] font-mono text-white/40 bg-black/40 px-1 py-0.5 rounded">
+                      {item.category}
+                    </span>
+                    <div className="text-[9px] font-mono text-[#06B6D4] group-hover:underline flex items-center gap-1">
+                      <span>Read Summary</span>
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
+        </div>
+      </div>
+
+      {/* Anchored Bottom Section: TACTICAL RESOURCE FLEET */}
+      <div className="shrink-0 pt-2.5 border-t border-white/15 bg-[#0A0A0A] mt-2">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1.5">
+            <Radio className="w-3 h-3 text-[#10B981] animate-pulse" />
+            <span>Resource Fleet</span>
+          </span>
+          <span className="text-[8px] font-mono text-amber-400 bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-800/40">
+            STATIC ROSTER
+          </span>
+        </div>
+
+        <div className="space-y-1.5 gov-glass rounded-md p-2 text-[9px] font-mono">
+          {resources.map((res) => {
+            const pct = Math.round((res.available / res.total) * 100);
+            return (
+              <div key={res.id} className="space-y-0.5">
+                <div className="flex justify-between text-white/80">
+                  <span className="truncate max-w-[130px] font-medium">{res.name}</span>
+                  <span className="text-white/40">
+                    <strong className="text-[#10B981] font-bold">{res.available}</strong>/{res.total}
+                  </span>
+                </div>
+                <div className="w-full h-1 bg-black rounded-full overflow-hidden border border-white/10">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${
+                      pct > 70 ? 'bg-[#10B981]' : pct > 40 ? 'bg-[#F59E0B]' : 'bg-[#EF4444]'
+                    }`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </aside>

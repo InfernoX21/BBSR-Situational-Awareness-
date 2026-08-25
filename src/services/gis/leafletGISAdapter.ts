@@ -740,9 +740,9 @@ export class BaseGISMapController {
       maxZoom: template.maxZoom,
       // Tiles are stitched images; a 1px overlap hides seam artefacts.
       tileSize: 256,
-      updateWhenIdle: true,
+      updateWhenIdle: false,
       updateWhenZooming: false,
-      keepBuffer: 1,
+      keepBuffer: 4,
       className: 'arka-gis-raster-tile',
       onTileLoad: () => {
         if (reportedLoad) return;

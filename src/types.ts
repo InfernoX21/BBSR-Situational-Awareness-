@@ -228,6 +228,7 @@ export interface IntelligenceItem {
   category: string;
   content?: string;
   highlights?: string[];
+  classification?: string;
 }
 
 export interface ResourceUnit {

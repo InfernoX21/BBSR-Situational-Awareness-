@@ -12,29 +12,29 @@
    use dark ink on light fills for the same reason.
    ========================================================================== */
 @theme {
-  /* Surfaces */
-  --color-canvas: #0b0d10; /* app background: near-black */
-  --color-surface: #14181d; /* panels, cards */
-  --color-surface-raised: #191e25; /* popovers, dialogs, floating map chrome */
-  --color-sunken: #1a1f26; /* nested / inset areas, inputs */
-  --color-sunken-strong: #22282f;
-  --color-map-void: #0a0c0f; /* map canvas behind tiles */
+  /* Surfaces - Pure Tactical Pitch Black Theme */
+  --color-canvas: #000000; /* app background: pure pitch black */
+  --color-surface: #030303; /* panels, cards */
+  --color-surface-raised: #080808; /* popovers, dialogs, floating map chrome */
+  --color-sunken: #050505; /* nested / inset areas, inputs */
+  --color-sunken-strong: #101010;
+  --color-map-void: #000000; /* map canvas behind tiles */
 
   /* Borders */
-  --color-line: #262c34;
-  --color-line-strong: #384250;
+  --color-line: #161616;
+  --color-line-strong: #242424;
 
   /* Text */
   --color-ink: #e6eaf0; /* 13.1:1 on surface */
   --color-ink-muted: #a9b4c2; /* 7.4:1 on surface */
   --color-ink-subtle: #8b97a6; /* 5.3:1 on surface */
-  --color-ink-inverse: #0b0d10; /* text on light/accent fills */
+  --color-ink-inverse: #000000; /* text on light/accent fills */
 
   /* Structural bar (header, drawer headers, scrims) */
-  --color-navy: #0e1216;
-  --color-navy-700: #1c242e;
-  --color-navy-600: #26313d;
-  --color-navy-soft: #172029;
+  --color-navy: #000000;
+  --color-navy-700: #121212;
+  --color-navy-600: #1a1a1a;
+  --color-navy-soft: #080808;
 
   /* Accent (single accessible blue) */
   --color-accent: #4c8dd9; /* 5.1:1 on surface */
@@ -87,10 +87,23 @@
 }
 
 @layer base {
-  html {
+  *, ::before, ::after {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
     -webkit-text-size-adjust: 100%;
-    /* Native controls (scrollbars, selects, focus rings) follow the theme. */
     color-scheme: dark;
+    width: 100%;
+    height: 100%;
+    max-width: 100vw;
+    max-height: 100vh;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
   }
 
   body {
@@ -588,13 +601,44 @@
     box-shadow: inset 3px 0 0 0 var(--color-accent);
   }
 
-  /* --- Map floating chrome --- */
+  /* --- Map floating chrome & Tactical Glassmorphism --- */
+  .gov-glass {
+    background: rgba(8, 12, 16, 0.78);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+  }
+
+  .gov-glass-interactive {
+    background: rgba(8, 12, 16, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .gov-glass-interactive:hover {
+    background: rgba(14, 20, 28, 0.88);
+    border-color: rgba(6, 182, 212, 0.35);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
+  }
+
+  .gov-glass-header {
+    background: rgba(5, 5, 5, 0.82);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
   .gov-map-card {
-    background-color: rgba(20, 24, 29, 0.94);
-    border: 1px solid var(--color-line-strong);
+    background: rgba(8, 12, 16, 0.82);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
-    backdrop-filter: blur(8px);
     color: var(--color-ink);
   }
 
@@ -602,11 +646,12 @@
   .gov-map-group {
     display: flex;
     flex-direction: column;
-    background-color: rgba(20, 24, 29, 0.94);
-    border: 1px solid var(--color-line-strong);
+    background: rgba(8, 12, 16, 0.82);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-sm);
-    backdrop-filter: blur(8px);
     overflow: hidden;
   }
 
@@ -658,11 +703,32 @@
 
   /* Standalone map button (not inside a group) keeps its own border. */
   .gov-map-btn-solo {
-    border: 1px solid var(--color-line-strong);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: var(--radius-md);
-    background-color: rgba(20, 24, 29, 0.94);
+    background: rgba(8, 12, 16, 0.82);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     box-shadow: var(--shadow-sm);
-    backdrop-filter: blur(8px);
+  }
+
+  /* Thin scrollbar utility for sidebars and feeds */
+  .gov-scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+  .gov-scroll-thin::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  .gov-scroll-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .gov-scroll-thin::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+  }
+  .gov-scroll-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
   }
 }
 
@@ -695,6 +761,28 @@
 .animate-pulse-slow {
   animation: pulse-slow 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+@keyframes ticker-scroll {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-ticker {
+  display: flex;
+  align-items: center;
+  width: max-content;
+  animation: ticker-scroll 45s linear infinite;
+  will-change: transform;
+}
+
+.animate-ticker:hover {
+  animation-play-state: paused;
+}
+
 
 /* Attention ring used ONLY for an incident that has just become critical,
    and only for a short, self-terminating window. */
@@ -820,6 +908,18 @@
 .leaflet-container {
   font-family: var(--font-sans);
   background: var(--color-map-void);
+}
+
+/* GPU hardware acceleration & tile buffer optimization */
+.leaflet-tile-container,
+.leaflet-pane {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.leaflet-tile {
+  will-change: transform, opacity;
 }
 
 .leaflet-container:focus-visible {

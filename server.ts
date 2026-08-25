@@ -5,6 +5,7 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import Parser from 'rss-parser';
 import dotenv from 'dotenv';
+import { OpenClawOrchestrator } from './src/services/openclaw/OpenClawOrchestrator';
 
 dotenv.config();
 
@@ -896,10 +897,45 @@ app.post('/api/telegram/verify-code', (req, res) => {
   return res.status(400).json({ success: false, message: 'Invalid 6-digit verification code. Please send /start in Telegram @Arkacmd_bot.' });
 });
 
-app.post('/api/telegram/send-test', (req, res) => {
+app.post('/api/telegram/send-test', async (req, res) => {
+  const token = process.env.TELEGRAM_BOT_TOKEN || '';
+  let deliveredCount = 0;
+
+  if (token && !token.includes('ExampleBotToken')) {
+    const linkedChatsFile = path.join(process.cwd(), 'logs', 'linked_chats.json');
+    if (fs.existsSync(linkedChatsFile)) {
+      try {
+        const chats = JSON.parse(fs.readFileSync(linkedChatsFile, 'utf8'));
+        const alertText = `🚨 *ARKA C2 TEST EMERGENCY ALERT*\n\n📍 *Location*: Jayadev Vihar Underpass Axis\n🔥 *Event*: High Priority Urban Flood Simulation\n⚡ *Status*: TEST DISPATCH ACTIVE\n\n_Dispatched from ARKA C2 Web Command Center._`;
+        
+        for (const chatId of Object.keys(chats)) {
+          try {
+            await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                text: alertText,
+                parse_mode: 'Markdown',
+                reply_markup: {
+                  inline_keyboard: [
+                    [{ text: '📍 Open Digital Twin', url: 'https://infernox21.github.io/BBSR-Situational-Awareness-/' }],
+                  ],
+                },
+              }),
+            });
+            deliveredCount++;
+          } catch (err) {}
+        }
+      } catch (err) {}
+    }
+  }
+
   res.json({
     success: true,
-    message: 'Test emergency alert sent to linked Telegram session (@Arkacmd_bot).',
+    message: deliveredCount > 0
+      ? `Test emergency alert dispatched to ${deliveredCount} live Telegram sessions (@Arkacmd_bot)!`
+      : 'Test emergency alert simulated successfully (@Arkacmd_bot active).',
     sentTimestamp: new Date().toISOString(),
   });
 });
@@ -1173,6 +1209,119 @@ app.post('/api/camera-ai/analyze', (req, res) => {
 });
 
 let isPollingActive = false;
+const activeVerificationCodes = new Map<string, { code: string; chatId: number | string; username: string; expiresAt: number }>();
+
+function saveLinkedChat(chatId: number | string, username: string) {
+  try {
+    const logsDir = path.join(process.cwd(), 'logs');
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir, { recursive: true });
+    }
+    const linkedChatsFile = path.join(logsDir, 'linked_chats.json');
+    let chats: Record<string, any> = {};
+    if (fs.existsSync(linkedChatsFile)) {
+      try {
+        chats = JSON.parse(fs.readFileSync(linkedChatsFile, 'utf8'));
+      } catch (e) {}
+    }
+    chats[String(chatId)] = { username, lastSeen: new Date().toISOString() };
+    fs.writeFileSync(linkedChatsFile, JSON.stringify(chats, null, 2));
+  } catch (err: any) {
+    console.error('[Telegram] Failed to save linked chat:', err.message);
+  }
+}
+
+function escapeHtml(str: string): string {
+  return (str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+async function sendTelegramMessageWithFallback(token: string, chatId: number | string, text: string, inlineKeyboard?: any[]) {
+  const payload: any = {
+    chat_id: chatId,
+    text: text,
+    parse_mode: 'HTML',
+  };
+  if (inlineKeyboard && inlineKeyboard.length > 0) {
+    payload.reply_markup = { inline_keyboard: inlineKeyboard };
+  }
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      return { ok: true, data };
+    }
+
+    console.warn(`[Telegram Bot] HTML sendMessage failed (${data.description}). Retrying plain text fallback...`);
+    delete payload.parse_mode;
+    payload.text = text.replace(/<[^>]*>/g, '');
+    const fallbackRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const fallbackData = await fallbackRes.json();
+    return { ok: fallbackData.ok, data: fallbackData };
+  } catch (err: any) {
+    console.error(`[Telegram Bot] Network error sending message:`, err.message);
+    return { ok: false, error: err.message };
+  }
+}
+
+async function generateOpenClawResponse(userText: string, username: string) {
+  const safeUsername = escapeHtml(username || 'Operator');
+  const promptLower = userText.toLowerCase().trim();
+
+  let inlineKeyboard = [
+    [
+      { text: '📍 Open Digital Twin', url: 'https://infernox21.github.io/BBSR-Situational-Awareness-/' },
+      { text: '📊 Open Dashboard', url: 'https://infernox21.github.io/BBSR-Situational-Awareness-/' },
+    ],
+    [
+      { text: '🚨 View Incident Details', url: 'https://infernox21.github.io/BBSR-Situational-Awareness-/' },
+      { text: '📄 Generate Report', url: 'https://infernox21.github.io/BBSR-Situational-Awareness-/' },
+    ],
+  ];
+
+  let generatedCode: string | undefined = undefined;
+
+  if (promptLower.startsWith('/start') || promptLower.startsWith('/link')) {
+    generatedCode = String(Math.floor(100000 + Math.random() * 900000));
+    const replyText = `🛡 <b>ARKA OpenClaw Autonomous Multi-Agent Command Center</b> (@Arkacmd_bot)\n\nWelcome, <b>${safeUsername}</b>!\n\nYour 6-digit dashboard linking code: <code>${generatedCode}</code>\n\nEnter this code inside ARKA Dashboard ➔ Settings ➔ Telegram Integration to pair your mobile session.\n\n<b>Powered by 7 OpenClaw Domain Agents & MCP Tools</b>:\n• 🤖 <b>Supervisor Agent</b> (Task Planner)\n• 🌐 <b>GIS Agent</b> (Cesium 3D Controls)\n• 🚗 <b>Traffic Agent</b> (Corridor Telemetry)\n• 🌦 <b>Disaster Agent</b> (Doppler Flood Radar)\n• 🏥 <b>Infrastructure Agent</b> (Hospital ICU Beds)\n• 📻 <b>Intelligence Agent</b> (News Synthesis)\n• 📊 <b>Reporting Agent</b> (Executive Briefings)\n\nTry sending natural questions:\n• <b>What is the traffic status near KIIT?</b>\n• <b>Show camera AI results for Patia</b>\n• <b>Show critical incidents at Jayadev Vihar</b>\n• <b>Display nearby hospitals near AIIMS</b>`;
+    return { replyText, inlineKeyboard, code: generatedCode };
+  }
+
+  // Execute OpenClaw Autonomous Multi-Agent Orchestrator
+  const openclaw = OpenClawOrchestrator.getInstance();
+  const openclawResult = await openclaw.executeCommand(userText, {});
+
+  // Format OpenClaw Multi-Agent Execution Result into HTML
+  let rawSummary = openclawResult.finalSummary || '';
+  
+  let formattedSummary = escapeHtml(rawSummary)
+    .replace(/^([^\n:]+):/gm, '<b>$1</b>:')
+    .replace(/^(📍|📊|🚗|⚠️|🚨|🌦|⏱|🎯|🔥|⚡|🏛|🚒|🏥|🚑|🛡|•)/gm, '$1');
+
+  let replyText = `🤖 <b>ARKA OpenClaw Task Execution</b>\n\n${formattedSummary}`;
+
+  if (openclawResult.recommendations && openclawResult.recommendations.length > 0) {
+    replyText += `\n\n<b>Recommended Actions</b>:\n`;
+    for (const rec of openclawResult.recommendations) {
+      replyText += `• ${escapeHtml(rec)}\n`;
+    }
+  }
+
+  replyText += `\n<i>Processed via 7 OpenClaw Domain Agents (Supervisor, GIS, Traffic, Disaster, Infrastructure, Intelligence, Reporting) & MCP Tools.</i>`;
+
+  return { replyText, inlineKeyboard };
+}
 
 // Active Telegram Long-Polling Loop for @Arkacmd_bot
 async function startTelegramPolling(overrideToken?: string) {
@@ -1185,45 +1334,51 @@ async function startTelegramPolling(overrideToken?: string) {
   if (isPollingActive && !overrideToken) return;
   isPollingActive = true;
 
+  console.log('[Telegram Bot] Resetting webhook for clean long-polling...');
+  try {
+    await fetch(`https://api.telegram.org/bot${token}/deleteWebhook?drop_pending_updates=false`);
+  } catch (e) {}
+
   console.log('[Telegram Bot] Starting live Telegram long-polling connection for @Arkacmd_bot...');
   let lastUpdateId = 0;
 
   while (true) {
     try {
-      const res = await fetch(`https://api.telegram.org/bot${token}/getUpdates?offset=${lastUpdateId + 1}&timeout=30`);
+      const res = await fetch(`https://api.telegram.org/bot${token}/getUpdates?offset=${lastUpdateId + 1}&timeout=20`);
       const data = await res.json();
 
       if (data.ok && Array.isArray(data.result)) {
         for (const update of data.result) {
           lastUpdateId = update.update_id;
-          if (update.message) {
+          if (update.message && update.message.text) {
             const chatId = update.message.chat.id;
-            const text = update.message.text || '';
-            console.log(`[Telegram Bot] Message from ${chatId}: ${text}`);
+            const text = update.message.text.trim();
+            const username = update.message.from?.username || update.message.from?.first_name || 'Operator';
+            console.log(`[Telegram Bot] Received from @${username} (${chatId}): "${text}"`);
 
-            let replyText = `🛡 *ARKA Command Center* (@Arkacmd_bot)\nReceived: _${text}_`;
-            if (text.startsWith('/start')) {
-              const code = Math.floor(100000 + Math.random() * 900000);
-              replyText = `🛡 *ARKA Command Center* (@Arkacmd_bot)\n\nWelcome to ARKA!\nYour 6-digit verification code: *${code}*\n\nEnter this code inside ARKA Dashboard -> Settings -> Telegram Integration.`;
-            } else if (text.startsWith('/incidents')) {
-              replyText = `🚨 *ARKA Active Emergencies Report*\n\n1. *Waterlogging at Jayadev Vihar* [CRITICAL]\n2. *Electrical Fire at Master Canteen* [HIGH]\n3. *NH-16 Collision at Rasulgarh* [HIGH]`;
-            } else if (text.startsWith('/weather')) {
-              replyText = `🌦 *IMD Doppler Weather Radar*\nRainfall: 45 mm/hr | Flood Risk: SEVERE\nHotspots: Jayadev Vihar & Acharya Vihar`;
+            saveLinkedChat(chatId, username);
+
+            const card = await generateOpenClawResponse(text, username);
+            if (card.code) {
+              activeVerificationCodes.set(card.code, {
+                code: card.code,
+                chatId,
+                username,
+                expiresAt: Date.now() + 15 * 60 * 1000,
+              });
             }
 
-            await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: chatId,
-                text: replyText,
-                parse_mode: 'Markdown',
-              }),
-            });
+            const sendResult = await sendTelegramMessageWithFallback(token, chatId, card.replyText, card.inlineKeyboard);
+            if (sendResult.ok) {
+              console.log(`[Telegram Bot] ✅ Sent response to @${username} (${chatId})`);
+            } else {
+              console.error(`[Telegram Bot] ❌ Failed response to @${username}:`, sendResult);
+            }
           }
         }
       }
-    } catch (err) {
+    } catch (err: any) {
+      console.error('[Telegram Bot] Polling error:', err.message);
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
   }
@@ -1234,13 +1389,25 @@ async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true, host: '0.0.0.0', port: 3000 },
-      appType: 'spa',
+      appType: 'custom',
     });
-    app.use(vite.middlewares);
+    app.use((req, res, next) => {
+      if (req.path.startsWith('/api')) {
+        return next();
+      }
+      vite.middlewares(req, res, next);
+    });
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api')) return next();
+      vite.transformIndexHtml(req.url, fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf-8'))
+        .then((html) => res.status(200).set({ 'Content-Type': 'text/html' }).end(html))
+        .catch(next);
+    });
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api')) return next();
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

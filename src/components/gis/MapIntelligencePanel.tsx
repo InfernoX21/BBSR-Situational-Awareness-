@@ -119,7 +119,7 @@ export const MapIntelligencePanel: React.FC<MapIntelligencePanelProps> = ({
   }
 
   return (
-    <div className="gov-panel w-[322px] max-w-[calc(100vw-2rem)] flex flex-col max-h-[74vh] shadow-lg">
+    <div className="gov-glass rounded-lg w-[330px] max-w-[calc(100vw-2rem)] flex flex-col max-h-[74vh] shadow-2xl">
       <div className="gov-panel-head">
         <div className="min-w-0 flex-1">
           <span className="gov-title block">Map intelligence</span>

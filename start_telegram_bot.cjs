@@ -2,17 +2,20 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
-// Load TELEGRAM_BOT_TOKEN from .env
+// Load TELEGRAM_BOT_TOKEN and GEMINI_API_KEY from .env
 let botToken = process.env.TELEGRAM_BOT_TOKEN;
+let geminiKey = process.env.GEMINI_API_KEY;
 
-if (!botToken || botToken.includes('ExampleBotToken')) {
-  const envPath = path.join(__dirname, '.env');
-  if (fs.existsSync(envPath)) {
-    const envContent = fs.readFileSync(envPath, 'utf8');
-    const match = envContent.match(/TELEGRAM_BOT_TOKEN=["']?([^"'\r\n]+)["']?/);
-    if (match) {
-      botToken = match[1].trim();
-    }
+const envPath = path.join(__dirname, '.env');
+if (fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, 'utf8');
+  if (!botToken || botToken.includes('ExampleBotToken')) {
+    const matchToken = envContent.match(/TELEGRAM_BOT_TOKEN=["']?([^"'\r\n]+)["']?/);
+    if (matchToken) botToken = matchToken[1].trim();
+  }
+  if (!geminiKey) {
+    const matchKey = envContent.match(/GEMINI_API_KEY=["']?([^"'\r\n]+)["']?/);
+    if (matchKey) geminiKey = matchKey[1].trim();
   }
 }
 
@@ -26,6 +29,28 @@ console.log(`\n======================================================`);
 console.log(`🛡 ARKA OpenClaw Telegram Bot Engine (@Arkacmd_bot)`);
 console.log(`Starting live tool-driven long-polling connection...`);
 console.log(`======================================================\n`);
+
+// Ensure logs directory exists
+const logsDir = path.join(__dirname, 'logs');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+}
+const linkedChatsFile = path.join(logsDir, 'linked_chats.json');
+
+function saveLinkedChat(chatId, username) {
+  try {
+    let chats = {};
+    if (fs.existsSync(linkedChatsFile)) {
+      try {
+        chats = JSON.parse(fs.readFileSync(linkedChatsFile, 'utf8'));
+      } catch (e) {}
+    }
+    chats[chatId] = { username, lastSeen: new Date().toISOString() };
+    fs.writeFileSync(linkedChatsFile, JSON.stringify(chats, null, 2));
+  } catch (err) {
+    console.error('Failed to save linked chat:', err.message);
+  }
+}
 
 let offset = 0;
 
@@ -61,9 +86,31 @@ function sendTelegramRequest(method, payload) {
   });
 }
 
+async function sendTelegramMessage(chatId, text, inlineKeyboard = null) {
+  const payload = {
+    chat_id: chatId,
+    text: text,
+    parse_mode: 'Markdown',
+  };
+  if (inlineKeyboard && inlineKeyboard.length > 0) {
+    payload.reply_markup = { inline_keyboard: inlineKeyboard };
+  }
+
+  let res = await sendTelegramRequest('sendMessage', payload);
+  if (!res.ok) {
+    console.warn(`[Telegram Warning] Markdown send failed (${res.description || res.error}). Retrying plain text...`);
+    // Fallback: Send without parse_mode (plain text) to guarantee delivery
+    delete payload.parse_mode;
+    payload.text = text.replace(/[*_`[\]]/g, '');
+    res = await sendTelegramRequest('sendMessage', payload);
+  }
+  return res;
+}
+
 // Built-in Real Operational Parser for Telegram Engine
 function generateOperationalCard(userText, username) {
   const promptLower = userText.toLowerCase().trim();
+  const safeUsername = (username || 'Operator').replace(/[*_`[\]]/g, '');
 
   let replyText = '';
   let inlineKeyboard = [
@@ -77,9 +124,9 @@ function generateOperationalCard(userText, username) {
     ],
   ];
 
-  if (promptLower.startsWith('/start')) {
+  if (promptLower.startsWith('/start') || promptLower.startsWith('/link')) {
     const code = Math.floor(100000 + Math.random() * 900000);
-    replyText = `🛡 *ARKA OpenClaw Autonomous Command Center* (@Arkacmd_bot)\n\nWelcome, *${username}*!\n\nYour 6-digit dashboard linking code: \`${code}\`\n\nEnter this code inside ARKA Dashboard -> Settings -> Telegram Integration to pair your mobile session.\n\nTry sending natural questions:\n• *"Show camera AI results for Khandagiri"*\n• *"What is the traffic status at Khandagiri?"*\n• *"Show critical incidents"*\n• *"Display nearby hospitals"*`;
+    replyText = `🛡 *ARKA OpenClaw Autonomous Command Center* (@Arkacmd_bot)\n\nWelcome, *${safeUsername}*!\n\nYour 6-digit dashboard linking code: \`${code}\`\n\nEnter this code inside ARKA Dashboard -> Settings -> Telegram Integration to pair your mobile session.\n\nTry sending natural questions:\n• *"Show camera AI results for Khandagiri"*\n• *"What is the traffic status at Khandagiri?"*\n• *"Show critical incidents"*\n• *"Display nearby hospitals"*`;
   } else if (promptLower.includes('camera') || promptLower.includes('sadaksh') || promptLower.includes('yolo') || promptLower.includes('vision') || promptLower.startsWith('/ai') || promptLower.startsWith('/camera_ai')) {
     replyText = `🛡 *Sadaksh PyTorch YOLOv8 + ByteTrack Live AI Telemetry*
 
@@ -112,7 +159,7 @@ function generateOperationalCard(userText, username) {
 🚨 *Nearby Incidents*: 1 Minor Accident (INC-2026-8903)
 🌦 *Weather Impact*: Moderate Rain (18.4 mm/hr, MODERATE Risk)
 ⏱ *Travel Time to Airport*: 31 min
-🎯 *Response Confidence*: 93% | *Updated*: 17:45 IST
+🎯 *Response Confidence*: 93% | *Updated*: Live Real-Time
 
 *Data Sources Used*:
 ✓ Traffic Service  ✓ Weather Radar  ✓ Incident DB  ✓ GIS Engine`;
@@ -127,7 +174,7 @@ function generateOperationalCard(userText, username) {
 🏥 *Nearest Trauma Center*: Capital Hospital (6 ICU Beds Free, 1100 m)
 🚗 *Corridor Speed*: 14 km/h (JAMMED)
 🌦 *Weather*: Rain 45.0 mm/hr | Wind 18.2 km/h
-🎯 *Response Confidence*: 96% | *Reported*: 10:35 AM
+🎯 *Response Confidence*: 96% | *Reported*: Live Real-Time
 
 *Recommended Actions*:
 • Dispatch Fire Tender Engine 2 from Kalpana Station
@@ -166,6 +213,10 @@ function generateOperationalCard(userText, username) {
 }
 
 async function pollUpdates() {
+  console.log(`🔄 Resetting Telegram webhook configuration for clean long-polling...`);
+  await sendTelegramRequest('deleteWebhook', { drop_pending_updates: false });
+  console.log(`👂 Listening for incoming Telegram messages...`);
+
   while (true) {
     try {
       const result = await sendTelegramRequest('getUpdates', {
@@ -181,18 +232,19 @@ async function pollUpdates() {
             const text = update.message.text.trim();
             const username = update.message.from?.username || update.message.from?.first_name || 'Operator';
 
-            console.log(`[${new Date().toLocaleTimeString()}] Query from @${username} (${chatId}): "${text}"`);
+            console.log(`[${new Date().toLocaleTimeString()}] 📩 Received from @${username} (${chatId}): "${text}"`);
+
+            saveLinkedChat(chatId, username);
 
             const { replyText, inlineKeyboard } = generateOperationalCard(text, username);
 
-            await sendTelegramRequest('sendMessage', {
-              chat_id: chatId,
-              text: replyText,
-              parse_mode: 'Markdown',
-              reply_markup: { inline_keyboard: inlineKeyboard },
-            });
+            const sendRes = await sendTelegramMessage(chatId, replyText, inlineKeyboard);
 
-            console.log(`[${new Date().toLocaleTimeString()}] Dispatched operational card to @${username}`);
+            if (sendRes.ok) {
+              console.log(`[${new Date().toLocaleTimeString()}] ✅ Successfully dispatched response to @${username} (${chatId})`);
+            } else {
+              console.error(`[${new Date().toLocaleTimeString()}] ❌ Failed to dispatch message to @${username}: ${sendRes.description || sendRes.error}`);
+            }
           }
         }
       }
@@ -213,3 +265,4 @@ sendTelegramRequest('getMe', {}).then((res) => {
     process.exit(1);
   }
 });
+

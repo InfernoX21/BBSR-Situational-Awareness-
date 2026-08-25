@@ -176,7 +176,7 @@ export default function App() {
     // 5-second interval for live traffic sensors & corridor telemetry update
     const trafficInterval = setInterval(fetchTraffic, 5000);
 
-    // Periodic simulation ticker for telemetry updates
+    // Periodic simulation ticker for drone telemetry updates
     const interval = setInterval(() => {
       setDrones((prevDrones) =>
         prevDrones.map((d) => ({
@@ -187,9 +187,90 @@ export default function App() {
       );
     }, 15000);
 
+    // Live News Stream Generator: Auto-pushes fresh Bhubaneswar news to Feed + Bottom Ticker Bar
+    const liveNewsPool = [
+      {
+        publisherName: 'BMC Control Room',
+        headline: 'BMC Dewatering Ops Activated: 45 High-Capacity Pumps at NALCO & Jayadev Vihar',
+        summary: 'Bhubaneswar Municipal Corporation emergency response teams deployed for heavy monsoon runoff control.',
+        category: 'CIVIC_ALERT',
+        classification: 'ALERT',
+      },
+      {
+        publisherName: 'Bhubaneswar Traffic Police',
+        headline: 'Traffic Advisory: Diversions Active on Janpath for Station Square Utilities Work',
+        summary: 'Heavy vehicles rerouted via Vani Vihar & Rajmahal Overbridge. Traffic wardens deployed at key intersections.',
+        category: 'TRAFFIC_ALERT',
+        classification: 'LIVE',
+      },
+      {
+        publisherName: 'OSDMA Emergency Grid',
+        headline: 'IMD Doppler Radar: Severe Thunderstorm & Lightning Warning for Khordha District',
+        summary: 'Wind speeds up to 55 km/h expected. Citizens advised to take shelter and stay clear of trees & power lines.',
+        category: 'WEATHER_ADVISORY',
+        classification: 'ALERT',
+      },
+      {
+        publisherName: 'TPCODL SCADA Center',
+        headline: 'Grid Stabilization: Saheed Nagar 33kV Substation Load Balanced at 428 MW',
+        summary: 'Automated SCADA trip reset completed successfully. Saheed Nagar & Unit-9 distribution feeders online.',
+        category: 'UTILITIES_UPDATE',
+        classification: 'LIVE',
+      },
+      {
+        publisherName: 'ARKA Surveillance Drones',
+        headline: 'Drone Patrol #04 Detects Minor Vehicle Breakdown Near Rasulgarh Square',
+        summary: 'Autonomous camera alert dispatched PCR Van #14 for rapid traffic clearance.',
+        category: 'AI_SURVEILLANCE',
+        classification: 'LIVE',
+      },
+      {
+        publisherName: 'WatCo Odisha',
+        headline: '24x7 Water Supply Pressure Normalization at Saheed Nagar & Unit-9',
+        summary: 'Pipeline pressure telemetry steady at 2.4 bar following automated valve adjustment.',
+        category: 'CIVIC_UPDATE',
+        classification: 'LIVE',
+      },
+      {
+        publisherName: 'Capital Hospital Emergency',
+        headline: 'Trauma Unit Level-1 Readiness Watch Activated Across Bhubaneswar',
+        summary: '8 108-Ambulances placed on high-readiness standby at Master Canteen & Kalpana Square.',
+        category: 'HEALTH_EMERGENCY',
+        classification: 'LIVE',
+      },
+    ];
+
+    let newsIndex = 0;
+    const newsInterval = setInterval(() => {
+      const template = liveNewsPool[newsIndex % liveNewsPool.length];
+      newsIndex++;
+
+      const newArticle: IntelligenceItem = {
+        id: `news-live-${Date.now()}`,
+        publisherName: template.publisherName,
+        headline: template.headline,
+        summary: template.summary,
+        category: template.category,
+        classification: template.classification,
+        publishedTime: 'Just now',
+        url: '#',
+        source: 'GOVT_ADVISORY',
+      };
+
+      // 1. Prepend to Live Intelligence Feed in Right Intelligence Center
+      setIntelligenceItems((prev) => [newArticle, ...prev.slice(0, 15)]);
+
+      // 2. Automatically log to Bottom Stream Bar ticker (>_ STREAM)
+      addLog(
+        `[INTELLIGENCE FEED] ${template.publisherName}: "${template.headline}"`,
+        template.classification === 'ALERT' ? 'ALERT' : 'INFO'
+      );
+    }, 12000);
+
     return () => {
       clearInterval(interval);
       clearInterval(trafficInterval);
+      clearInterval(newsInterval);
     };
   }, []);
 
@@ -264,7 +345,7 @@ export default function App() {
   };
 
   return (
-    <div className="w-screen h-screen bg-canvas flex flex-col overflow-hidden text-ink font-sans">
+    <div className="w-full h-screen max-h-screen bg-canvas flex flex-col overflow-hidden text-ink font-sans">
       {/* Offline Alert Banner */}
       {isOffline && (
         <div
@@ -300,7 +381,7 @@ export default function App() {
       <MobileAIBottomSheet />
 
       {/* MAIN CONTAINER: SIDEBAR + DIGITAL TWIN + INTELLIGENCE CENTER */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex overflow-hidden relative min-w-0 min-h-0">
         {/* LAYER 1: LEFT SIDEBAR (260px) */}
         <Sidebar
           activeTab={activeTab}
@@ -315,7 +396,7 @@ export default function App() {
         {activeTab === 'Dashboard' || activeTab === 'Live Map' ? (
           <>
             {/* MAIN DIGITAL TWIN MAP */}
-            <div className="flex-1 flex flex-col relative overflow-hidden">
+            <div className="flex-1 flex flex-col relative overflow-hidden min-w-0 min-h-0">
               <DigitalTwinMap
                 incidents={incidents}
                 landmarks={landmarks}
@@ -373,140 +454,144 @@ export default function App() {
               />
             )}
           </>
-        ) : activeTab === 'AI Operations' ? (
-          <AIOperationsView
-            incidents={incidents}
-            landmarks={landmarks}
-            drones={drones}
-            weather={weather}
-            trafficCorridors={trafficCorridors}
-            intelligenceItems={intelligenceItems}
-            onApplyStateChanges={(changes) => {
-              if (changes?.targetLocation) {
-                setSelectedIncident({
-                  id: `TARGET-OPENCLAW-${Date.now()}`,
-                  title: changes.targetLocation.name,
-                  category: 'FLOOD',
-                  priority: 'CRITICAL',
-                  status: 'ACTIVE',
-                  description: `Target location selected by OpenClaw Autonomous Operations: ${changes.targetLocation.name}`,
-                  location: {
-                    name: changes.targetLocation.name,
-                    lat: changes.targetLocation.lat,
-                    lng: changes.targetLocation.lng,
-                    address: `${changes.targetLocation.name}, Bhubaneswar`,
-                  },
-                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                  agencyAssigned: 'OpenClaw Autonomous Task Force',
-                  aiConfidence: 98,
-                  recommendedAction: 'Execute multi-agent response protocol.',
-                  affectedRoads: ['Central Corridor'],
-                  estimatedImpact: 'High Priority Target',
-                });
-              }
-              if (changes?.layersToEnable) {
-                setLayersState((prev) => {
-                  const next = { ...prev };
-                  changes.layersToEnable?.forEach((lId) => {
-                    if (lId in next) (next as any)[lId] = true;
+        ) : (
+          <div className="flex-1 h-full overflow-y-auto bg-canvas min-w-0 min-h-0 gov-scroll-thin">
+            {activeTab === 'AI Operations' ? (
+              <AIOperationsView
+                incidents={incidents}
+                landmarks={landmarks}
+                drones={drones}
+                weather={weather}
+                trafficCorridors={trafficCorridors}
+                intelligenceItems={intelligenceItems}
+                onApplyStateChanges={(changes) => {
+                  if (changes?.targetLocation) {
+                    setSelectedIncident({
+                      id: `TARGET-OPENCLAW-${Date.now()}`,
+                      title: changes.targetLocation.name,
+                      category: 'FLOOD',
+                      priority: 'CRITICAL',
+                      status: 'ACTIVE',
+                      description: `Target location selected by OpenClaw Autonomous Operations: ${changes.targetLocation.name}`,
+                      location: {
+                        name: changes.targetLocation.name,
+                        lat: changes.targetLocation.lat,
+                        lng: changes.targetLocation.lng,
+                        address: `${changes.targetLocation.name}, Bhubaneswar`,
+                      },
+                      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                      agencyAssigned: 'OpenClaw Autonomous Task Force',
+                      aiConfidence: 98,
+                      recommendedAction: 'Execute multi-agent response protocol.',
+                      affectedRoads: ['Central Corridor'],
+                      estimatedImpact: 'High Priority Target',
+                    });
+                  }
+                  if (changes?.layersToEnable) {
+                    setLayersState((prev) => {
+                      const next = { ...prev };
+                      changes.layersToEnable?.forEach((lId) => {
+                        if (lId in next) (next as any)[lId] = true;
+                      });
+                      return next;
+                    });
+                  }
+                  addLog(`OpenClaw Autonomous Operations executed multi-agent task workflow.`, 'SUCCESS');
+                }}
+                onJumpToMap={() => setActiveTab('Dashboard')}
+              />
+            ) : activeTab === 'Intelligence Feed' ? (
+              <IntelligenceFeedView
+                intelligenceItems={intelligenceItems}
+                onSelectArticle={(item) => setSelectedArticle(item)}
+                onFuseIntelligence={handleFuseIntelligence}
+                isFusing={isFusing}
+              />
+            ) : activeTab === 'Incident Center' ? (
+              <IncidentCenterView
+                incidents={incidents}
+                onSelectIncident={(inc) => setSelectedIncident(inc)}
+                onUpdateStatus={handleUpdateIncidentStatus}
+                onJumpToMap={(inc) => {
+                  setSelectedIncident(inc);
+                  setActiveTab('Dashboard');
+                }}
+              />
+            ) : activeTab === 'Traffic Management' ? (
+              <TrafficManagementView
+                corridors={trafficCorridors}
+                sensors={trafficSensors}
+                summary={trafficSummary}
+                onSelectCorridor={(corridor) => setSelectedCorridor(corridor)}
+                onJumpToMap={() => setActiveTab('Dashboard')}
+              />
+            ) : activeTab === 'Traffic Cameras' ? (
+              <TrafficCamerasView
+                incidents={incidents}
+                landmarks={landmarks}
+                onSelectCameraOnMap={(cam) => {
+                  setSelectedLandmark({
+                    id: cam.id,
+                    name: cam.name,
+                    type: 'CAMERA' as any,
+                    lat: cam.lat,
+                    lng: cam.lng,
+                    status: cam.status === 'ONLINE' ? 'OPERATIONAL' : 'ALERT',
+                    details: `Traffic CCTV Feed: ${cam.name} (${cam.resolution}, ${cam.fps} FPS, Direction: ${cam.directionDeg}°).`,
                   });
-                  return next;
-                });
-              }
-              addLog(`OpenClaw Autonomous Operations executed multi-agent task workflow.`, 'SUCCESS');
-            }}
-            onJumpToMap={() => setActiveTab('Dashboard')}
-          />
-        ) : activeTab === 'Intelligence Feed' ? (
-          <IntelligenceFeedView
-            intelligenceItems={intelligenceItems}
-            onSelectArticle={(item) => setSelectedArticle(item)}
-            onFuseIntelligence={handleFuseIntelligence}
-            isFusing={isFusing}
-          />
-        ) : activeTab === 'Incident Center' ? (
-          <IncidentCenterView
-            incidents={incidents}
-            onSelectIncident={(inc) => setSelectedIncident(inc)}
-            onUpdateStatus={handleUpdateIncidentStatus}
-            onJumpToMap={(inc) => {
-              setSelectedIncident(inc);
-              setActiveTab('Dashboard');
-            }}
-          />
-        ) : activeTab === 'Traffic Management' ? (
-          <TrafficManagementView
-            corridors={trafficCorridors}
-            sensors={trafficSensors}
-            summary={trafficSummary}
-            onSelectCorridor={(corridor) => setSelectedCorridor(corridor)}
-            onJumpToMap={() => setActiveTab('Dashboard')}
-          />
-        ) : activeTab === 'Traffic Cameras' ? (
-          <TrafficCamerasView
-            incidents={incidents}
-            landmarks={landmarks}
-            onSelectCameraOnMap={(cam) => {
-              setSelectedLandmark({
-                id: cam.id,
-                name: cam.name,
-                type: 'CAMERA' as any,
-                lat: cam.lat,
-                lng: cam.lng,
-                status: cam.status === 'ONLINE' ? 'OPERATIONAL' : 'ALERT',
-                details: `Traffic CCTV Feed: ${cam.name} (${cam.resolution}, ${cam.fps} FPS, Direction: ${cam.directionDeg}°).`,
-              });
-              addLog(`CCTV Feed Selected: ${cam.name} (${cam.junction}).`, 'INFO');
-            }}
-            onJumpToMap={() => setActiveTab('Dashboard')}
-          />
-        ) : activeTab === 'Weather & Disaster' ? (
-          <WeatherDisasterView
-            weather={weather}
-            onJumpToMap={() => setActiveTab('Dashboard')}
-          />
-        ) : activeTab === 'Infrastructure' ? (
-          <InfrastructureView
-            landmarks={landmarks}
-            onSelectLandmark={(lm) => {
-              setSelectedLandmark(lm);
-              addLog(`Inspecting Landmark: ${lm.name}`, 'INFO');
-            }}
-            onJumpToMap={() => setActiveTab('Dashboard')}
-          />
-        ) : activeTab === 'Utilities' ? (
-          <UtilitiesView onJumpToMap={() => setActiveTab('Dashboard')} />
-        ) : activeTab === 'Resource Tracker' ? (
-          <ResourceTrackerView
-            resources={resources}
-            incidents={incidents}
-            onDispatchUnit={(uId, iId) => addLog(`Dispatched Unit ${uId} to Incident ${iId}`, 'SUCCESS')}
-            onJumpToMap={() => setActiveTab('Dashboard')}
-          />
-        ) : activeTab === 'Drone Feed' ? (
-          <DroneFeedView
-            drones={drones}
-            onSelectDrone={(d) => setSelectedDrone(d)}
-            onJumpToMap={() => setActiveTab('Dashboard')}
-          />
-        ) : activeTab === 'Analytics' ? (
-          <AnalyticsView
-            incidents={incidents}
-            trafficCorridors={trafficCorridors}
-            weather={weather}
-          />
-        ) : activeTab === 'Reports' ? (
-          <ReportsView
-            incidents={incidents}
-            weather={weather}
-            trafficSummary={trafficSummary}
-          />
-        ) : activeTab === 'Settings' ? (
-          <SettingsView
-            layersState={layersState}
-            setLayersState={setLayersState}
-          />
-        ) : null}
+                  addLog(`CCTV Feed Selected: ${cam.name} (${cam.junction}).`, 'INFO');
+                }}
+                onJumpToMap={() => setActiveTab('Dashboard')}
+              />
+            ) : activeTab === 'Weather & Disaster' ? (
+              <WeatherDisasterView
+                weather={weather}
+                onJumpToMap={() => setActiveTab('Dashboard')}
+              />
+            ) : activeTab === 'Infrastructure' ? (
+              <InfrastructureView
+                landmarks={landmarks}
+                onSelectLandmark={(lm) => {
+                  setSelectedLandmark(lm);
+                  addLog(`Inspecting Landmark: ${lm.name}`, 'INFO');
+                }}
+                onJumpToMap={() => setActiveTab('Dashboard')}
+              />
+            ) : activeTab === 'Utilities' ? (
+              <UtilitiesView onJumpToMap={() => setActiveTab('Dashboard')} />
+            ) : activeTab === 'Resource Tracker' ? (
+              <ResourceTrackerView
+                resources={resources}
+                incidents={incidents}
+                onDispatchUnit={(uId, iId) => addLog(`Dispatched Unit ${uId} to Incident ${iId}`, 'SUCCESS')}
+                onJumpToMap={() => setActiveTab('Dashboard')}
+              />
+            ) : activeTab === 'Drone Feed' ? (
+              <DroneFeedView
+                drones={drones}
+                onSelectDrone={(d) => setSelectedDrone(d)}
+                onJumpToMap={() => setActiveTab('Dashboard')}
+              />
+            ) : activeTab === 'Analytics' ? (
+              <AnalyticsView
+                incidents={incidents}
+                trafficCorridors={trafficCorridors}
+                weather={weather}
+              />
+            ) : activeTab === 'Reports' ? (
+              <ReportsView
+                incidents={incidents}
+                weather={weather}
+                trafficSummary={trafficSummary}
+              />
+            ) : activeTab === 'Settings' ? (
+              <SettingsView
+                layersState={layersState}
+                setLayersState={setLayersState}
+              />
+            ) : null}
+          </div>
+        )}
       </div>
 
       {/* LAYER 7: BOTTOM LIVE LOG BAR */}
