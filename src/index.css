@@ -676,6 +676,26 @@
     box-shadow: var(--shadow-sm);
     backdrop-filter: blur(8px);
   }
+
+  /* Thin scrollbar utility for sidebars and feeds */
+  .gov-scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+  .gov-scroll-thin::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  .gov-scroll-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .gov-scroll-thin::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+  }
+  .gov-scroll-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+  }
 }
 
 /* ==========================================================================
