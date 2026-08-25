@@ -125,43 +125,58 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
 
           {/* Intelligence Cards Container (Dynamic Height) */}
           <div className="flex-1 overflow-y-auto pr-1 space-y-2 min-h-0 gov-scroll-thin">
-            {intelligenceItems.map((item) => (
-              <div
-                key={item.id}
-                onClick={() => onOpenArticle(item)}
-                className="p-2 gov-glass-interactive rounded space-y-1 cursor-pointer group"
-              >
-                <div className="flex items-center justify-between text-[9px] font-mono">
-                  <span className="text-[#06B6D4] font-bold truncate max-w-[130px] group-hover:text-cyan-300 transition-colors">
-                    {item.publisherName}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-[7px] px-1 py-0.2 rounded bg-zinc-800 text-zinc-300 font-mono">
-                      {item.classification || 'LIVE'}
+            {intelligenceItems.map((item) => {
+              const isJustNow = item.publishedTime === 'Just now';
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => onOpenArticle(item)}
+                  className={`p-2 rounded space-y-1 cursor-pointer group transition-all duration-300 ${
+                    isJustNow
+                      ? 'border border-cyan-500/50 bg-cyan-950/20 shadow-[0_0_12px_rgba(6,182,212,0.15)] animate-in fade-in slide-in-from-top-2 duration-300'
+                      : 'gov-glass-interactive'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-[9px] font-mono">
+                    <span className="text-[#06B6D4] font-bold truncate max-w-[130px] group-hover:text-cyan-300 transition-colors">
+                      {item.publisherName}
                     </span>
-                    <span className="text-white/40 text-[8px]">{item.publishedTime}</span>
+                    <div className="flex items-center gap-1">
+                      <span
+                        className={`text-[7px] px-1 py-0.2 rounded font-mono ${
+                          isJustNow
+                            ? 'bg-cyan-500/30 text-cyan-200 border border-cyan-500/50 animate-pulse font-bold'
+                            : 'bg-zinc-800 text-zinc-300'
+                        }`}
+                      >
+                        {isJustNow ? 'NEW' : item.classification || 'LIVE'}
+                      </span>
+                      <span className={`text-[8px] ${isJustNow ? 'text-cyan-300 font-bold' : 'text-white/40'}`}>
+                        {item.publishedTime}
+                      </span>
+                    </div>
+                  </div>
+
+                  <h4 className="text-[11px] font-medium text-white leading-tight group-hover:text-[#06B6D4] transition-colors">
+                    {item.headline}
+                  </h4>
+
+                  <p className="text-[10px] text-white/70 line-clamp-2 leading-tight">
+                    {item.summary}
+                  </p>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[8px] font-mono text-white/40 bg-black/40 px-1 py-0.5 rounded">
+                      {item.category}
+                    </span>
+                    <div className="text-[9px] font-mono text-[#06B6D4] group-hover:underline flex items-center gap-1">
+                      <span>Read Summary</span>
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </div>
                   </div>
                 </div>
-
-                <h4 className="text-[11px] font-medium text-white leading-tight group-hover:text-[#06B6D4] transition-colors">
-                  {item.headline}
-                </h4>
-
-                <p className="text-[10px] text-white/70 line-clamp-2 leading-tight">
-                  {item.summary}
-                </p>
-
-                <div className="flex items-center justify-between pt-1">
-                  <span className="text-[8px] font-mono text-white/40 bg-black/40 px-1 py-0.5 rounded">
-                    {item.category}
-                  </span>
-                  <div className="text-[9px] font-mono text-[#06B6D4] group-hover:underline flex items-center gap-1">
-                    <span>Read Summary</span>
-                    <ExternalLink className="w-2.5 h-2.5" />
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

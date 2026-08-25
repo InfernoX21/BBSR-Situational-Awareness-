@@ -176,7 +176,7 @@ export default function App() {
     // 5-second interval for live traffic sensors & corridor telemetry update
     const trafficInterval = setInterval(fetchTraffic, 5000);
 
-    // Periodic simulation ticker for telemetry updates
+    // Periodic simulation ticker for drone telemetry updates
     const interval = setInterval(() => {
       setDrones((prevDrones) =>
         prevDrones.map((d) => ({
@@ -187,9 +187,90 @@ export default function App() {
       );
     }, 15000);
 
+    // Live News Stream Generator: Auto-pushes fresh Bhubaneswar news to Feed + Bottom Ticker Bar
+    const liveNewsPool = [
+      {
+        publisherName: 'BMC Control Room',
+        headline: 'BMC Dewatering Ops Activated: 45 High-Capacity Pumps at NALCO & Jayadev Vihar',
+        summary: 'Bhubaneswar Municipal Corporation emergency response teams deployed for heavy monsoon runoff control.',
+        category: 'CIVIC_ALERT',
+        classification: 'ALERT',
+      },
+      {
+        publisherName: 'Bhubaneswar Traffic Police',
+        headline: 'Traffic Advisory: Diversions Active on Janpath for Station Square Utilities Work',
+        summary: 'Heavy vehicles rerouted via Vani Vihar & Rajmahal Overbridge. Traffic wardens deployed at key intersections.',
+        category: 'TRAFFIC_ALERT',
+        classification: 'LIVE',
+      },
+      {
+        publisherName: 'OSDMA Emergency Grid',
+        headline: 'IMD Doppler Radar: Severe Thunderstorm & Lightning Warning for Khordha District',
+        summary: 'Wind speeds up to 55 km/h expected. Citizens advised to take shelter and stay clear of trees & power lines.',
+        category: 'WEATHER_ADVISORY',
+        classification: 'ALERT',
+      },
+      {
+        publisherName: 'TPCODL SCADA Center',
+        headline: 'Grid Stabilization: Saheed Nagar 33kV Substation Load Balanced at 428 MW',
+        summary: 'Automated SCADA trip reset completed successfully. Saheed Nagar & Unit-9 distribution feeders online.',
+        category: 'UTILITIES_UPDATE',
+        classification: 'LIVE',
+      },
+      {
+        publisherName: 'ARKA Surveillance Drones',
+        headline: 'Drone Patrol #04 Detects Minor Vehicle Breakdown Near Rasulgarh Square',
+        summary: 'Autonomous camera alert dispatched PCR Van #14 for rapid traffic clearance.',
+        category: 'AI_SURVEILLANCE',
+        classification: 'LIVE',
+      },
+      {
+        publisherName: 'WatCo Odisha',
+        headline: '24x7 Water Supply Pressure Normalization at Saheed Nagar & Unit-9',
+        summary: 'Pipeline pressure telemetry steady at 2.4 bar following automated valve adjustment.',
+        category: 'CIVIC_UPDATE',
+        classification: 'LIVE',
+      },
+      {
+        publisherName: 'Capital Hospital Emergency',
+        headline: 'Trauma Unit Level-1 Readiness Watch Activated Across Bhubaneswar',
+        summary: '8 108-Ambulances placed on high-readiness standby at Master Canteen & Kalpana Square.',
+        category: 'HEALTH_EMERGENCY',
+        classification: 'LIVE',
+      },
+    ];
+
+    let newsIndex = 0;
+    const newsInterval = setInterval(() => {
+      const template = liveNewsPool[newsIndex % liveNewsPool.length];
+      newsIndex++;
+
+      const newArticle: IntelligenceItem = {
+        id: `news-live-${Date.now()}`,
+        publisherName: template.publisherName,
+        headline: template.headline,
+        summary: template.summary,
+        category: template.category,
+        classification: template.classification,
+        publishedTime: 'Just now',
+        url: '#',
+        source: 'GOVT_ADVISORY',
+      };
+
+      // 1. Prepend to Live Intelligence Feed in Right Intelligence Center
+      setIntelligenceItems((prev) => [newArticle, ...prev.slice(0, 15)]);
+
+      // 2. Automatically log to Bottom Stream Bar ticker (>_ STREAM)
+      addLog(
+        `[INTELLIGENCE FEED] ${template.publisherName}: "${template.headline}"`,
+        template.classification === 'ALERT' ? 'ALERT' : 'INFO'
+      );
+    }, 12000);
+
     return () => {
       clearInterval(interval);
       clearInterval(trafficInterval);
+      clearInterval(newsInterval);
     };
   }, []);
 
