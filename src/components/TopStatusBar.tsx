@@ -96,51 +96,50 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
 
   return (
     <header className="gov-glass-header text-white shrink-0 relative z-30 font-sans min-w-0">
-      <div className="h-12 sm:h-14 flex items-center justify-between gap-1.5 sm:gap-3 px-2 sm:px-4 overflow-hidden min-w-0">
+      <div className="h-9 sm:h-10 flex items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-3 overflow-hidden min-w-0">
         {/* --- Identity --- */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {onOpenMobileMenu && (
             <button
               type="button"
               onClick={onOpenMobileMenu}
               aria-label="Open navigation menu"
-              className="md:hidden w-10 h-10 rounded-md bg-white/10 hover:bg-white/20 flex items-center justify-center shrink-0"
+              className="md:hidden w-7 h-7 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center shrink-0"
             >
-              <Menu className="w-5 h-5" aria-hidden="true" />
+              <Menu className="w-4 h-4" aria-hidden="true" />
             </button>
           )}
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <span
               aria-hidden="true"
-              className="w-8 h-8 rounded-md bg-white/10 border border-white/20 hidden sm:flex items-center justify-center text-[13px] font-bold tracking-tight"
+              className="w-6 h-6 rounded bg-gradient-to-br from-cyan-500/25 via-cyan-600/10 to-transparent border border-cyan-500/40 text-cyan-300 font-mono font-extrabold text-[11px] tracking-wider shadow-[0_0_8px_rgba(6,182,212,0.25)] hidden sm:flex items-center justify-center shrink-0 select-none"
             >
               AR
             </span>
-            <div className="leading-tight min-w-0">
-              <div className="text-[15px] font-bold tracking-tight">ARKA</div>
-              <div className="text-[11px] text-white/70 hidden sm:block whitespace-nowrap">
+            <div className="flex items-center leading-none min-w-0">
+              <span className="text-[13px] font-bold tracking-widest text-white font-mono uppercase">ARKA</span>
+              <span className="text-[10px] text-white/40 tracking-tight hidden xl:inline font-sans ml-2.5 border-l border-white/15 pl-2.5">
                 Geospatial Situational Awareness Platform
-              </div>
+              </span>
             </div>
           </div>
         </div>
 
-        <div className="hidden lg:block h-8 w-px bg-white/20 shrink-0" aria-hidden="true" />
-
         {/* --- Jurisdiction --- */}
-        <div className="hidden lg:flex items-center gap-1.5 text-[12px] shrink-0">
-          <MapPin className="w-3.5 h-3.5 text-white/60" aria-hidden="true" />
-          <span className="text-white/60">Jurisdiction:</span>
-          <span className="font-semibold">Bhubaneswar (BMC), Odisha</span>
+        <div className="hidden lg:flex items-center gap-1.5 text-[11px] font-mono text-white/70 bg-white/[0.03] border border-white/10 px-2 py-0.5 rounded-full shrink-0">
+          <MapPin className="w-3 h-3 text-cyan-400 shrink-0" aria-hidden="true" />
+          <span className="text-white/50">Jurisdiction:</span>
+          <span className="font-semibold text-white">Bhubaneswar (BMC), Odisha</span>
         </div>
 
         <div className="flex-1 min-w-2" />
 
         {/* --- Date & time --- */}
-        <div className="hidden md:flex flex-col items-end leading-tight shrink-0 pr-1">
-          <span className="text-[11px] text-white/70">{currentDate}</span>
-          <span className="gov-mono text-[12px] font-semibold tabular-nums">{currentTime}</span>
+        <div className="hidden md:flex items-center gap-2 text-[11px] font-mono bg-white/[0.03] border border-white/10 px-2 py-0.5 rounded text-white/80 shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-white/40 text-[10px]">{currentDate}</span>
+          <span className="text-white font-semibold tabular-nums">{currentTime}</span>
         </div>
 
         {/* --- System status --- */}
@@ -148,17 +147,17 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
           type="button"
           onClick={() => setShowHealthModal(true)}
           title="Open connection health and stream diagnostics"
-          className="gov-btn gov-btn-onnavy gov-btn-sm shrink-0"
+          className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[11px] font-mono font-medium transition-all shrink-0 cursor-pointer shadow-sm"
         >
           {allStreamsUp ? (
-            <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
+            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
           ) : (
-            <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" aria-hidden="true" />
           )}
           <span className="hidden sm:inline">
             {allStreamsUp ? 'Systems normal' : 'Systems degraded'}
           </span>
-          <span className="gov-mono text-[11px] text-white/80">
+          <span className="text-[10px] bg-emerald-500/20 px-1 py-0.2 rounded text-emerald-300 font-bold">
             {activeConnectedCount}/{totalStreamsCount}
           </span>
         </button>
@@ -170,18 +169,20 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
             onClick={() => toggle('threat')}
             aria-expanded={openPopover === 'threat'}
             aria-haspopup="menu"
-            className="gov-btn gov-btn-onnavy gov-btn-sm"
+            className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[11px] font-mono transition-all shrink-0 cursor-pointer shadow-sm"
             title="Set city-wide alert level"
           >
-            <ShieldAlert className="w-3.5 h-3.5" aria-hidden="true" />
-            <span className="hidden sm:inline text-white/80">Alert level</span>
-            <span className={`gov-badge ${threatBadgeClass(threatLevel)}`}>{threatLevel}</span>
-            <ChevronDown className="w-3 h-3 opacity-70" aria-hidden="true" />
+            <ShieldAlert className="w-3.5 h-3.5 text-amber-400 shrink-0" aria-hidden="true" />
+            <span className="hidden sm:inline text-white/70">Alert level</span>
+            <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider ${threatBadgeClass(threatLevel)}`}>
+              {threatLevel}
+            </span>
+            <ChevronDown className="w-3 h-3 opacity-60 shrink-0" aria-hidden="true" />
           </button>
 
           {openPopover === 'threat' && (
-            <div role="menu" className="absolute right-0 top-full mt-2 w-44 gov-panel p-1 z-50">
-              <p className="gov-label px-2 py-1">City alert level</p>
+            <div role="menu" className="absolute right-0 top-full mt-1.5 w-44 gov-glass border border-white/15 rounded-md p-1 z-50 shadow-2xl">
+              <p className="gov-label px-2 py-1 text-[10px] font-mono text-white/40">City alert level</p>
               {(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as Severity[]).map((lvl) => (
                 <button
                   key={lvl}
@@ -191,12 +192,12 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
                     setThreatLevel(lvl);
                     setOpenPopover(null);
                   }}
-                  className={`w-full flex items-center justify-between gap-2 px-2 py-2 rounded-md text-[13px] text-left hover:bg-sunken ${
-                    threatLevel === lvl ? 'text-accent font-semibold' : 'text-ink'
+                  className={`w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded text-[11px] font-mono text-left transition-colors ${
+                    threatLevel === lvl ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30' : 'text-white/80 hover:bg-white/10'
                   }`}
                 >
                   <span>{lvl}</span>
-                  {threatLevel === lvl && <CheckCircle2 className="w-4 h-4" aria-hidden="true" />}
+                  {threatLevel === lvl && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" aria-hidden="true" />}
                 </button>
               ))}
             </div>
@@ -209,28 +210,28 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
             type="button"
             onClick={() => toggle('weather')}
             aria-expanded={openPopover === 'weather'}
-            className="gov-btn gov-btn-onnavy gov-btn-sm"
+            className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 text-white/80 text-[11px] font-mono transition-all shrink-0 cursor-pointer"
             title="Bhubaneswar weather and data provenance"
           >
-            <span className="text-white/70">Weather</span>
-            <span className="gov-mono font-semibold">
+            <span className="text-white/50">Weather</span>
+            <span className="font-semibold text-white">
               {weather.temperature}°C · {weather.humidity}% RH
             </span>
-            <Info className="w-3.5 h-3.5 opacity-80" aria-hidden="true" />
+            <Info className="w-3 h-3 text-white/40 shrink-0" aria-hidden="true" />
           </button>
 
           {openPopover === 'weather' && (
-            <div className="absolute right-0 top-full mt-2 w-80 gov-panel z-50">
-              <div className="gov-panel-head">
-                <span className="gov-title">Data provenance</span>
-                <span className={`gov-tag ${
-                  weather.provenance?.classification === 'LIVE' ? 'is-live' :
-                  weather.provenance?.classification === 'CACHED' ? 'is-info' : 'is-high'
+            <div className="absolute right-0 top-full mt-1.5 w-80 gov-glass border border-white/15 rounded-md p-3 z-50 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-white/10 pb-1.5 mb-2">
+                <span className="text-[11px] font-bold font-mono text-white">Data provenance</span>
+                <span className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold ${
+                  weather.provenance?.classification === 'LIVE' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                  weather.provenance?.classification === 'CACHED' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                 }`}>
                   {weather.provenance?.classification || 'LIVE'}
                 </span>
               </div>
-              <dl className="p-3 space-y-1.5 text-[12px]">
+              <dl className="space-y-1 text-[11px] font-mono">
                 {[
                   ['Source', weather.provenance?.source || 'Open-Meteo & IMD radar'],
                   ['Provider', weather.provenance?.provider || 'IMD Bhubaneswar'],
@@ -240,8 +241,8 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
                   ['Condition', weather.condition],
                 ].map(([k, v]) => (
                   <div key={k} className="flex items-start justify-between gap-3">
-                    <dt className="text-ink-muted">{k}</dt>
-                    <dd className="text-ink font-medium text-right gov-mono">{v}</dd>
+                    <dt className="text-white/40">{k}</dt>
+                    <dd className="text-white font-medium text-right">{v}</dd>
                   </div>
                 ))}
               </dl>
@@ -253,11 +254,11 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
         <button
           type="button"
           onClick={onRefreshAll}
-          className="gov-btn gov-btn-onnavy gov-btn-sm shrink-0"
+          className="w-6.5 h-6.5 rounded bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 text-white/60 hover:text-white flex items-center justify-center transition-all shrink-0 cursor-pointer"
           title="Refresh all feeds"
           aria-label="Refresh all feeds"
         >
-          <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
+          <RefreshCw className="w-3 h-3" aria-hidden="true" />
         </button>
       </div>
 
