@@ -340,7 +340,7 @@ export const LayerControlToolbar: React.FC<LayerControlToolbarProps> = ({
               }}
               aria-expanded={gisPanelOpen ?? mapIntelOpen}
               title="Toggle Map Intelligence panel"
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#121824] hover:bg-[#1a2333] border border-[#2a364f] text-white text-[12px] font-medium transition-all shadow-sm group cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#0a0a0a] hover:bg-[#141414] border border-[#222222] text-white text-[12px] font-medium transition-all shadow-sm group cursor-pointer"
             >
               <Sliders className="w-3.5 h-3.5 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
               <span>Map intelligence</span>

@@ -12,29 +12,29 @@
    use dark ink on light fills for the same reason.
    ========================================================================== */
 @theme {
-  /* Surfaces */
-  --color-canvas: #0b0d10; /* app background: near-black */
-  --color-surface: #14181d; /* panels, cards */
-  --color-surface-raised: #191e25; /* popovers, dialogs, floating map chrome */
-  --color-sunken: #1a1f26; /* nested / inset areas, inputs */
-  --color-sunken-strong: #22282f;
-  --color-map-void: #0a0c0f; /* map canvas behind tiles */
+  /* Surfaces - Pure Tactical Pitch Black Theme */
+  --color-canvas: #000000; /* app background: pure pitch black */
+  --color-surface: #030303; /* panels, cards */
+  --color-surface-raised: #080808; /* popovers, dialogs, floating map chrome */
+  --color-sunken: #050505; /* nested / inset areas, inputs */
+  --color-sunken-strong: #101010;
+  --color-map-void: #000000; /* map canvas behind tiles */
 
   /* Borders */
-  --color-line: #262c34;
-  --color-line-strong: #384250;
+  --color-line: #161616;
+  --color-line-strong: #242424;
 
   /* Text */
   --color-ink: #e6eaf0; /* 13.1:1 on surface */
   --color-ink-muted: #a9b4c2; /* 7.4:1 on surface */
   --color-ink-subtle: #8b97a6; /* 5.3:1 on surface */
-  --color-ink-inverse: #0b0d10; /* text on light/accent fills */
+  --color-ink-inverse: #000000; /* text on light/accent fills */
 
   /* Structural bar (header, drawer headers, scrims) */
-  --color-navy: #0e1216;
-  --color-navy-700: #1c242e;
-  --color-navy-600: #26313d;
-  --color-navy-soft: #172029;
+  --color-navy: #000000;
+  --color-navy-700: #121212;
+  --color-navy-600: #1a1a1a;
+  --color-navy-soft: #080808;
 
   /* Accent (single accessible blue) */
   --color-accent: #4c8dd9; /* 5.1:1 on surface */
@@ -602,7 +602,7 @@
 
   /* --- Map floating chrome --- */
   .gov-map-card {
-    background-color: rgba(20, 24, 29, 0.94);
+    background-color: rgba(5, 5, 5, 0.96);
     border: 1px solid var(--color-line-strong);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
@@ -614,7 +614,7 @@
   .gov-map-group {
     display: flex;
     flex-direction: column;
-    background-color: rgba(20, 24, 29, 0.94);
+    background-color: rgba(5, 5, 5, 0.96);
     border: 1px solid var(--color-line-strong);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-sm);
@@ -672,7 +672,7 @@
   .gov-map-btn-solo {
     border: 1px solid var(--color-line-strong);
     border-radius: var(--radius-md);
-    background-color: rgba(20, 24, 29, 0.94);
+    background-color: rgba(5, 5, 5, 0.96);
     box-shadow: var(--shadow-sm);
     backdrop-filter: blur(8px);
   }
