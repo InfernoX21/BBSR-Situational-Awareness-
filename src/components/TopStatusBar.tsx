@@ -111,12 +111,11 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
           )}
 
           <div className="flex items-center gap-2">
-            <span
-              aria-hidden="true"
-              className="w-6 h-6 rounded bg-gradient-to-br from-cyan-500/25 via-cyan-600/10 to-transparent border border-cyan-500/40 text-cyan-300 font-mono font-extrabold text-[11px] tracking-wider shadow-[0_0_8px_rgba(6,182,212,0.25)] hidden sm:flex items-center justify-center shrink-0 select-none"
-            >
-              AR
-            </span>
+            <img
+              src="/favicon.png"
+              alt="ARKA Logo"
+              className="w-6 h-6 rounded object-cover border border-cyan-500/40 shadow-[0_0_8px_rgba(6,182,212,0.25)] hidden sm:block shrink-0 select-none"
+            />
             <div className="flex items-center leading-none min-w-0">
               <span className="text-[13px] font-bold tracking-widest text-white font-mono uppercase">ARKA</span>
               <span className="text-[10px] text-white/40 tracking-tight hidden xl:inline font-sans ml-2.5 border-l border-white/15 pl-2.5">
