@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 // Map stylesheet is bundled with the app rather than loaded from a CDN, so the
 // map still renders correctly when the operator is offline.
@@ -23,6 +23,18 @@ import {
 } from '../types';
 import { CentralLayerManager } from '../services/LayerManager';
 import { LayerControlToolbar } from './LayerControlToolbar';
+// Base GIS tier: the city's own authoritative geography, rendered into dedicated
+// Leaflet panes below every ARKA overlay. Kept behind the provider interface so
+// the map never names a city-specific service.
+import { BaseGISMapController } from '../services/gis/leafletGISAdapter';
+import { gisLayerRegistry } from '../services/gis/GISLayerRegistry';
+import { GIS_CATEGORY_LABEL } from '../services/gis/types';
+import { featureLabel as gisFeatureLabel } from '../services/gis/formatAttributes';
+import { useGISRegistry } from './gis/useGISRegistry';
+import { MapIntelligencePanel } from './gis/MapIntelligencePanel';
+import { GISLegend } from './gis/GISLegend';
+import { GISFeatureCard } from './gis/GISFeatureCard';
+import type { GISMapActions, GISSelection } from './gis/gisMapActions';
 import {
   Layers,
   ZoomIn,
@@ -98,6 +110,27 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
   const markersGroupRef = useRef<L.LayerGroup | null>(null);
   const layerManager = CentralLayerManager.getInstance();
 
+  /**
+   * The active basemap tile layer.
+   *
+   * Tracked explicitly because base GIS raster layers are also `L.TileLayer`
+   * instances. Swapping the basemap has to remove this one specifically — a sweep
+   * over every tile layer on the map would silently delete whatever city GIS
+   * imagery the operator had switched on.
+   */
+  const basemapRef = useRef<L.TileLayer | null>(null);
+
+  // --- Base GIS tier ------------------------------------------------------
+  const gisControllerRef = useRef<BaseGISMapController | null>(null);
+  const gisViewportTimerRef = useRef<number | null>(null);
+  const gis = useGISRegistry();
+
+  const [gisPanelOpen, setGisPanelOpen] = useState(false);
+  const [gisLegendVisible, setGisLegendVisible] = useState(true);
+  const [gisLegendCollapsed, setGisLegendCollapsed] = useState(false);
+  const [gisSelection, setGisSelection] = useState<GISSelection | null>(null);
+  const [gisBasket, setGisBasket] = useState<GISSelection[]>([]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [is3DMode, setIs3DMode] = useState(false);
   const [measuringMode, setMeasuringMode] = useState(false);
@@ -159,10 +192,46 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
       ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
       : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
-    L.tileLayer(tileUrl, { maxZoom: 19, subdomains: 'abcd' }).addTo(map);
+    basemapRef.current = L.tileLayer(tileUrl, { maxZoom: 19, subdomains: 'abcd' }).addTo(map);
 
     const markersGroup = L.layerGroup().addTo(map);
     markersGroupRef.current = markersGroup;
+
+    // Mount the base GIS tier. Its panes sit between Leaflet's tile pane and
+    // overlay pane, so every ARKA marker, corridor and alert ring stays above the
+    // city's geography by construction rather than by draw order luck.
+    const gisController = new BaseGISMapController(map, gisLayerRegistry, {
+      onFeatureClick: (def, properties, geometry) => {
+        setGisSelection({
+          layerId: def.id,
+          layerLabel: def.label,
+          themeLabel: GIS_CATEGORY_LABEL[def.category],
+          title: gisFeatureLabel(def, properties),
+          // Resolved through the provider so the card, the popup and a query
+          // result all read the same fields the same way.
+          attributes: gisLayerRegistry.getProvider().describeFeature(def.id, properties),
+          properties,
+          geometry,
+          origin: 'map',
+          caveat: def.caveat ?? null,
+        });
+      },
+    });
+    gisControllerRef.current = gisController;
+    void gisController.sync();
+
+    // Vector GIS layers are fetched per viewport, so a pan or zoom has to re-ask.
+    // Debounced: an operator dragging across the city would otherwise fire a
+    // request for every intermediate frame.
+    const scheduleGISViewportRefresh = () => {
+      if (gisViewportTimerRef.current !== null) window.clearTimeout(gisViewportTimerRef.current);
+      gisViewportTimerRef.current = window.setTimeout(() => {
+        gisViewportTimerRef.current = null;
+        void gisControllerRef.current?.refreshViewport();
+      }, 450);
+    };
+    map.on('moveend', scheduleGISViewportRefresh);
+    map.on('zoomend', scheduleGISViewportRefresh);
 
     // Measurement Click Handler using Ref to avoid stale closure
     map.on('click', (e: L.LeafletMouseEvent) => {
@@ -211,6 +280,13 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
     });
 
     return () => {
+      if (gisViewportTimerRef.current !== null) {
+        window.clearTimeout(gisViewportTimerRef.current);
+        gisViewportTimerRef.current = null;
+      }
+      gisControllerRef.current?.dispose();
+      gisControllerRef.current = null;
+      basemapRef.current = null;
       map.remove();
       mapInstanceRef.current = null;
     };
@@ -221,11 +297,14 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    map.eachLayer((layer) => {
-      if (layer instanceof L.TileLayer) {
-        map.removeLayer(layer);
-      }
-    });
+    // Remove only the tracked basemap. Base GIS raster layers are `L.TileLayer`
+    // instances too, living in the GIS raster pane, so sweeping every tile layer
+    // off the map would delete the operator's active city GIS imagery along with
+    // the backdrop.
+    if (basemapRef.current) {
+      map.removeLayer(basemapRef.current);
+      basemapRef.current = null;
+    }
 
     const style = layersState.basemapStyle || (layersState.satellite ? 'satellite' : 'dark');
     let url = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
@@ -240,8 +319,39 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
       url = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
     }
 
-    L.tileLayer(url, { maxZoom: 19, subdomains: 'abcd' }).addTo(map);
+    basemapRef.current = L.tileLayer(url, { maxZoom: 19, subdomains: 'abcd' }).addTo(map);
+
+    // The new backdrop is added last, so re-assert the GIS pane stack.
+    gisControllerRef.current?.refreshPanes();
   }, [layersState.satellite, layersState.basemapStyle]);
+
+  /**
+   * What the map is actually asked to draw: the visible base GIS layers and their
+   * opacities, as a stable string.
+   *
+   * Deliberately not the whole runtime record. Source-state reporting —
+   * `loading`, `connected`, `unavailable` — flows through the same registry, and
+   * keying reconciliation off it would make a failed layer refetch forever: the
+   * error notification would trigger a sync, the sync would retry, and the retry
+   * would fail again. Requests are driven by what the operator asked to see, not
+   * by how the last request turned out.
+   */
+  const gisSyncKey = useMemo(
+    () =>
+      gis.layers
+        .filter((layer) => gis.runtime[layer.id]?.visible)
+        .map((layer) => `${layer.id}@${gis.runtime[layer.id]?.opacity ?? layer.defaultOpacity}`)
+        .join('|'),
+    [gis.layers, gis.runtime],
+  );
+
+  // Reconcile the map whenever the requested set of base GIS layers changes.
+  // `sync()` is additionally guarded by a per-layer signature, so a layer already
+  // drawn for this viewport is not refetched.
+  useEffect(() => {
+    void gisControllerRef.current?.sync();
+  }, [gisSyncKey]);
+
 
   // Smoothly fly and center map to selected incident position when selectedIncident changes
   useEffect(() => {
@@ -879,6 +989,114 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
     }
   };
 
+  /**
+   * What the GIS panels are allowed to ask of the map.
+   *
+   * This is the whole of the click-to-display contract. Every panel action lands
+   * here and is carried out against the one live map instance — there is no path
+   * by which clicking a layer, a ward or a query result opens a second map, a
+   * static image or a separate page.
+   *
+   * Memoised with no dependencies because every call reads through a ref: the
+   * identity stays stable across renders, so the panels do not re-render on every
+   * map event.
+   */
+  const gisActions = useMemo<GISMapActions>(
+    () => ({
+      activateLayer: async (layerId: string) => {
+        await gisControllerRef.current?.activateLayer(layerId);
+      },
+
+      deactivateLayer: async (layerId: string) => {
+        await gisControllerRef.current?.deactivateLayer(layerId);
+      },
+
+      ensureLayer: async (layerId: string) => {
+        if (gisLayerRegistry.isVisible(layerId)) return;
+        gisLayerRegistry.setVisible(layerId, true);
+        await gisControllerRef.current?.sync();
+      },
+
+      toggleLayer: async (layerId: string) => {
+        const controller = gisControllerRef.current;
+        if (!controller) return;
+        if (gisLayerRegistry.isVisible(layerId)) await controller.deactivateLayer(layerId);
+        else await controller.activateLayer(layerId);
+      },
+
+      setCategoryVisible: async (category, visible: boolean) => {
+        const controller = gisControllerRef.current;
+        if (!controller) return;
+
+        // Fit before fetching, as `activateLayer` does: vector layers are queried
+        // by viewport, so framing the theme first means the requests ask for the
+        // area the operator is moving to.
+        if (visible) {
+          const ids = gisLayerRegistry
+            .listLayers()
+            .filter((layer) => layer.category === category)
+            .map((layer) => layer.id);
+          await controller.zoomToLayers(ids);
+        }
+
+        gisLayerRegistry.showCategory(category, visible);
+        await controller.sync();
+      },
+
+      zoomToLayer: async (layerId: string) => {
+        await gisControllerRef.current?.zoomToLayerData(layerId);
+      },
+
+      setOpacity: (layerId: string, opacity: number) => {
+        gisLayerRegistry.setOpacity(layerId, opacity);
+        gisControllerRef.current?.setOpacity(layerId, opacity);
+      },
+
+      highlight: (targets, options) => {
+        gisControllerRef.current?.showHighlight(targets, options);
+      },
+
+      clearHighlight: () => {
+        gisControllerRef.current?.clearHighlight();
+      },
+
+      fitBounds: (bounds, options) => {
+        gisControllerRef.current?.fitBounds(bounds, options);
+      },
+
+      flyTo: (lat: number, lng: number, zoom?: number) => {
+        mapInstanceRef.current?.flyTo([lat, lng], zoom ?? 16, { animate: true, duration: 1.2 });
+      },
+
+      currentBounds: () => gisControllerRef.current?.currentBounds() ?? null,
+
+      hideAll: () => {
+        gisLayerRegistry.hideAll();
+        gisControllerRef.current?.clearHighlight();
+        setGisSelection(null);
+        void gisControllerRef.current?.sync();
+      },
+
+      select: (selection: GISSelection) => {
+        setGisSelection(selection);
+      },
+    }),
+    [],
+  );
+
+  /**
+   * Datasets a nearby search may cover: the queryable layers currently drawn on
+   * the map. Scoping to what is displayed keeps the answer explainable from the
+   * screen rather than from an internal list the operator cannot see.
+   */
+  const gisNearbyScope = useMemo(() => {
+    const queryable = new Map(gis.provider.listQueryableLayers().map((l) => [l.layerId, l.label]));
+    return gis.layers
+      .filter((layer) => gis.runtime[layer.id]?.visible && queryable.has(layer.id))
+      .sort((a, b) => b.order - a.order)
+      .map((layer) => ({ layerId: layer.id, label: queryable.get(layer.id) as string }));
+  }, [gis.layers, gis.runtime, gis.provider]);
+
   return (
     <div className="relative flex-1 h-full bg-[#050505] overflow-hidden select-none border-r border-white/10 flex flex-col">
       {/* TOP INTEGRATED LAYER CONTROL TOOLBAR */}
@@ -917,6 +1135,74 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
             />
           </form>
         </div>
+
+        {/*
+          Base GIS tier.
+
+          The map intelligence panel and the selected-feature card sit over the
+          map, not beside it: every click in the panel puts geography on this same
+          canvas, so the controls belong on it. The wrapper is pointer-events-none
+          so the strip of empty space between the two cards stays draggable map.
+        */}
+        <div className="absolute top-14 left-4 z-30 flex items-start gap-2 max-w-[calc(100%-2rem)] pointer-events-none">
+          <div className="pointer-events-auto">
+            <MapIntelligencePanel
+              provider={gis.provider}
+              layers={gis.layers}
+              runtime={gis.runtime}
+              actions={gisActions}
+              basemapStyle={layersState.basemapStyle ?? (layersState.satellite ? 'satellite' : 'dark')}
+              onBasemapChange={(style) => setLayersState((prev) => ({ ...prev, basemapStyle: style }))}
+              legendVisible={gisLegendVisible}
+              onToggleLegend={() => setGisLegendVisible((visible) => !visible)}
+              open={gisPanelOpen}
+              onToggleOpen={() => setGisPanelOpen((open) => !open)}
+            />
+          </div>
+
+          {gisSelection && (
+            <div className="pointer-events-auto">
+              <GISFeatureCard
+                selection={gisSelection}
+                provider={gis.provider}
+                actions={gisActions}
+                nearbyScope={gisNearbyScope}
+                basket={gisBasket}
+                onAddToAnalysis={(entry) =>
+                  setGisBasket((prev) =>
+                    // Same identity test the card uses to disable its own button,
+                    // so the control and the set can never disagree about whether
+                    // a feature is already collected.
+                    prev.some(
+                      (existing) =>
+                        existing.title === entry.title && existing.layerLabel === entry.layerLabel,
+                    )
+                      ? prev
+                      : [...prev, entry],
+                  )
+                }
+                onClearAnalysis={() => setGisBasket([])}
+                onClose={() => {
+                  setGisSelection(null);
+                  gisActions.clearHighlight();
+                }}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Legend for the active base GIS layers. Renders nothing when none are on. */}
+        {gisLegendVisible && (
+          <div className="absolute bottom-14 right-4 z-20 pointer-events-auto">
+            <GISLegend
+              layers={gis.layers}
+              runtime={gis.runtime}
+              actions={gisActions}
+              collapsed={gisLegendCollapsed}
+              onToggleCollapsed={() => setGisLegendCollapsed((collapsed) => !collapsed)}
+            />
+          </div>
+        )}
 
         {/* Right Floating Map Control Tools */}
         <div className="absolute top-16 right-4 z-10 flex flex-col space-y-2 pointer-events-auto font-mono">

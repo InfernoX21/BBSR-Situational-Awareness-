@@ -550,6 +550,17 @@ export interface CityGISProvider {
    */
   hasWardDataset(): boolean;
 
+  /**
+   * Catalogue id of the layer that draws ward boundaries, or null when the
+   * provider publishes none.
+   *
+   * Exposed so the ward module can switch the boundary outlines on for context
+   * without naming a city-specific layer id. Nothing above the provider is
+   * allowed to know that Bhubaneswar's ward layer happens to be called
+   * `bmc-wards`.
+   */
+  readonly wardLayerId: string | null;
+
   /** Ward codes and labels for the selector, cheapest possible request. */
   listWards(options?: { signal?: AbortSignal }): Promise<GISWardRecord[]>;
 
