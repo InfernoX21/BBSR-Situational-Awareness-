@@ -844,6 +844,18 @@
   background: var(--color-map-void);
 }
 
+/* GPU hardware acceleration & tile buffer optimization */
+.leaflet-tile-container,
+.leaflet-pane {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.leaflet-tile {
+  will-change: transform, opacity;
+}
+
 .leaflet-container:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: -2px;

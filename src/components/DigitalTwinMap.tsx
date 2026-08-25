@@ -287,6 +287,10 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
       zoom: 13,
       zoomControl: false,
       attributionControl: false,
+      preferCanvas: true,
+      fadeAnimation: true,
+      zoomAnimation: true,
+      markerZoomAnimation: true,
     });
 
     mapInstanceRef.current = map;
@@ -296,7 +300,13 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
       ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
       : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
-    basemapRef.current = L.tileLayer(tileUrl, { maxZoom: 19, subdomains: 'abcd' }).addTo(map);
+    basemapRef.current = L.tileLayer(tileUrl, {
+      maxZoom: 19,
+      subdomains: 'abcd',
+      keepBuffer: 6,
+      updateWhenIdle: false,
+      updateInterval: 100,
+    }).addTo(map);
 
     const markersGroup = L.layerGroup().addTo(map);
     markersGroupRef.current = markersGroup;
@@ -332,7 +342,7 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
       gisViewportTimerRef.current = window.setTimeout(() => {
         gisViewportTimerRef.current = null;
         void gisControllerRef.current?.refreshViewport();
-      }, 450);
+      }, 150);
     };
     map.on('moveend', scheduleGISViewportRefresh);
     map.on('zoomend', scheduleGISViewportRefresh);
@@ -445,7 +455,13 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
       url = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
     }
 
-    basemapRef.current = L.tileLayer(url, { maxZoom: 19, subdomains: 'abcd' }).addTo(map);
+    basemapRef.current = L.tileLayer(url, {
+      maxZoom: 19,
+      subdomains: 'abcd',
+      keepBuffer: 6,
+      updateWhenIdle: false,
+      updateInterval: 100,
+    }).addTo(map);
 
     // The new backdrop is added last, so re-assert the GIS pane stack.
     gisControllerRef.current?.refreshPanes();
