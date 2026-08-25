@@ -262,11 +262,11 @@ export const LayerControlToolbar: React.FC<LayerControlToolbarProps> = ({
     : null;
 
   return (
-    <section aria-label="Map layers and basemap" className="bg-[#05070A] border-b border-white/10 select-none">
-      {/* --- Toolbar row (Single line, no wrapping) --- */}
-      <div className="flex items-center justify-between gap-2 sm:gap-3 px-3 py-1 overflow-x-auto whitespace-nowrap min-h-[36px] gov-scroll-thin">
+    <section aria-label="Map layers and basemap" className="bg-[#05070A] border-b border-white/10 select-none relative z-50">
+      {/* --- Toolbar row (Single line layout without overflow clipping) --- */}
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 sm:gap-3 px-3 py-1 min-h-[36px]">
         {/* Left Controls Stack */}
-        <div className="flex items-center gap-2 sm:gap-2.5">
+        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap sm:flex-nowrap">
           {/* Box 1: Map Layers button */}
           <button
             type="button"
@@ -335,17 +335,16 @@ export const LayerControlToolbar: React.FC<LayerControlToolbarProps> = ({
         {/* Right Controls Stack */}
         <div className="flex items-center gap-2 shrink-0">
           {/* Box 4: Map intelligence dropdown button & panel */}
-          <div className="relative" ref={mapIntelRef}>
+          <div className="relative z-50" ref={mapIntelRef}>
             <button
               type="button"
               onClick={() => {
                 if (onToggleGisPanel) {
                   onToggleGisPanel();
-                } else {
-                  setMapIntelOpen((prev) => !prev);
                 }
+                setMapIntelOpen((prev) => !prev);
               }}
-              aria-expanded={gisPanelOpen ?? mapIntelOpen}
+              aria-expanded={Boolean(gisPanelOpen || mapIntelOpen)}
               title="Toggle Map Intelligence panel"
               className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-500/40 hover:border-cyan-400 text-cyan-200 text-[11px] font-mono font-medium transition-all shadow-sm group cursor-pointer h-7.5"
             >
@@ -356,13 +355,13 @@ export const LayerControlToolbar: React.FC<LayerControlToolbarProps> = ({
               </span>
             </button>
 
-            {(gisPanelOpen ?? mapIntelOpen) && gisProvider && gisLayers && (
-              <div className="absolute right-0 top-full mt-1.5 z-50 animate-in fade-in duration-150">
+            {(gisPanelOpen || mapIntelOpen) && (
+              <div className="absolute right-0 top-full mt-1.5 z-[9999] animate-in fade-in duration-150">
                 <MapIntelligencePanel
-                  provider={gisProvider}
-                  layers={gisLayers}
+                  provider={gisProvider || ({ id: 'bhubaneswar-gis', name: 'Bhubaneswar GIS' } as any)}
+                  layers={gisLayers || []}
                   runtime={gisRuntime || {}}
-                  actions={gisActions!}
+                  actions={gisActions || ({ zoomToLayer: () => {}, toggleVisibility: () => {} } as any)}
                   basemapStyle={layersState.basemapStyle ?? (layersState.satellite ? 'satellite' : 'dark')}
                   onBasemapChange={(style) => setLayersState((prev) => ({ ...prev, basemapStyle: style }))}
                   legendVisible={gisLegendVisible ?? true}
@@ -371,9 +370,8 @@ export const LayerControlToolbar: React.FC<LayerControlToolbarProps> = ({
                   onToggleOpen={() => {
                     if (onToggleGisPanel) {
                       onToggleGisPanel();
-                    } else {
-                      setMapIntelOpen(false);
                     }
+                    setMapIntelOpen(false);
                   }}
                 />
               </div>
@@ -381,7 +379,7 @@ export const LayerControlToolbar: React.FC<LayerControlToolbarProps> = ({
           </div>
 
           {/* Box 5: Legends dropdown button & menu */}
-          <div className="relative" ref={legendRef}>
+          <div className="relative z-50" ref={legendRef}>
             <button
               type="button"
               onClick={() => setLegendOpen((prev) => !prev)}
@@ -401,7 +399,7 @@ export const LayerControlToolbar: React.FC<LayerControlToolbarProps> = ({
             </button>
 
             {legendOpen && (
-              <div className="absolute right-0 top-full mt-1.5 z-50 w-64 rounded-lg bg-[#0F172A] border border-[#1E293B] shadow-2xl p-2.5 text-white animate-in fade-in duration-150">
+              <div className="absolute right-0 top-full mt-1.5 z-[9999] w-64 rounded-lg bg-[#0F172A] border border-[#1E293B] shadow-2xl p-2.5 text-white animate-in fade-in duration-150">
                 <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#1E293B]">
                   <span className="text-[10px] font-bold tracking-wider text-white/50 uppercase">
                     Active Layers Legend

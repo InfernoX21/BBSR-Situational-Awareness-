@@ -164,7 +164,7 @@ export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = (
         </div>
 
         {/* Section 3: TACTICAL RESOURCE FLEET */}
-        <div>
+        <div className="mt-auto pt-2.5 border-t border-white/10">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1.5">
               <Radio className="w-3 h-3 text-[#10B981] animate-pulse" />
