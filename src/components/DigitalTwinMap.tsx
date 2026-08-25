@@ -1178,18 +1178,7 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
             </div>
           )}
 
-        {/* Legend for the active base GIS layers. Renders nothing when none are on. */}
-        {gisLegendVisible && (
-          <div className="absolute bottom-14 right-4 z-20 pointer-events-auto">
-            <GISLegend
-              layers={gis.layers}
-              runtime={gis.runtime}
-              actions={gisActions}
-              collapsed={gisLegendCollapsed}
-              onToggleCollapsed={() => setGisLegendCollapsed((collapsed) => !collapsed)}
-            />
-          </div>
-        )}
+
 
         {/* Right Floating Map Control Tools */}
         <div className="absolute top-16 right-4 z-10 flex flex-col space-y-2 pointer-events-auto font-mono">
