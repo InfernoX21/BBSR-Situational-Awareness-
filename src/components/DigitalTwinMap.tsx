@@ -143,7 +143,6 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
 
   // --- Auto Map Rotation Tier ----------------------------------------------
   const [isAutoRotateEnabled, setIsAutoRotateEnabled] = useState(false);
-  const [currentRotationAngle, setCurrentRotationAngle] = useState(0);
 
   const autoRotateEnabledRef = useRef(isAutoRotateEnabled);
   autoRotateEnabledRef.current = isAutoRotateEnabled;
@@ -153,21 +152,38 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
   const inactivityTimerRef = useRef<number | null>(null);
   const isUserInteractingRef = useRef(false);
 
-  const handleMapUserAction = () => {
-    if (autoRotateEnabledRef.current) {
-      isUserInteractingRef.current = true;
-      if (inactivityTimerRef.current !== null) {
-        window.clearTimeout(inactivityTimerRef.current);
-        inactivityTimerRef.current = null;
+  // ResizeObserver to automatically notify Leaflet when container dimensions change
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+    const container = mapContainerRef.current;
+    const observer = new ResizeObserver(() => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
       }
-      inactivityTimerRef.current = window.setTimeout(() => {
-        isUserInteractingRef.current = false;
-        inactivityTimerRef.current = null;
-      }, 12000);
+    });
+    observer.observe(container);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  const resetMapPaneTransform = () => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    try {
+      const mapPane = map.getPanes().mapPane;
+      if (!mapPane) return;
+      const pos = L.DomUtil.getPosition(mapPane);
+      const x = pos ? pos.x : 0;
+      const y = pos ? pos.y : 0;
+      mapPane.style.transform = `translate3d(${x}px, ${y}px, 0px)`;
+      mapPane.style.transformOrigin = 'center center';
+    } catch {
+      // Ignore if pane destroyed during unmount
     }
   };
 
-  // Continuous Auto-Rotation Animation Effect
+  // Continuous Auto-Rotation Animation Effect (native Leaflet mapPane transform)
   useEffect(() => {
     autoRotateEnabledRef.current = isAutoRotateEnabled;
 
@@ -182,14 +198,33 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
       }
       isUserInteractingRef.current = false;
       rotationAngleRef.current = 0;
-      setCurrentRotationAngle(0);
+      resetMapPaneTransform();
       return;
     }
 
     const animate = () => {
-      if (autoRotateEnabledRef.current && !isUserInteractingRef.current) {
-        rotationAngleRef.current = (rotationAngleRef.current + 0.04) % 360;
-        setCurrentRotationAngle(rotationAngleRef.current);
+      const map = mapInstanceRef.current;
+      if (autoRotateEnabledRef.current && map) {
+        if (!isUserInteractingRef.current) {
+          rotationAngleRef.current = (rotationAngleRef.current + 0.035) % 360;
+        }
+        try {
+          const mapPane = map.getPanes().mapPane;
+          if (mapPane) {
+            const pos = L.DomUtil.getPosition(mapPane);
+            const x = pos ? pos.x : 0;
+            const y = pos ? pos.y : 0;
+            const angle = rotationAngleRef.current;
+            mapPane.style.transformOrigin = 'center center';
+            if (angle !== 0) {
+              mapPane.style.transform = `translate3d(${x}px, ${y}px, 0px) rotate(${angle}deg) scale(1.42)`;
+            } else {
+              mapPane.style.transform = `translate3d(${x}px, ${y}px, 0px)`;
+            }
+          }
+        } catch {
+          // Ignore if map unmounted
+        }
       }
       animFrameIdRef.current = requestAnimationFrame(animate);
     };
@@ -205,6 +240,7 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
         window.clearTimeout(inactivityTimerRef.current);
         inactivityTimerRef.current = null;
       }
+      resetMapPaneTransform();
     };
   }, [isAutoRotateEnabled]);
 
@@ -1207,17 +1243,18 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
         {/* Leaflet Map Canvas Container */}
         <div
           ref={mapContainerRef}
-          className="w-full h-full z-0 origin-center"
-          style={{
-            transform: is3DMode
-              ? `perspective(1000px) rotateX(25deg) rotate(${currentRotationAngle}deg) scale(1.05)`
-              : currentRotationAngle !== 0
-              ? `rotate(${currentRotationAngle}deg)`
-              : 'none',
-            transformOrigin: is3DMode ? 'center bottom' : 'center center',
-            willChange: isAutoRotateEnabled ? 'transform' : 'auto',
-            transition: isAutoRotateEnabled && !isUserInteractingRef.current ? 'none' : 'transform 700ms ease-in-out',
-          }}
+          className="w-full h-full z-0 overflow-hidden"
+          style={
+            is3DMode
+              ? {
+                  transform: 'perspective(1000px) rotateX(25deg) scale(1.05)',
+                  transformOrigin: 'center bottom',
+                  transition: 'transform 700ms ease-in-out',
+                }
+              : {
+                  transform: 'none',
+                }
+          }
         />
 
         {/* Floating Search Bar */}
@@ -1321,7 +1358,7 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
                 }
                 isUserInteractingRef.current = false;
                 rotationAngleRef.current = 0;
-                setCurrentRotationAngle(0);
+                resetMapPaneTransform();
               }
             }}
             className={`w-8 h-8 rounded border backdrop-blur-md flex items-center justify-center shadow-xl transition-all active:scale-95 relative ${
