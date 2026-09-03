@@ -8,7 +8,15 @@ export interface DataProvenance {
   source: string;
   timestamp: string;
   provider: string;
-  confidence: number;
+  /**
+   * Model or detector confidence, 0–100.
+   *
+   * Optional because most sources do not publish one. A measurement — a gauge
+   * reading, a vehicle count — has no confidence score, and inventing a number
+   * so the field is always populated is what produced the interface's hardcoded
+   * "98%". Absent means unscored, and the UI renders it as such.
+   */
+  confidence?: number;
   latencyMs: number;
   lastUpdated: string;
   classification?: DataClassification;

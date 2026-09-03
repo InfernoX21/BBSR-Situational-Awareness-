@@ -1,18 +1,76 @@
-import React, { useState } from 'react';
-import { LandmarkNode } from '../../types';
+/**
+ * Infrastructure — the register of critical city facilities.
+ *
+ * Rebuilt on the ARKA design system, sharing `AssetCard` and `DataTable` with the
+ * drone, camera and utility modules so a hospital looks like a hospital wherever
+ * it is listed. Assets sort worst-first: an asset in ALERT is the reason an
+ * operator opened this page, so it is not below the fold behind nine healthy ones.
+ *
+ * What the register actually is, stated on the page: a static list of real
+ * facilities at real coordinates, compiled into the build. No SCADA gateway or
+ * structural-health telemetry is connected, so every record carries `SEED` from
+ * its envelope and the status field is labelled as register state rather than a
+ * live reading.
+ *
+ * Fabrications removed:
+ *
+ * - "98.2% health uptime" under the operational count. Nothing measured it.
+ * - "Voltage variance detected" under the alert count, asserted regardless of
+ *   which asset was in alert or what the register said about it. The alert reason
+ *   now comes from the asset's own `details`.
+ * - "Preventive overhaul" under the maintenance count, likewise asserted.
+ * - The subtitle's "Isolation Forest Structural Health Scoring, SCADA Sensor
+ *   Telemetry & Predictive Maintenance". None of those three exist in this
+ *   deployment.
+ * - "Inspect SCADA" on every card, which promised a telemetry view there is no
+ *   feed for.
+ *
+ * Also fixed: the type filter was a hardcoded list of eight of the ten categories,
+ * so airport, station and university assets could not be filtered to at all. The
+ * options are now derived from the register with real counts, and `{alertCount}
+ * Node` no longer reads "3 Node".
+ */
+
+import { useMemo } from 'react';
 import {
   Building2,
-  Zap,
+  GraduationCap,
   HeartPulse,
+  Landmark,
+  Map as MapIcon,
+  Plane,
   Radio,
   ShieldAlert,
-  Search,
-  CheckCircle2,
-  AlertTriangle,
-  Activity,
-  Wrench,
-  Navigation,
+  Siren,
+  Train,
+  Droplets,
+  Zap,
 } from 'lucide-react';
+import type { LandmarkNode } from '../../types';
+import {
+  AssetCard,
+  Button,
+  DataTable,
+  EmptyState,
+  FilterBar,
+  FilterGroup,
+  Metric,
+  MetricGrid,
+  NameCell,
+  OperationalBadge,
+  Page,
+  PageBody,
+  PageHeader,
+  PageSection,
+  Panel,
+  Provenance,
+  SearchInput,
+  Segmented,
+  StatusBadge,
+  useStoredState,
+  type Column,
+} from '../../ui';
+import { FACILITY_REGISTER_SOURCE, landmarkEnvelope } from './adapters';
 
 interface InfrastructureViewProps {
   landmarks: LandmarkNode[];
@@ -20,168 +78,260 @@ interface InfrastructureViewProps {
   onJumpToMap?: () => void;
 }
 
-export const InfrastructureView: React.FC<InfrastructureViewProps> = ({
-  landmarks,
-  onSelectLandmark,
-  onJumpToMap,
-}) => {
-  const [typeFilter, setTypeFilter] = useState<string>('ALL');
-  const [searchQuery, setSearchQuery] = useState<string>('');
+type AssetType = LandmarkNode['type'];
+type ViewMode = 'CARDS' | 'TABLE';
 
-  const types = ['ALL', 'HOSPITAL', 'POLICE', 'FIRE', 'POWER', 'WATER', 'TELECOM', 'GOVT'];
+/** Operator-facing category names, so a card does not shout POWER at anyone. */
+const TYPE_LABEL: Record<AssetType, string> = {
+  HOSPITAL: 'Hospital',
+  POLICE: 'Police',
+  FIRE: 'Fire and rescue',
+  POWER: 'Power',
+  WATER: 'Water',
+  TELECOM: 'Telecom',
+  AIRPORT: 'Airport',
+  STATION: 'Rail station',
+  GOVT: 'Government',
+  UNIVERSITY: 'Education',
+};
 
-  const filteredLandmarks = landmarks.filter((lm) => {
-    const matchesType = typeFilter === 'ALL' || lm.type === typeFilter;
-    const matchesSearch =
-      lm.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lm.details.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesType && matchesSearch;
-  });
+/**
+ * One glyph per category, drawn in the structural ink colour.
+ *
+ * Deliberately monochrome: colour on this page means status, and a rose hospital
+ * icon next to a green status badge is two colour systems arguing.
+ */
+const TYPE_ICON: Record<AssetType, typeof Building2> = {
+  HOSPITAL: HeartPulse,
+  POLICE: ShieldAlert,
+  FIRE: Siren,
+  POWER: Zap,
+  WATER: Droplets,
+  TELECOM: Radio,
+  AIRPORT: Plane,
+  STATION: Train,
+  GOVT: Landmark,
+  UNIVERSITY: GraduationCap,
+};
 
-  const getStatusBadge = (status: LandmarkNode['status']) => {
-    switch (status) {
-      case 'ALERT':
-        return <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#EF4444] text-white animate-pulse">ALERT</span>;
-      case 'MAINTENANCE':
-        return <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#F59E0B] text-black">MAINTENANCE</span>;
-      default:
-        return <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/30">OPERATIONAL</span>;
+/** Worst first. An asset in alert is why this page is open. */
+const STATUS_RANK: Record<LandmarkNode['status'], number> = {
+  ALERT: 0,
+  MAINTENANCE: 1,
+  OPERATIONAL: 2,
+};
+
+export function InfrastructureView({ landmarks, onSelectLandmark, onJumpToMap }: InfrastructureViewProps) {
+  const [mode, setMode] = useStoredState<ViewMode>('infrastructure.view', 'CARDS');
+  const [types, setTypes] = useStoredState<AssetType[]>('infrastructure.types', []);
+  const [query, setQuery] = useStoredState<string>('infrastructure.query', '');
+
+  const tally = useMemo(() => {
+    const byType = new Map<AssetType, number>();
+    let operational = 0;
+    let alert = 0;
+    let maintenance = 0;
+    for (const asset of landmarks) {
+      byType.set(asset.type, (byType.get(asset.type) ?? 0) + 1);
+      if (asset.status === 'OPERATIONAL') operational += 1;
+      else if (asset.status === 'ALERT') alert += 1;
+      else maintenance += 1;
     }
-  };
+    // Only categories the register actually contains become filter chips: a chip
+    // that can only ever return nothing is a dead control.
+    const options = [...byType.entries()]
+      .sort((a, b) => TYPE_LABEL[a[0]].localeCompare(TYPE_LABEL[b[0]]))
+      .map(([value, count]) => ({ value, label: TYPE_LABEL[value], count }));
+    return { options, operational, alert, maintenance };
+  }, [landmarks]);
 
-  const getTypeIcon = (type: LandmarkNode['type']) => {
-    switch (type) {
-      case 'HOSPITAL': return <HeartPulse className="w-4 h-4 text-rose-400" />;
-      case 'POWER': return <Zap className="w-4 h-4 text-yellow-400" />;
-      case 'TELECOM': return <Radio className="w-4 h-4 text-cyan-400" />;
-      case 'POLICE': return <ShieldAlert className="w-4 h-4 text-emerald-400" />;
-      default: return <Building2 className="w-4 h-4 text-white/70" />;
-    }
-  };
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return landmarks
+      .filter((asset) => {
+        if (types.length > 0 && !types.includes(asset.type)) return false;
+        if (needle === '') return true;
+        return (
+          asset.name.toLowerCase().includes(needle) ||
+          asset.details.toLowerCase().includes(needle) ||
+          TYPE_LABEL[asset.type].toLowerCase().includes(needle)
+        );
+      })
+      .sort(
+        (a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status] || a.name.localeCompare(b.name),
+      );
+  }, [landmarks, types, query]);
 
-  const operationalCount = landmarks.filter((l) => l.status === 'OPERATIONAL').length;
-  const alertCount = landmarks.filter((l) => l.status === 'ALERT').length;
-  const maintenanceCount = landmarks.filter((l) => l.status === 'MAINTENANCE').length;
+  const columns = useMemo<Column<LandmarkNode>[]>(
+    () => [
+      {
+        key: 'name',
+        header: 'Asset',
+        render: (asset) => {
+          const Icon = TYPE_ICON[asset.type];
+          return <NameCell primary={asset.name} secondary={asset.details} icon={<Icon size={12} />} />;
+        },
+        sortable: true,
+        sortValue: (asset) => asset.name,
+      },
+      {
+        key: 'type',
+        header: 'Category',
+        render: (asset) => <span className="text-[11.5px] text-ink-muted">{TYPE_LABEL[asset.type]}</span>,
+        sortable: true,
+        sortValue: (asset) => TYPE_LABEL[asset.type],
+        width: '10rem',
+      },
+      {
+        key: 'status',
+        header: 'Register state',
+        render: (asset) => <OperationalBadge status={asset.status} />,
+        sortable: true,
+        sortValue: (asset) => STATUS_RANK[asset.status],
+        width: '10rem',
+      },
+      {
+        key: 'position',
+        header: 'Position',
+        hideBelow: 'lg',
+        render: (asset) => (
+          <span className="ark-mono text-[11px] text-ink-subtle">
+            {asset.lat.toFixed(4)}, {asset.lng.toFixed(4)}
+          </span>
+        ),
+        width: '11rem',
+      },
+    ],
+    [],
+  );
+
+  const activeFilters = types.length + (query.trim() === '' ? 0 : 1);
 
   return (
-    <div className="flex-1 h-full bg-[#050505] p-6 overflow-y-auto font-mono text-xs flex flex-col space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between border-b border-white/10 pb-4 gap-4">
-        <div>
-          <div className="flex items-center space-x-2 text-[#06B6D4]">
-            <Building2 className="w-5 h-5 animate-pulse" />
-            <h1 className="text-lg font-bold uppercase tracking-wider text-white">
-              Critical Infrastructure & Smart Assets
-            </h1>
-          </div>
-          <p className="text-white/40 text-[11px] mt-0.5">
-            Isolation Forest Structural Health Scoring, SCADA Sensor Telemetry & Predictive Maintenance
-          </p>
-        </div>
-
-        {onJumpToMap && (
-          <button
-            onClick={onJumpToMap}
-            className="px-3 py-1.5 rounded bg-[#06B6D4]/10 border border-[#06B6D4]/40 hover:bg-[#06B6D4]/20 text-[#06B6D4] font-bold text-xs uppercase flex items-center space-x-2 transition-all"
+    <Page>
+      <PageHeader
+        title="Infrastructure"
+        subtitle="Register of critical city facilities: health, emergency services, transport, utilities and government estate."
+        meta={
+          <>
+            <Provenance state="SEED" source={FACILITY_REGISTER_SOURCE} />
+            <StatusBadge
+              label="REGISTER STATE"
+              tone="medium"
+              hint="Status is the value held in the facility register. No SCADA or structural-health telemetry is connected to these assets, so it is not a live reading."
+            />
+          </>
+        }
+        actions={
+          onJumpToMap && (
+            <Button variant="outline" size="sm" icon={<MapIcon size={12} />} onClick={onJumpToMap}>
+              View on map
+            </Button>
+          )
+        }
+        toolbar={
+          <FilterBar
+            activeCount={activeFilters}
+            onReset={() => {
+              setTypes([]);
+              setQuery('');
+            }}
+            showing={{ shown: filtered.length, total: landmarks.length }}
           >
-            <Navigation className="w-3.5 h-3.5" />
-            <span>GIS Digital Twin Assets</span>
-          </button>
-        )}
-      </div>
+            <SearchInput
+              value={query}
+              onChange={setQuery}
+              label="Search infrastructure"
+              placeholder="Search assets"
+            />
+            <FilterGroup label="Category" options={tally.options} selected={types} onChange={setTypes} />
+            <Segmented<ViewMode>
+              label="Register layout"
+              value={mode}
+              options={[
+                { value: 'CARDS', label: 'CARDS', hint: 'One card per asset' },
+                { value: 'TABLE', label: 'TABLE', hint: 'Sortable register table' },
+              ]}
+              onChange={setMode}
+            />
+          </FilterBar>
+        }
+      />
 
-      {/* KPI Stats Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3 bg-white/[0.02] border border-white/10 rounded">
-          <div className="text-white/40 text-[9px] uppercase">Total Smart Assets</div>
-          <div className="text-lg font-bold text-white mt-0.5">{landmarks.length} Nodes</div>
-          <div className="text-white/40 text-[9px] mt-1">SCADA Monitored</div>
-        </div>
-
-        <div className="p-3 bg-white/[0.02] border border-white/10 rounded">
-          <div className="text-white/40 text-[9px] uppercase">Fully Operational</div>
-          <div className="text-lg font-bold text-[#10B981] mt-0.5">{operationalCount} Assets</div>
-          <div className="text-[#10B981] text-[9px] mt-1">98.2% health uptime</div>
-        </div>
-
-        <div className="p-3 bg-white/[0.02] border border-white/10 rounded">
-          <div className="text-white/40 text-[9px] uppercase">Anomaly Alerts</div>
-          <div className="text-lg font-bold text-[#EF4444] mt-0.5">{alertCount} Node</div>
-          <div className="text-[#EF4444] text-[9px] mt-1">Voltage variance detected</div>
-        </div>
-
-        <div className="p-3 bg-white/[0.02] border border-white/10 rounded">
-          <div className="text-white/40 text-[9px] uppercase">Scheduled Work Orders</div>
-          <div className="text-lg font-bold text-[#F59E0B] mt-0.5">{maintenanceCount} Maintenance</div>
-          <div className="text-white/40 text-[9px] mt-1">Preventive overhaul</div>
-        </div>
-      </div>
-
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#0A0A0A] p-3 rounded border border-white/10">
-        <div className="flex items-center space-x-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
-          {types.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTypeFilter(t)}
-              className={`px-3 py-1.5 rounded text-[10px] font-bold uppercase transition-all shrink-0 ${
-                typeFilter === t
-                  ? 'bg-white/10 text-[#06B6D4] border border-[#06B6D4]/40'
-                  : 'text-white/40 hover:text-white'
-              }`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center bg-black border border-white/10 rounded px-3 py-1.5 w-full sm:w-64">
-          <Search className="w-3.5 h-3.5 text-white/40 mr-2 shrink-0" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search infrastructure assets..."
-            className="bg-transparent text-xs text-white placeholder-white/30 focus:outline-none w-full"
+      <PageBody>
+        <MetricGrid columns={4}>
+          <Metric
+            label="On register"
+            value={landmarks.length}
+            hint="Facilities ARKA holds a record for."
+            icon={<Building2 size={13} />}
           />
-        </div>
-      </div>
+          <Metric
+            label="Operational"
+            value={tally.operational}
+            unit={`/ ${landmarks.length}`}
+            tone="success"
+          />
+          <Metric
+            label="In alert"
+            value={tally.alert}
+            tone={tally.alert > 0 ? 'critical' : 'default'}
+            hint="Register records a fault or degraded state."
+          />
+          <Metric
+            label="Under maintenance"
+            value={tally.maintenance}
+            tone={tally.maintenance > 0 ? 'medium' : 'default'}
+            hint="Register records planned work."
+          />
+        </MetricGrid>
 
-      {/* Asset Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 flex-1">
-        {filteredLandmarks.map((lm) => (
-          <div
-            key={lm.id}
-            onClick={() => onSelectLandmark(lm)}
-            className="p-4 bg-[#0A0A0A] border border-white/10 hover:border-[#06B6D4]/50 rounded transition-all cursor-pointer flex flex-col justify-between space-y-3 group"
-          >
-            <div>
-              <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2">
-                <div className="flex items-center space-x-2">
-                  {getTypeIcon(lm.type)}
-                  <span className="font-bold text-[#06B6D4] text-[10px] uppercase">{lm.type}</span>
-                </div>
-                {getStatusBadge(lm.status)}
-              </div>
-
-              <h2 className="text-sm font-bold text-white group-hover:text-[#06B6D4] transition-colors">
-                {lm.name}
-              </h2>
-
-              <p className="text-white/70 text-[11px] mt-2 leading-relaxed">
-                {lm.details}
-              </p>
+        <PageSection
+          title="Assets"
+          hint={filtered.length === landmarks.length ? 'Worst state first' : `${filtered.length} matching`}
+        >
+          {filtered.length === 0 ? (
+            <Panel>
+              <EmptyState
+                compact
+                title={landmarks.length === 0 ? 'No facilities on the register' : 'No assets match'}
+                detail={
+                  landmarks.length === 0
+                    ? 'The facility register is empty in this build.'
+                    : 'Clear the category filter or the search term to see the rest of the register.'
+                }
+              />
+            </Panel>
+          ) : mode === 'TABLE' ? (
+            <Panel flush>
+              <DataTable
+                rows={filtered}
+                columns={columns}
+                rowKey={(asset) => asset.id}
+                label="Infrastructure register"
+                onRowClick={(asset) => onSelectLandmark(asset)}
+                rowAccent={(asset) =>
+                  asset.status === 'ALERT' ? 'critical' : asset.status === 'MAINTENANCE' ? 'medium' : null
+                }
+              />
+            </Panel>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+              {filtered.map((asset) => (
+                <AssetCard
+                  key={asset.id}
+                  entity={landmarkEnvelope(asset)}
+                  kindLabel={TYPE_LABEL[asset.type]}
+                  status={asset.status}
+                  onSelect={() => onSelectLandmark(asset)}
+                >
+                  <p className="text-[11.5px] text-ink-subtle leading-relaxed">{asset.details}</p>
+                </AssetCard>
+              ))}
             </div>
-
-            <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[10px] text-white/40">
-              <div>
-                LAT/LNG: <span className="text-white/70 font-mono">{lm.lat.toFixed(4)}, {lm.lng.toFixed(4)}</span>
-              </div>
-              <span className="text-[#06B6D4] group-hover:underline font-bold">Inspect SCADA</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+          )}
+        </PageSection>
+      </PageBody>
+    </Page>
   );
-};
+}
