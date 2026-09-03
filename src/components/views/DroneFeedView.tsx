@@ -1,6 +1,60 @@
-import React from 'react';
-import { Navigation, ShieldAlert, Radio, Battery, Zap, AlertTriangle } from 'lucide-react';
-import { DroneUnit, Incident, LandmarkNode } from '../../types';
+/**
+ * Drone feed — the UAV reconnaissance module.
+ *
+ * Rebuilt on the ARKA design system. The page presents the fleet three ways over
+ * one filtered list: cards for triage, a telemetry table for comparison, and a
+ * fleet summary above both. The view mode and the status filter persist per
+ * operator, so a duty officer who works from the table does not re-pick it every
+ * shift.
+ *
+ * What this page must not do is imply it is receiving video. It is not: no RTSP
+ * or MPEG-TS endpoint is configured anywhere in this deployment, and the
+ * telemetry is a compiled fixture that `App` steps on a timer. Every card
+ * therefore carries the `SIMULATED` state from its envelope (see
+ * `views/adapters.ts`), and the video panel states what is missing rather than
+ * drawing a black rectangle that looks like a stalled feed.
+ *
+ * Removed from the previous version:
+ *
+ * - The cyan `animate-pulse` dot on every drone, which read as a live link.
+ * - The per-card "CLASSIFICATION: SIMULATED TELEMETRY (USE_DEMO_DATA=true)"
+ *   strip. The state belongs in the envelope, where the shared card renders it in
+ *   the same place on every asset in the platform, and the operator does not need
+ *   an env-var name repeated four times.
+ * - The hand-rolled card, header and empty state, all three of which existed in
+ *   near-identical form on four other pages.
+ */
+
+import { useMemo } from 'react';
+import { Battery, Map as MapIcon, Plane, Video } from 'lucide-react';
+import type { DroneUnit, Incident, LandmarkNode } from '../../types';
+import {
+  AssetCard,
+  Button,
+  DataTable,
+  EmptyState,
+  FilterBar,
+  FilterGroup,
+  Meter,
+  MetricGrid,
+  Metric,
+  NameCell,
+  NumCell,
+  OperationalBadge,
+  Page,
+  PageBody,
+  PageHeader,
+  PageSection,
+  Panel,
+  PanelBody,
+  PanelHead,
+  Provenance,
+  Segmented,
+  UnavailableState,
+  useStoredState,
+  type Column,
+} from '../../ui';
+import { DRONE_FIXTURE_SOURCE, droneEnvelope } from './adapters';
 
 interface DroneFeedViewProps {
   drones?: DroneUnit[];
@@ -10,99 +64,305 @@ interface DroneFeedViewProps {
   onJumpToMap?: () => void;
 }
 
-export const DroneFeedView: React.FC<DroneFeedViewProps> = ({
-  drones = [],
-  onSelectDrone,
-  onJumpToMap,
-}) => {
+type ViewMode = 'CARDS' | 'TABLE';
+
+const STATUSES: readonly DroneUnit['status'][] = ['PATROLLING', 'DISPATCHED', 'HOVERING', 'CHARGING'];
+
+/** Airborne means the aircraft is in the air, whatever it is doing up there. */
+const AIRBORNE: readonly DroneUnit['status'][] = ['PATROLLING', 'DISPATCHED', 'HOVERING'];
+
+/** Below this the aircraft must be recalled, so it reads as critical. */
+const RESERVE_PCT = 20;
+
+function batteryTone(battery: number): 'critical' | 'medium' | 'low' {
+  if (battery <= RESERVE_PCT) return 'critical';
+  if (battery <= 45) return 'medium';
+  return 'low';
+}
+
+export function DroneFeedView({ drones = [], onSelectDrone, onJumpToMap }: DroneFeedViewProps) {
+  const [mode, setMode] = useStoredState<ViewMode>('drones.view', 'CARDS');
+  const [statuses, setStatuses] = useStoredState<DroneUnit['status'][]>('drones.status', []);
+
+  const counts = useMemo(() => {
+    const tally = {} as Record<DroneUnit['status'], number>;
+    for (const status of STATUSES) tally[status] = 0;
+    for (const drone of drones) tally[drone.status] += 1;
+    return tally;
+  }, [drones]);
+
+  const fleet = useMemo(() => {
+    const airborne = drones.filter((d) => AIRBORNE.includes(d.status)).length;
+    const reserve = drones.filter((d) => d.battery <= RESERVE_PCT).length;
+    // An empty fleet has no mean charge. Zero would read as four flat batteries.
+    const meanBattery =
+      drones.length === 0
+        ? null
+        : Math.round(drones.reduce((sum, d) => sum + d.battery, 0) / drones.length);
+    const lowest = drones.reduce<DroneUnit | null>(
+      (worst, d) => (worst === null || d.battery < worst.battery ? d : worst),
+      null,
+    );
+    return { airborne, reserve, meanBattery, lowest };
+  }, [drones]);
+
+  const filtered = useMemo(
+    () => (statuses.length === 0 ? drones : drones.filter((d) => statuses.includes(d.status))),
+    [drones, statuses],
+  );
+
+  const columns = useMemo<Column<DroneUnit>[]>(
+    () => [
+      {
+        key: 'callsign',
+        header: 'Aircraft',
+        render: (drone) => (
+          <NameCell primary={drone.callsign} secondary={drone.targetArea} icon={<Plane size={12} />} />
+        ),
+        sortable: true,
+        sortValue: (drone) => drone.callsign,
+      },
+      {
+        key: 'status',
+        header: 'Status',
+        render: (drone) => <OperationalBadge status={drone.status} />,
+        sortable: true,
+        sortValue: (drone) => drone.status,
+        width: '9rem',
+      },
+      {
+        key: 'battery',
+        header: 'Charge',
+        numeric: true,
+        sortable: true,
+        sortValue: (drone) => drone.battery,
+        width: '8rem',
+        render: (drone) => (
+          <div className="flex items-center gap-2 justify-end">
+            <Meter value={drone.battery} tone={batteryTone(drone.battery)} className="w-12" />
+            <NumCell value={drone.battery} unit="%" />
+          </div>
+        ),
+      },
+      {
+        key: 'alt',
+        header: 'Altitude',
+        numeric: true,
+        sortable: true,
+        sortValue: (drone) => drone.altMeters,
+        render: (drone) => <NumCell value={drone.altMeters} unit=" m" />,
+        width: '7rem',
+      },
+      {
+        key: 'speed',
+        header: 'Airspeed',
+        numeric: true,
+        sortable: true,
+        sortValue: (drone) => drone.speedKmh,
+        render: (drone) => <NumCell value={drone.speedKmh} unit=" km/h" />,
+        width: '8rem',
+      },
+      {
+        key: 'position',
+        header: 'Position',
+        hideBelow: 'lg',
+        render: (drone) => (
+          <span className="ark-mono text-[11px] text-ink-subtle">
+            {drone.lat.toFixed(4)}, {drone.lng.toFixed(4)}
+          </span>
+        ),
+        width: '11rem',
+      },
+    ],
+    [],
+  );
+
   const hasDrones = drones.length > 0;
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-zinc-900/80 border border-zinc-800 p-4 rounded-xl">
-        <div>
-          <div className="flex items-center gap-2">
-            <Navigation className="w-5 h-5 text-cyan-400" />
-            <h1 className="text-xl font-bold text-zinc-100 tracking-wide font-mono">
-              ARKA UAV RECONNAISSANCE & FEEDS
-            </h1>
-            <span className={`text-xs px-2.5 py-0.5 rounded font-mono font-semibold ${
-              hasDrones ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
-            }`}>
-              {hasDrones ? 'SEED / SIMULATED' : 'UNAVAILABLE'}
+    <Page>
+      <PageHeader
+        title="Drone feed"
+        subtitle="Aerial reconnaissance fleet: ground-control telemetry, tasking and video links."
+        meta={
+          <>
+            <Provenance
+              state={hasDrones ? 'SIMULATED' : 'UNAVAILABLE'}
+              source={DRONE_FIXTURE_SOURCE}
+              error={
+                hasDrones
+                  ? null
+                  : {
+                      code: 'SOURCE_UNAVAILABLE',
+                      message: 'No ground-control station is connected.',
+                      requiredIntegration: 'MAVLink / DroneKit GCS telemetry link',
+                    }
+              }
+            />
+            <span className="text-[11px] text-ink-faint">
+              {drones.length} airframe{drones.length === 1 ? '' : 's'} on the roster
             </span>
-          </div>
-          <p className="text-xs text-zinc-400 mt-1">
-            Real-time aerial surveillance video stream and GCS ground control telemetry.
-          </p>
-        </div>
-        {onJumpToMap && (
-          <button
-            onClick={onJumpToMap}
-            className="flex items-center gap-2 px-3 py-1.5 bg-cyan-950/60 hover:bg-cyan-900/60 text-cyan-300 border border-cyan-700/50 rounded-lg text-xs font-mono transition-colors"
-          >
-            <Radio className="w-4 h-4" />
-            VIEW ON MAP
-          </button>
-        )}
-      </div>
-
-      {/* Main Content */}
-      {hasDrones ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {drones.map((drone) => (
-            <div
-              key={drone.id}
-              onClick={() => onSelectDrone && onSelectDrone(drone)}
-              className="bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 rounded-xl p-4 cursor-pointer transition-all space-y-3"
+          </>
+        }
+        actions={
+          onJumpToMap && (
+            <Button variant="outline" size="sm" icon={<MapIcon size={12} />} onClick={onJumpToMap}>
+              View on map
+            </Button>
+          )
+        }
+        toolbar={
+          hasDrones && (
+            <FilterBar
+              activeCount={statuses.length}
+              onReset={() => setStatuses([])}
+              showing={{ shown: filtered.length, total: drones.length }}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
-                  <span className="font-mono font-bold text-zinc-100">{drone.callsign}</span>
-                  <span className="text-xs px-2 py-0.5 bg-zinc-800 text-zinc-300 rounded font-mono">
-                    {drone.status}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 text-xs text-cyan-400 font-mono">
-                  <Battery className="w-4 h-4" />
-                  <span>{drone.battery}%</span>
-                </div>
-              </div>
+              <FilterGroup
+                label="Status"
+                options={STATUSES.map((value) => ({ value, label: value, count: counts[value] }))}
+                selected={statuses}
+                onChange={setStatuses}
+              />
+              <Segmented<ViewMode>
+                label="Fleet layout"
+                value={mode}
+                options={[
+                  { value: 'CARDS', label: 'CARDS', hint: 'One card per airframe' },
+                  { value: 'TABLE', label: 'TABLE', hint: 'Sortable telemetry table' },
+                ]}
+                onChange={setMode}
+              />
+            </FilterBar>
+          )
+        }
+      />
 
-              <div className="bg-black/60 border border-zinc-800 rounded-lg p-3 text-xs font-mono space-y-1 text-zinc-300">
-                <div><span className="text-zinc-500">Target Zone:</span> {drone.targetArea}</div>
-                <div><span className="text-zinc-500">Altitude:</span> {drone.altMeters} m</div>
-                <div><span className="text-zinc-500">Airspeed:</span> {drone.speedKmh} km/h</div>
-                <div><span className="text-zinc-500">Coordinates:</span> {drone.lat.toFixed(4)}, {drone.lng.toFixed(4)}</div>
-              </div>
+      <PageBody>
+        {!hasDrones ? (
+          <UnavailableState
+            notConfigured
+            source="UAV telemetry and video"
+            reason="No MAVLink or DroneKit ground-station receiver and no RTSP/MPEG-TS video endpoint is configured, so ARKA cannot see the fleet. Connect a GCS telemetry port and set the stream URL in the server environment; setting USE_DEMO_DATA=true instead shows simulated airframes for demonstration."
+          />
+        ) : (
+          <>
+            <MetricGrid columns={4}>
+              <Metric
+                label="Airborne"
+                value={fleet.airborne}
+                unit={`/ ${drones.length}`}
+                tone={fleet.airborne > 0 ? 'accent' : 'default'}
+                hint="Patrolling, dispatched or holding station."
+                icon={<Plane size={13} />}
+              />
+              <Metric
+                label="On charge"
+                value={counts.CHARGING}
+                tone="info"
+                hint="Docked and unavailable for tasking."
+                icon={<Battery size={13} />}
+              />
+              <Metric
+                label="Mean charge"
+                value={fleet.meanBattery}
+                unit="%"
+                tone={fleet.meanBattery != null && fleet.meanBattery <= 45 ? 'medium' : 'default'}
+              />
+              <Metric
+                label="Below reserve"
+                value={fleet.reserve}
+                tone={fleet.reserve > 0 ? 'critical' : 'success'}
+                hint={`Charge at or under ${RESERVE_PCT}%. Recall required.`}
+                meta={
+                  fleet.lowest ? (
+                    <span className="ark-mono text-[10.5px]">
+                      Lowest {fleet.lowest.callsign} · {fleet.lowest.battery}%
+                    </span>
+                  ) : undefined
+                }
+              />
+            </MetricGrid>
 
-              <div className="text-[11px] text-amber-400/80 font-mono bg-amber-950/20 border border-amber-900/30 p-2 rounded">
-                CLASSIFICATION: SIMULATED TELEMETRY (USE_DEMO_DATA=true)
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-12 text-center space-y-4">
-          <div className="w-12 h-12 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center mx-auto text-zinc-400">
-            <AlertTriangle className="w-6 h-6 text-amber-400" />
-          </div>
-          <div>
-            <h3 className="text-base font-bold font-mono text-zinc-200">UAV VIDEO & GCS TELEMETRY UNAVAILABLE</h3>
-            <p className="text-xs text-zinc-400 max-w-md mx-auto mt-1">
-              No live RTSP/MPEG-TS drone video stream or MavLink GCS ground station receiver is currently configured.
-            </p>
-          </div>
-          <div className="inline-block text-left bg-black/40 border border-zinc-800 rounded-lg p-4 text-xs font-mono text-zinc-400 max-w-lg space-y-1">
-            <div className="text-zinc-300 font-semibold mb-1">Integration Setup Required:</div>
-            <div>• Connect MavLink / DroneKit GCS telemetry IP port</div>
-            <div>• Configure RTSP video stream URL in server.ts / .env</div>
-            <div>• Set USE_DEMO_DATA=true in .env to view demo simulated UAV nodes</div>
-          </div>
-        </div>
-      )}
-    </div>
+            <PageSection
+              title="Fleet"
+              hint={
+                statuses.length > 0
+                  ? `${filtered.length} of ${drones.length} shown`
+                  : 'Select an airframe to inspect its tasking'
+              }
+            >
+              {filtered.length === 0 ? (
+                <Panel>
+                  <EmptyState
+                    compact
+                    title="No airframes at this status"
+                    detail="Clear the status filter to see the rest of the fleet."
+                  />
+                </Panel>
+              ) : mode === 'TABLE' ? (
+                <Panel flush>
+                  <DataTable
+                    rows={filtered}
+                    columns={columns}
+                    rowKey={(drone) => drone.id}
+                    label="Drone fleet telemetry"
+                    defaultSort={{ key: 'battery', dir: 'asc' }}
+                    onRowClick={onSelectDrone ? (drone) => onSelectDrone(drone) : undefined}
+                  />
+                </Panel>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+                  {filtered.map((drone) => (
+                    <AssetCard
+                      key={drone.id}
+                      entity={droneEnvelope(drone)}
+                      status={drone.status}
+                      onSelect={onSelectDrone ? () => onSelectDrone(drone) : undefined}
+                      stats={[
+                        { label: 'Target zone', value: drone.targetArea },
+                        { label: 'Charge', value: `${drone.battery}%`, mono: true },
+                        { label: 'Altitude', value: `${drone.altMeters} m`, mono: true },
+                        { label: 'Airspeed', value: `${drone.speedKmh} km/h`, mono: true },
+                      ]}
+                      badges={
+                        drone.battery <= RESERVE_PCT ? (
+                          <span className="ark-tag text-critical border-critical-border">RECALL</span>
+                        ) : undefined
+                      }
+                    >
+                      <Meter value={drone.battery} tone={batteryTone(drone.battery)} />
+                    </AssetCard>
+                  ))}
+                </div>
+              )}
+            </PageSection>
+          </>
+        )}
+
+        {/* --- Video links --------------------------------------------------- */}
+        <PageSection title="Video downlink">
+          <Panel>
+            <PanelHead
+              title="Aerial video"
+              icon={<Video size={13} />}
+              meta={<span className="ark-tag">NO STREAM CONFIGURED</span>}
+            />
+            <PanelBody>
+              <UnavailableState
+                compact
+                notConfigured
+                source="RTSP / MPEG-TS video ingest"
+                reason={
+                  drones.some((drone) => drone.streamUrl)
+                    ? 'Some airframes carry a stream URL, but no video relay is configured to decode it, so ARKA cannot display the feed.'
+                    : 'No airframe on the roster reports a video endpoint, and no relay is configured to receive one.'
+                }
+              />
+            </PanelBody>
+          </Panel>
+        </PageSection>
+      </PageBody>
+    </Page>
   );
-};
+}

@@ -66,6 +66,17 @@ const LOG_TONE: Record<LiveLog['type'], 'critical' | 'warning' | 'success' | 'ne
   INFO: 'neutral',
 };
 
+/**
+ * Modules whose page component owns its own scrolling.
+ *
+ * A page built on `ui/surfaces`' `Page` is a flex column with its own scroll
+ * container and a sticky `PageHeader`; nesting it inside a second scroller would
+ * give it two scrollbars and unstick the header. Modules not listed here are the
+ * ones still on the old markup, which expects the shell to scroll for them. The
+ * set shrinks as views migrate, and this constant disappears with the last one.
+ */
+const PAGE_OWNS_SCROLL = new Set<NavItem>(['Drone Feed', 'Infrastructure', 'Reports']);
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<NavItem>('Dashboard');
   const [isOffline, setIsOffline] = useState<boolean>(!navigator.onLine);
@@ -462,7 +473,13 @@ export default function App() {
             )}
           </div>
         ) : (
-          <div className="flex-1 min-w-0 min-h-0 overflow-y-auto ark-scroll">
+          <div
+            className={
+              PAGE_OWNS_SCROLL.has(activeTab)
+                ? 'flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden'
+                : 'flex-1 min-w-0 min-h-0 overflow-y-auto ark-scroll'
+            }
+          >
             {activeTab === 'AI Operations' ? (
               <AIOperationsView
                 incidents={incidents}
@@ -579,7 +596,12 @@ export default function App() {
             ) : activeTab === 'Analytics' ? (
               <AnalyticsView incidents={incidents} trafficCorridors={trafficCorridors} weather={weather} />
             ) : activeTab === 'Reports' ? (
-              <ReportsView incidents={incidents} weather={weather} trafficSummary={trafficSummary} />
+              <ReportsView
+                incidents={incidents}
+                weather={weather}
+                trafficSummary={trafficSummary}
+                landmarks={landmarks}
+              />
             ) : activeTab === 'Settings' ? (
               <SettingsView layersState={layersState} setLayersState={setLayersState} />
             ) : null}

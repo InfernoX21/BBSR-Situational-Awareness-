@@ -56,6 +56,21 @@ const ALIGN: Record<ColumnAlign, string> = {
   right: 'text-right',
 };
 
+/** Row-rail tones. Same six the alert and incident rails use elsewhere. */
+export type RailTone = 'critical' | 'high' | 'medium' | 'low' | 'info' | 'neutral';
+
+const RAIL: Record<RailTone, string> = {
+  critical: 'ark-rail ark-rail-critical',
+  high: 'ark-rail ark-rail-high',
+  medium: 'ark-rail ark-rail-medium',
+  low: 'ark-rail ark-rail-low',
+  info: 'ark-rail ark-rail-info',
+  neutral: 'ark-rail ark-rail-neutral',
+};
+
+/** Unaccented first cells keep the 2px gutter so the column never shifts. */
+const RAIL_NONE = 'border-l-2 border-l-transparent';
+
 export interface DataTableProps<T> {
   rows: readonly T[];
   columns: ReadonlyArray<Column<T>>;
@@ -69,10 +84,13 @@ export interface DataTableProps<T> {
   onRowClick?: (row: T) => void;
   selectedKey?: string | null;
   /**
-   * Leading severity rail colour for a row, or null for none. Drawn as a 2px
-   * border on the first cell so severity is readable as position, not only hue.
+   * Leading severity rail for a row, or null for none. Drawn as a 2px border on
+   * the first cell so severity is readable as position, not only hue.
+   *
+   * A token rather than a colour, deliberately: a page that could pass
+   * `'#ff0000'` here would eventually pass a red that is not the platform's red.
    */
-  rowAccent?: (row: T) => string | null;
+  rowAccent?: (row: T) => RailTone | null;
   /** Extra classes per row, e.g. to dim an acknowledged alert. */
   rowClassName?: (row: T) => string | undefined;
   /** Rendered when there are no rows. Must distinguish empty from unavailable. */
@@ -226,12 +244,8 @@ export function DataTable<T>({
                         column.numeric && 'is-num',
                         !column.numeric && ALIGN[align],
                         column.hideBelow && HIDE_BELOW[column.hideBelow],
+                        columnIndex === 0 && (accent ? RAIL[accent] : RAIL_NONE),
                       )}
-                      style={
-                        columnIndex === 0
-                          ? { borderLeft: `2px solid ${accent ?? 'transparent'}` }
-                          : undefined
-                      }
                     >
                       {column.render(row)}
                     </td>
