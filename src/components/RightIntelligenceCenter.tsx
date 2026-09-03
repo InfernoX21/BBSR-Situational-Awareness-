@@ -1,10 +1,38 @@
-import React, { useState } from 'react';
-import { Incident, IntelligenceItem, ResourceUnit, Severity } from '../types';
+/**
+ * The dashboard's right column: alerts, intelligence and fleet availability.
+ *
+ * Three stacked panels sharing one vocabulary — `IncidentCard` for alerts (the
+ * same card the incident centre and the map drawer use), `Row` for bulletins,
+ * `Meter` for availability. The previous version hand-rolled all three, which is
+ * why a critical incident looked different here than it did two panels away.
+ *
+ * Removed deliberately:
+ *
+ * - The cyan glow, `animate-pulse` and slide-in on items whose `publishedTime`
+ *   read "Just now". Those were fed by a pool of pre-written headlines that no
+ *   longer exists, and a pulsing border is a decorative animation regardless.
+ * - `item.classification || 'LIVE'`, which stamped LIVE on any bulletin whose
+ *   feed did not classify it. Unclassified now reads as unclassified.
+ * - The pulsing radio icon on the fleet header.
+ */
+
+import { memo, useMemo, useState } from 'react';
+import { ChevronRight, ExternalLink, Newspaper, Siren, Truck } from 'lucide-react';
+import type { Incident, IntelligenceItem, ResourceUnit, Severity } from '../types';
 import {
-  ExternalLink,
-  ChevronRight,
-  Radio,
-} from 'lucide-react';
+  Age,
+  Button,
+  EmptyState,
+  FilterGroup,
+  IncidentCard,
+  Meter,
+  Panel,
+  PanelBody,
+  PanelHead,
+  Row,
+  StatusBadge,
+  cx,
+} from '../ui';
 
 interface RightIntelligenceCenterProps {
   incidents: Incident[];
@@ -15,208 +43,188 @@ interface RightIntelligenceCenterProps {
   onViewAllAlerts: () => void;
 }
 
-export const RightIntelligenceCenter: React.FC<RightIntelligenceCenterProps> = ({
+const SEVERITIES: readonly Severity[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+
+/** Availability tone: plenty free, thin, or effectively committed. */
+function availabilityTone(pct: number | null): 'low' | 'medium' | 'critical' {
+  if (pct == null) return 'medium';
+  if (pct > 60) return 'low';
+  if (pct > 25) return 'medium';
+  return 'critical';
+}
+
+export const RightIntelligenceCenter = memo(function RightIntelligenceCenter({
   incidents,
   intelligenceItems,
   resources = [],
   onSelectIncident,
   onOpenArticle,
   onViewAllAlerts,
-}) => {
-  const [alertFilter, setAlertFilter] = useState<'ALL' | Severity>('ALL');
+}: RightIntelligenceCenterProps) {
+  // Empty means no constraint, which is the filter component's contract — there
+  // is no separate "ALL" chip to keep in sync with the real options.
+  const [severity, setSeverity] = useState<Severity[]>([]);
 
-  const filteredIncidents = incidents.filter((inc) => {
-    if (alertFilter === 'ALL') return true;
-    return inc.priority === alertFilter;
-  });
+  const counts = useMemo(() => {
+    const tally = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 } as Record<Severity, number>;
+    for (const incident of incidents) tally[incident.priority] += 1;
+    return tally;
+  }, [incidents]);
 
-  const getSeverityBadge = (priority: Severity) => {
-    switch (priority) {
-      case 'CRITICAL':
-        return 'bg-[#EF4444]/20 text-[#EF4444] border-[#EF4444]/40 font-bold';
-      case 'HIGH':
-        return 'bg-[#F59E0B]/20 text-[#F59E0B] border-[#F59E0B]/40 font-bold';
-      case 'MEDIUM':
-        return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40 font-bold';
-      default:
-        return 'bg-[#10B981]/20 text-[#10B981] border-[#10B981]/40 font-bold';
-    }
-  };
+  const filtered = useMemo(
+    () => (severity.length === 0 ? incidents : incidents.filter((i) => severity.includes(i.priority))),
+    [incidents, severity],
+  );
 
   return (
-    <aside className="hidden lg:flex w-64 xl:w-72 2xl:w-80 border-l border-white/10 bg-[#0A0A0A] flex-col p-3 xl:p-4 shrink-0 overflow-hidden select-none transition-all duration-300 min-h-0 min-w-0">
-      {/* Dynamic Upper Section: Live Alerts & Live Intelligence (Fills space evenly) */}
-      <div className="flex-1 flex flex-col min-h-0 space-y-3 overflow-hidden">
-        {/* Widget 1: LIVE ALERTS */}
-        <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex items-center justify-between mb-1.5 shrink-0">
-            <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">
-              Live Alerts
-            </span>
-            <button
-              onClick={onViewAllAlerts}
-              className="text-[9px] font-mono text-[#06B6D4] hover:underline flex items-center gap-0.5"
-            >
-              <span>View All ({incidents.length})</span>
-              <ChevronRight className="w-3 h-3" />
-            </button>
-          </div>
-
-          {/* Severity Filter Tabs */}
-          <div className="flex items-center gap-1 mb-2 font-mono text-[9px] shrink-0">
-            {(['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const).map((lvl) => (
-              <button
-                key={lvl}
-                onClick={() => setAlertFilter(lvl)}
-                className={`px-1.5 py-0.5 rounded transition-all ${
-                  alertFilter === lvl
-                    ? 'bg-white/10 text-[#06B6D4] border border-white/20 font-bold'
-                    : 'text-white/40 hover:text-white'
-                }`}
-              >
-                {lvl}
-              </button>
-            ))}
-          </div>
-
-          {/* Alert Cards Container (Dynamic Height) */}
-          <div className="flex-1 overflow-y-auto pr-1 space-y-2 min-h-0 gov-scroll-thin">
-            {filteredIncidents.slice(0, 10).map((inc) => (
-              <div
-                key={inc.id}
-                onClick={() => onSelectIncident(inc)}
-                className={`p-2 rounded cursor-pointer space-y-1 gov-glass-interactive ${
-                  inc.priority === 'CRITICAL'
-                    ? '!border-[#EF4444]/40 !bg-[#EF4444]/10'
-                    : ''
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span
-                    className={`px-1.5 py-0.5 rounded text-[8px] font-mono border uppercase ${getSeverityBadge(
-                      inc.priority
-                    )}`}
-                  >
-                    {inc.priority}
-                  </span>
-                  <span className="text-[8px] font-mono text-white/40">{inc.timestamp}</span>
-                </div>
-                <h3 className="text-[11px] font-semibold text-white leading-tight line-clamp-1">
-                  {inc.title}
-                </h3>
-                <p className="text-[10px] text-white/60 line-clamp-2 leading-tight">
-                  {inc.description}
-                </p>
-              </div>
-            ))}
-          </div>
+    <aside
+      className="hidden lg:flex w-72 xl:w-80 shrink-0 border-l border-line bg-surface flex-col min-h-0 min-w-0 divide-y divide-line"
+      aria-label="Intelligence centre"
+    >
+      {/* --- Live alerts ---------------------------------------------------- */}
+      <Panel flush scroll className="flex-1 basis-0">
+        <PanelHead
+          title="Live alerts"
+          icon={<Siren size={13} />}
+          count={incidents.length}
+          actions={
+            <Button variant="quiet" size="xs" onClick={onViewAllAlerts} trailing={<ChevronRight size={11} />}>
+              All
+            </Button>
+          }
+        />
+        <div className="shrink-0 px-3 py-2 border-b border-line">
+          <FilterGroup
+            label="Severity"
+            options={SEVERITIES.map((value) => ({ value, label: value.slice(0, 4), count: counts[value] }))}
+            selected={severity}
+            onChange={setSeverity}
+          />
         </div>
+        <PanelBody className="space-y-1.5">
+          {filtered.length === 0 ? (
+            <EmptyState
+              compact
+              title={incidents.length === 0 ? 'No active alerts' : 'None at this severity'}
+              detail={
+                incidents.length === 0
+                  ? 'Nothing is currently open against the city.'
+                  : 'Clear the severity filter to see the rest.'
+              }
+            />
+          ) : (
+            filtered
+              .slice(0, 12)
+              .map((incident) => (
+                <IncidentCard
+                  key={incident.id}
+                  incident={incident}
+                  compact
+                  onSelect={() => onSelectIncident(incident)}
+                />
+              ))
+          )}
+        </PanelBody>
+      </Panel>
 
-        {/* Widget 2: INTELLIGENCE FEED */}
-        <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex items-center justify-between mb-1.5 shrink-0">
-            <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">
-              Live Intelligence
-            </span>
-            <span className="text-[8px] font-mono text-white/40 bg-white/5 px-1.5 py-0.5 rounded border border-white/10">
-              RSS / GOVT
-            </span>
-          </div>
+      {/* --- Intelligence -------------------------------------------------- */}
+      <Panel flush scroll className="flex-1 basis-0">
+        <PanelHead
+          title="Intelligence"
+          icon={<Newspaper size={13} />}
+          count={intelligenceItems.length}
+          meta={<span className="ark-tag">RSS · GOVT</span>}
+        />
+        <PanelBody className="space-y-1.5">
+          {intelligenceItems.length === 0 ? (
+            <EmptyState
+              compact
+              title="No bulletins"
+              detail="The intelligence feed has returned nothing for this jurisdiction."
+            />
+          ) : (
+            intelligenceItems.map((item) => (
+              <Row key={item.id} onClick={() => onOpenArticle(item)} className="group flex-col items-stretch">
+                <div className="flex items-center justify-between gap-2 min-w-0">
+                  <span className="text-[11px] font-medium text-accent truncate">{item.publisherName}</span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {item.classification ? (
+                      <span className="ark-tag">{item.classification}</span>
+                    ) : (
+                      <span className="ark-unknown" title="The feed did not classify this bulletin.">
+                        UNCLASSIFIED
+                      </span>
+                    )}
+                    {/* publishedAt is the orderable moment; publishedTime is a
+                        display string that has lost its date, so it cannot be
+                        aged and is shown verbatim as the feed wrote it. */}
+                    {item.publishedAt ? (
+                      <Age iso={item.publishedAt} />
+                    ) : (
+                      <span className="ark-mono text-[10.5px] text-ink-faint">{item.publishedTime}</span>
+                    )}
+                  </div>
+                </div>
+                <h4 className="mt-1 text-[12px] font-medium text-ink leading-snug line-clamp-2 group-hover:text-accent">
+                  {item.headline}
+                </h4>
+                <p className="mt-0.5 text-[11px] text-ink-subtle leading-relaxed line-clamp-2">{item.summary}</p>
+                <div className="mt-1.5 flex items-center justify-between gap-2">
+                  <span className="ark-tag">{item.category}</span>
+                  <span className="flex items-center gap-1 text-[10.5px] text-ink-faint group-hover:text-accent">
+                    Summary
+                    <ExternalLink size={9} aria-hidden />
+                  </span>
+                </div>
+              </Row>
+            ))
+          )}
+        </PanelBody>
+      </Panel>
 
-          {/* Intelligence Cards Container (Dynamic Height) */}
-          <div className="flex-1 overflow-y-auto pr-1 space-y-2 min-h-0 gov-scroll-thin">
-            {intelligenceItems.map((item) => {
-              const isJustNow = item.publishedTime === 'Just now';
+      {/* --- Fleet availability -------------------------------------------- */}
+      <Panel flush className="shrink-0">
+        <PanelHead
+          title="Fleet availability"
+          icon={<Truck size={13} />}
+          meta={
+            <StatusBadge
+              label="STATIC ROSTER"
+              tone="medium"
+              hint="Establishment strength from the agency roster. ARKA has no vehicle-telematics feed, so these are not live positions."
+            />
+          }
+        />
+        <div className="px-3 py-2 space-y-2">
+          {resources.length === 0 ? (
+            <p className="text-[11px] text-ink-faint">No roster loaded.</p>
+          ) : (
+            resources.map((unit) => {
+              // A pool with no establishment is unknown, not zero per cent.
+              const pct = unit.total > 0 ? Math.round((unit.available / unit.total) * 100) : null;
               return (
-                <div
-                  key={item.id}
-                  onClick={() => onOpenArticle(item)}
-                  className={`p-2 rounded space-y-1 cursor-pointer group transition-all duration-300 ${
-                    isJustNow
-                      ? 'border border-cyan-500/50 bg-cyan-950/20 shadow-[0_0_12px_rgba(6,182,212,0.15)] animate-in fade-in slide-in-from-top-2 duration-300'
-                      : 'gov-glass-interactive'
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-[9px] font-mono">
-                    <span className="text-[#06B6D4] font-bold truncate max-w-[130px] group-hover:text-cyan-300 transition-colors">
-                      {item.publisherName}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <span
-                        className={`text-[7px] px-1 py-0.2 rounded font-mono ${
-                          isJustNow
-                            ? 'bg-cyan-500/30 text-cyan-200 border border-cyan-500/50 animate-pulse font-bold'
-                            : 'bg-zinc-800 text-zinc-300'
-                        }`}
+                <div key={unit.id} className="space-y-1">
+                  <div className="flex items-baseline justify-between gap-2 text-[11.5px]">
+                    <span className="truncate text-ink-muted">{unit.name}</span>
+                    <span className="ark-mono text-[11px] shrink-0">
+                      <strong
+                        className={cx(
+                          'font-semibold',
+                          pct == null ? 'text-ink-faint' : pct > 25 ? 'text-success' : 'text-critical',
+                        )}
                       >
-                        {isJustNow ? 'NEW' : item.classification || 'LIVE'}
-                      </span>
-                      <span className={`text-[8px] ${isJustNow ? 'text-cyan-300 font-bold' : 'text-white/40'}`}>
-                        {item.publishedTime}
-                      </span>
-                    </div>
-                  </div>
-
-                  <h4 className="text-[11px] font-medium text-white leading-tight group-hover:text-[#06B6D4] transition-colors">
-                    {item.headline}
-                  </h4>
-
-                  <p className="text-[10px] text-white/70 line-clamp-2 leading-tight">
-                    {item.summary}
-                  </p>
-
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="text-[8px] font-mono text-white/40 bg-black/40 px-1 py-0.5 rounded">
-                      {item.category}
+                        {unit.available}
+                      </strong>
+                      <span className="text-ink-faint">/{unit.total}</span>
                     </span>
-                    <div className="text-[9px] font-mono text-[#06B6D4] group-hover:underline flex items-center gap-1">
-                      <span>Read Summary</span>
-                      <ExternalLink className="w-2.5 h-2.5" />
-                    </div>
                   </div>
+                  <Meter value={pct} tone={availabilityTone(pct)} />
                 </div>
               );
-            })}
-          </div>
+            })
+          )}
         </div>
-      </div>
-
-      {/* Anchored Bottom Section: TACTICAL RESOURCE FLEET */}
-      <div className="shrink-0 pt-2.5 border-t border-white/15 bg-[#0A0A0A] mt-2">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1.5">
-            <Radio className="w-3 h-3 text-[#10B981] animate-pulse" />
-            <span>Resource Fleet</span>
-          </span>
-          <span className="text-[8px] font-mono text-amber-400 bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-800/40">
-            STATIC ROSTER
-          </span>
-        </div>
-
-        <div className="space-y-1.5 gov-glass rounded-md p-2 text-[9px] font-mono">
-          {resources.map((res) => {
-            const pct = Math.round((res.available / res.total) * 100);
-            return (
-              <div key={res.id} className="space-y-0.5">
-                <div className="flex justify-between text-white/80">
-                  <span className="truncate max-w-[130px] font-medium">{res.name}</span>
-                  <span className="text-white/40">
-                    <strong className="text-[#10B981] font-bold">{res.available}</strong>/{res.total}
-                  </span>
-                </div>
-                <div className="w-full h-1 bg-black rounded-full overflow-hidden border border-white/10">
-                  <div
-                    className={`h-full rounded-full transition-all duration-300 ${
-                      pct > 70 ? 'bg-[#10B981]' : pct > 40 ? 'bg-[#F59E0B]' : 'bg-[#EF4444]'
-                    }`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      </Panel>
     </aside>
   );
-};
+});
