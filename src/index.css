@@ -1,93 +1,122 @@
 @import "tailwindcss";
 
 /* ==========================================================================
-   ARKA DESIGN TOKENS — DARK NEUTRAL (near-black)
-   A restrained public-sector dark palette in the character of ArcGIS Pro /
-   QGIS dark: near-black surfaces, one accessible blue accent, and status
-   colours used only where they carry operational meaning (red critical /
-   amber warning / green normal / blue informational). No neon, no glow.
+   ARKA v2 — DESIGN TOKENS
+   ==========================================================================
+   A minimal, institutional dark interface: near-black surfaces separated by
+   hairlines, one restrained burnt-orange accent reserved for interaction, and
+   a status ramp used only where colour carries operational meaning.
 
-   Contrast: every foreground token below meets WCAG AA (>= 4.5:1) against
-   --color-surface (#14181D) and --color-canvas (#0B0D10). Filled controls
-   use dark ink on light fills for the same reason.
+   Three rules this token set enforces:
+
+   1. **Depth comes from hairlines and one soft shadow, never from blur.**
+      There is no backdrop-filter anywhere in this file. Floating chrome sits
+      on an opaque raised surface with a 1px border, which stays legible over
+      satellite imagery, dense markers and a moving map — translucency does
+      not.
+
+   2. **The accent is an interaction colour, not a status colour.** Burnt
+      orange marks what the operator is doing: the active module, the focused
+      control, the primary action, the selected asset. Nothing is orange
+      because it is urgent — urgency is the critical/high/medium ramp, always
+      paired with a word and a position cue.
+
+   3. **Contrast is checked, not assumed.** Every foreground token meets
+      WCAG AA (>= 4.5:1) against --color-surface. Filled controls carry dark
+      ink on light fills for the same reason.
    ========================================================================== */
 @theme {
-  /* Surfaces - Pure Tactical Pitch Black Theme */
-  --color-canvas: #000000; /* app background: pure pitch black */
-  --color-surface: #030303; /* panels, cards */
-  --color-surface-raised: #080808; /* popovers, dialogs, floating map chrome */
-  --color-sunken: #050505; /* nested / inset areas, inputs */
-  --color-sunken-strong: #101010;
-  --color-map-void: #000000; /* map canvas behind tiles */
+  /* --- Surfaces: four flat steps, no gradients ---------------------------- */
+  --color-canvas: #08090a; /* application background */
+  --color-surface: #0e0f11; /* panels, cards, tables */
+  --color-surface-raised: #15171a; /* popovers, dialogs, floating map chrome */
+  --color-surface-high: #1b1e22; /* hover state on raised surfaces */
+  --color-sunken: #0a0b0c; /* inputs, inset wells, nested areas */
+  --color-sunken-strong: #16181b;
+  --color-map-void: #060708; /* map canvas behind tiles */
 
-  /* Borders */
-  --color-line: #161616;
-  --color-line-strong: #242424;
+  /* --- Hairlines: the primary structural device --------------------------- */
+  --color-line: #1c1e22;
+  --color-line-strong: #292c31;
+  --color-line-bright: #3a3e45;
 
-  /* Text */
-  --color-ink: #e6eaf0; /* 13.1:1 on surface */
-  --color-ink-muted: #a9b4c2; /* 7.4:1 on surface */
-  --color-ink-subtle: #8b97a6; /* 5.3:1 on surface */
-  --color-ink-inverse: #000000; /* text on light/accent fills */
+  /* --- Text: four steps, all AA on --color-surface ------------------------ */
+  --color-ink: #f1f3f5; /* 15.6:1 */
+  --color-ink-muted: #a4aab4; /* 7.6:1 */
+  --color-ink-subtle: #7b828d; /* 4.8:1 */
+  --color-ink-faint: #565c66; /* structural only, never for prose */
+  --color-ink-inverse: #08090a; /* on light and accent fills */
 
-  /* Structural bar (header, drawer headers, scrims) */
-  --color-navy: #000000;
-  --color-navy-700: #121212;
-  --color-navy-600: #1a1a1a;
-  --color-navy-soft: #080808;
+  /* --- Structural bar (command bar, drawer headers, scrims) --------------- */
+  --color-navy: #0b0c0e;
+  --color-navy-700: #121417;
+  --color-navy-600: #1a1d21;
+  --color-navy-soft: #101215;
 
-  /* Accent (single accessible blue) */
-  --color-accent: #4c8dd9; /* 5.1:1 on surface */
-  --color-accent-hover: #6ba3e4;
-  --color-accent-soft: #16273a;
-  --color-accent-border: #2e4e73;
+  /* --- Accent: restrained burnt orange. Interaction only. ----------------- */
+  --color-accent: #e2662c; /* 5.6:1 on surface */
+  --color-accent-hover: #f07a40;
+  --color-accent-press: #c25320;
+  --color-accent-soft: #1e1109; /* flat tint, not an alpha blend */
+  --color-accent-soft-strong: #2b1710;
+  --color-accent-border: #4d2613;
+  --color-accent-ink: #120802; /* text on an accent fill */
 
-  /* Status — text-safe tone + saturated fill tone + soft background */
-  --color-critical: #f97066;
-  --color-critical-fill: #f04438;
-  --color-critical-soft: #2a1512;
-  --color-critical-border: #7a2e28;
-  --color-critical-deep: #b42318; /* fill that carries white text at AA */
+  /* --- Status ramp: text tone / fill tone / flat tint / border ------------ */
+  --color-critical: #f0554d;
+  --color-critical-fill: #d93a30;
+  --color-critical-soft: #200e0c;
+  --color-critical-border: #58211d;
+  --color-critical-deep: #a82a22; /* fill that carries white text at AA */
 
-  --color-warning: #fdb022;
-  --color-warning-fill: #f79009;
-  --color-warning-soft: #2a1d0c;
-  --color-warning-border: #7a5312;
+  --color-warning: #e9a13b;
+  --color-warning-fill: #d0861f;
+  --color-warning-soft: #1e1508;
+  --color-warning-border: #55391156;
 
-  --color-caution: #fac515;
-  --color-caution-fill: #eaaa08;
-  --color-caution-soft: #262009;
-  --color-caution-border: #6b5a10;
+  --color-caution: #d9cc4f;
+  --color-caution-fill: #bdb032;
+  --color-caution-soft: #1b1a09;
+  --color-caution-border: #4c4715;
 
-  --color-success: #47cd89;
-  --color-success-fill: #17b26a;
-  --color-success-soft: #0e2019;
-  --color-success-border: #1f5f44;
+  --color-success: #43b888;
+  --color-success-fill: #2f9b70;
+  --color-success-soft: #0a1a14;
+  --color-success-border: #1c4a38;
 
-  --color-info: #84caff;
-  --color-info-fill: #2e90fa;
-  --color-info-soft: #101e2e;
-  --color-info-border: #23496f;
+  --color-info: #6ba3db;
+  --color-info-fill: #3f7fbd;
+  --color-info-soft: #0c151f;
+  --color-info-border: #21405e;
 
-  /* Typography */
+  /* --- Typography -------------------------------------------------------- */
   --font-sans: 'Inter', 'Source Sans 3', 'Noto Sans', system-ui, -apple-system,
     sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Radii — modest */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
+  /* --- Radii: deliberately tight. Panels are rectangles. ----------------- */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
 
-  /* Elevation — restrained, tuned for dark surfaces */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  /* --- Elevation: one soft shadow for true overlays. No glows. ----------- */
+  --shadow-xs: 0 1px 1px rgba(0, 0, 0, 0.4);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
-  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.55);
-  --shadow-lg: 0 14px 38px rgba(0, 0, 0, 0.6);
+  --shadow-md: 0 2px 10px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 10px 34px rgba(0, 0, 0, 0.66);
+
+  /* --- Layout metrics referenced by the shell ---------------------------- */
+  --ark-bar-h: 44px; /* command bar height */
+  --ark-ticker-h: 30px; /* event ticker height */
+  --ark-rail-w: 232px; /* navigation rail, expanded */
+  --ark-rail-w-collapsed: 52px;
 }
 
 @layer base {
-  *, ::before, ::after {
+  *,
+  ::before,
+  ::after {
     box-sizing: border-box;
   }
 
@@ -103,32 +132,34 @@
     overflow: hidden;
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
   }
 
   body {
     font-family: var(--font-sans);
     background-color: var(--color-canvas);
     color: var(--color-ink);
-    font-size: 14px;
-    line-height: 1.45;
+    font-size: 13px;
+    line-height: 1.5;
+    font-feature-settings: 'cv05' 1, 'ss01' 1;
   }
 
-  /* Visible, consistent keyboard focus everywhere. */
+  /* Visible, consistent keyboard focus everywhere. Government software is
+     operated by keyboard far more than product design usually assumes. */
   :focus-visible {
     outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
-    border-radius: 3px;
+    outline-offset: 1px;
+    border-radius: var(--radius-xs);
   }
 
   h1,
   h2,
   h3,
   h4 {
-    letter-spacing: -0.01em;
+    letter-spacing: -0.011em;
+    font-weight: 600;
   }
 
-  /* Technical values (coordinates, timestamps, IDs) only. */
+  /* Technical values only: coordinates, timestamps, IDs, readings. */
   .font-mono,
   code,
   kbd,
@@ -137,10 +168,17 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Windows/Linux render <option> from the OS palette; pin it to the theme. */
+  /* Windows and Linux render <option> from the OS palette; pin it. */
   option {
     background-color: var(--color-surface-raised);
     color: var(--color-ink);
+  }
+
+  /* Compact density is a spacing scale, not a second theme — one identity. */
+  [data-density='compact'] {
+    --ark-bar-h: 38px;
+    --ark-ticker-h: 26px;
+    font-size: 12px;
   }
 }
 
@@ -157,49 +195,1091 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #303844;
+  background: #2b2f35;
   border: 3px solid transparent;
   background-clip: content-box;
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #414b5a;
+  background: #3c4149;
   background-clip: content-box;
 }
 
-.gov-scroll-thin::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
 /* ==========================================================================
-   Component primitives
+   ARKA COMPONENT LAYER
+   Every reusable surface, control and status device in one place. React
+   components in src/ui compose these classes; no page defines its own
+   variant of a shared control.
    ========================================================================== */
 @layer components {
-  /* --- Layout surfaces --- */
+  /* --------------------------------------------------------------------
+     Surfaces
+     -------------------------------------------------------------------- */
+  .ark-panel {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-md);
+  }
+
+  /* Full-bleed section inside a scrolling page: hairline top only. */
+  .ark-section {
+    border-top: 1px solid var(--color-line);
+  }
+
+  .ark-inset {
+    background-color: var(--color-sunken);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+  }
+
+  /* An inset that is also a control — a metric that drills through, a card that
+     opens a drawer. The hover is a border shift, not a lift: nothing in ARKA
+     moves under the cursor. */
+  .ark-inset-interactive {
+    cursor: pointer;
+    transition:
+      border-color 120ms ease,
+      background-color 120ms ease;
+  }
+
+  .ark-inset-interactive:hover {
+    background-color: var(--color-sunken-strong);
+    border-color: var(--color-line-strong);
+  }
+
+  .ark-inset-interactive[aria-current='true'],
+  .ark-inset-interactive.is-selected {
+    border-color: var(--color-accent-border);
+    background-color: var(--color-accent-soft);
+  }
+
+  .ark-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 36px;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  /* Floating chrome over the map. Opaque on purpose — see token notes. */
+  .ark-float {
+    background-color: var(--color-surface-raised);
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+  }
+
+  /* --------------------------------------------------------------------
+     Typography
+     -------------------------------------------------------------------- */
+  .ark-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--color-ink-subtle);
+  }
+
+  .ark-eyebrow {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .ark-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+
+  .ark-page-title {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--color-ink);
+  }
+
+  .ark-metric {
+    font-size: 26px;
+    line-height: 1.05;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--color-ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ark-metric-sm {
+    font-size: 17px;
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--color-ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ark-mono {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  /* A value the platform genuinely does not have. Never a zero, never a dash
+     without explanation — this class exists so "unknown" is visibly a state. */
+  .ark-unknown {
+    font-family: var(--font-mono);
+    color: var(--color-ink-faint);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+
+  /* --------------------------------------------------------------------
+     Buttons
+     -------------------------------------------------------------------- */
+  .ark-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    min-height: 30px;
+    padding: 0.3125rem 0.625rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.1s linear, border-color 0.1s linear,
+      color 0.1s linear;
+  }
+
+  .ark-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .ark-btn-primary {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+
+  .ark-btn-primary:hover:not(:disabled) {
+    background-color: var(--color-accent-hover);
+    border-color: var(--color-accent-hover);
+  }
+
+  .ark-btn-primary:active:not(:disabled) {
+    background-color: var(--color-accent-press);
+  }
+
+  .ark-btn-secondary {
+    background-color: var(--color-sunken-strong);
+    border-color: var(--color-line-strong);
+    color: var(--color-ink);
+  }
+
+  .ark-btn-secondary:hover:not(:disabled) {
+    background-color: var(--color-surface-high);
+    border-color: var(--color-line-bright);
+  }
+
+  .ark-btn-quiet {
+    background-color: transparent;
+    border-color: transparent;
+    color: var(--color-ink-muted);
+  }
+
+  .ark-btn-quiet:hover:not(:disabled) {
+    background-color: var(--color-sunken-strong);
+    color: var(--color-ink);
+  }
+
+  .ark-btn-outline {
+    background-color: transparent;
+    border-color: var(--color-line-strong);
+    color: var(--color-ink-muted);
+  }
+
+  .ark-btn-outline:hover:not(:disabled) {
+    border-color: var(--color-accent-border);
+    color: var(--color-accent);
+  }
+
+  .ark-btn-danger {
+    background-color: var(--color-critical-deep);
+    border-color: var(--color-critical-deep);
+    color: #ffffff;
+  }
+
+  .ark-btn-danger:hover:not(:disabled) {
+    background-color: var(--color-critical-fill);
+    border-color: var(--color-critical-fill);
+  }
+
+  .ark-btn-xs {
+    min-height: 24px;
+    padding: 0.125rem 0.4375rem;
+    font-size: 11px;
+    gap: 0.25rem;
+  }
+
+  .ark-btn-sm {
+    min-height: 27px;
+    padding: 0.1875rem 0.5rem;
+    font-size: 11.5px;
+  }
+
+  .ark-btn-lg {
+    min-height: 36px;
+    padding: 0.5rem 0.875rem;
+    font-size: 13px;
+  }
+
+  /* Square icon-only control, sized to the same rhythm as .ark-btn. */
+  .ark-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background-color: transparent;
+    color: var(--color-ink-muted);
+    cursor: pointer;
+    flex: none;
+    transition: background-color 0.1s linear, color 0.1s linear,
+      border-color 0.1s linear;
+  }
+
+  .ark-icon-btn:hover:not(:disabled) {
+    background-color: var(--color-sunken-strong);
+    color: var(--color-ink);
+  }
+
+  .ark-icon-btn.is-active {
+    background-color: var(--color-accent-soft);
+    border-color: var(--color-accent-border);
+    color: var(--color-accent);
+  }
+
+  .ark-icon-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Segmented control: one row of mutually exclusive options. */
+  .ark-segment {
+    display: inline-flex;
+    align-items: stretch;
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-sunken);
+    overflow: hidden;
+  }
+
+  .ark-segment > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    min-height: 26px;
+    padding: 0.125rem 0.5rem;
+    background-color: transparent;
+    border: 0;
+    color: var(--color-ink-subtle);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.1s linear, color 0.1s linear;
+  }
+
+  .ark-segment > button + button {
+    border-left: 1px solid var(--color-line);
+  }
+
+  .ark-segment > button:hover:not(:disabled) {
+    color: var(--color-ink);
+    background-color: var(--color-sunken-strong);
+  }
+
+  .ark-segment > button[aria-pressed='true'],
+  .ark-segment > button.is-active {
+    background-color: var(--color-accent-soft-strong);
+    color: var(--color-accent);
+  }
+
+  .ark-segment > button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* --------------------------------------------------------------------
+     Form controls
+     -------------------------------------------------------------------- */
+  .ark-input,
+  .ark-select,
+  .ark-textarea {
+    width: 100%;
+    min-height: 30px;
+    background-color: var(--color-sunken);
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-sm);
+    padding: 0.3125rem 0.5rem;
+    font-size: 12px;
+    color: var(--color-ink);
+  }
+
+  .ark-select {
+    padding-right: 1.5rem;
+    cursor: pointer;
+  }
+
+  .ark-textarea {
+    min-height: 72px;
+    resize: vertical;
+    line-height: 1.5;
+  }
+
+  .ark-input::placeholder,
+  .ark-textarea::placeholder {
+    color: var(--color-ink-faint);
+  }
+
+  .ark-input:focus,
+  .ark-select:focus,
+  .ark-textarea:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: inset 0 0 0 1px var(--color-accent-border);
+  }
+
+  .ark-input:disabled,
+  .ark-select:disabled,
+  .ark-textarea:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .ark-range {
+    width: 100%;
+    height: 18px;
+    accent-color: var(--color-accent);
+    cursor: pointer;
+  }
+
+  /* Toggle: a switch, because a layer being on or off must read at a glance
+     from across a control room. */
+  .ark-toggle {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    width: 28px;
+    height: 16px;
+    flex: none;
+    border: 1px solid var(--color-line-strong);
+    border-radius: 999px;
+    background-color: var(--color-sunken);
+    cursor: pointer;
+    transition: background-color 0.12s linear, border-color 0.12s linear;
+  }
+
+  .ark-toggle::after {
+    content: '';
+    position: absolute;
+    left: 2px;
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background-color: var(--color-ink-faint);
+    transition: transform 0.12s ease, background-color 0.12s linear;
+  }
+
+  .ark-toggle[aria-checked='true'] {
+    background-color: var(--color-accent-soft-strong);
+    border-color: var(--color-accent-border);
+  }
+
+  .ark-toggle[aria-checked='true']::after {
+    transform: translateX(12px);
+    background-color: var(--color-accent);
+  }
+
+  .ark-toggle:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* --------------------------------------------------------------------
+     Filter chips
+     -------------------------------------------------------------------- */
+  .ark-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: 24px;
+    padding: 0.125rem 0.4375rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-sunken);
+    color: var(--color-ink-subtle);
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.1s linear, border-color 0.1s linear,
+      color 0.1s linear;
+  }
+
+  .ark-chip:hover {
+    background-color: var(--color-sunken-strong);
+    color: var(--color-ink);
+  }
+
+  .ark-chip.is-active,
+  .ark-chip[aria-pressed='true'] {
+    background-color: var(--color-accent-soft-strong);
+    border-color: var(--color-accent-border);
+    color: var(--color-accent);
+  }
+
+  /* --------------------------------------------------------------------
+     Status and severity badges
+     Colour is never the only signal: every badge carries a word, and
+     severity additionally carries a rail on its row.
+     -------------------------------------------------------------------- */
+  .ark-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.1875rem;
+    padding: 0.0625rem 0.3125rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-xs);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    line-height: 1.5;
+  }
+
+  .ark-badge.is-critical {
+    background-color: var(--color-critical-soft);
+    border-color: var(--color-critical-border);
+    color: var(--color-critical);
+  }
+
+  .ark-badge.is-high {
+    background-color: var(--color-warning-soft);
+    border-color: var(--color-warning-border);
+    color: var(--color-warning);
+  }
+
+  .ark-badge.is-medium {
+    background-color: var(--color-caution-soft);
+    border-color: var(--color-caution-border);
+    color: var(--color-caution);
+  }
+
+  .ark-badge.is-low,
+  .ark-badge.is-success {
+    background-color: var(--color-success-soft);
+    border-color: var(--color-success-border);
+    color: var(--color-success);
+  }
+
+  .ark-badge.is-info {
+    background-color: var(--color-info-soft);
+    border-color: var(--color-info-border);
+    color: var(--color-info);
+  }
+
+  .ark-badge.is-accent {
+    background-color: var(--color-accent-soft);
+    border-color: var(--color-accent-border);
+    color: var(--color-accent);
+  }
+
+  .ark-badge.is-neutral {
+    background-color: var(--color-sunken-strong);
+    border-color: var(--color-line);
+    color: var(--color-ink-subtle);
+  }
+
+  .ark-badge.is-solid-critical {
+    background-color: var(--color-critical-deep);
+    border-color: var(--color-critical-fill);
+    color: #ffffff;
+  }
+
+  /* --------------------------------------------------------------------
+     Data-state tags — the honesty contract, made visible
+     A provisional or absent reading is legible without colour: SEED and
+     SIMULATED are dashed, UNAVAILABLE is struck through in the label.
+     -------------------------------------------------------------------- */
+  .ark-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.1875rem;
+    padding: 0 0.25rem;
+    border-radius: var(--radius-xs);
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: 1px solid var(--color-line);
+    background-color: var(--color-sunken-strong);
+    color: var(--color-ink-subtle);
+    white-space: nowrap;
+    line-height: 1.6;
+  }
+
+  .ark-tag.is-live {
+    background-color: var(--color-success-soft);
+    border-color: var(--color-success-border);
+    color: var(--color-success);
+  }
+
+  .ark-tag.is-cached {
+    background-color: var(--color-caution-soft);
+    border-color: var(--color-caution-border);
+    color: var(--color-caution);
+  }
+
+  .ark-tag.is-seed,
+  .ark-tag.is-simulated,
+  .ark-tag.is-fallback {
+    background-color: var(--color-sunken);
+    border: 1px dashed var(--color-line-bright);
+    color: var(--color-ink-subtle);
+  }
+
+  .ark-tag.is-unavailable {
+    background-color: var(--color-critical-soft);
+    border-color: var(--color-critical-border);
+    color: var(--color-critical);
+  }
+
+  /* --------------------------------------------------------------------
+     Rows and severity rails
+     -------------------------------------------------------------------- */
+  .ark-row {
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+    transition: border-color 0.1s linear, background-color 0.1s linear;
+  }
+
+  .ark-row:hover {
+    border-color: var(--color-line-strong);
+    background-color: var(--color-sunken-strong);
+  }
+
+  .ark-row.is-selected {
+    border-color: var(--color-accent-border);
+    background-color: var(--color-accent-soft);
+  }
+
+  .ark-rail {
+    border-left-width: 2px;
+    border-left-style: solid;
+  }
+
+  .ark-rail-critical {
+    border-left-color: var(--color-critical-fill);
+  }
+  .ark-rail-high {
+    border-left-color: var(--color-warning-fill);
+  }
+  .ark-rail-medium {
+    border-left-color: var(--color-caution-fill);
+  }
+  .ark-rail-low {
+    border-left-color: var(--color-success-fill);
+  }
+  .ark-rail-info {
+    border-left-color: var(--color-info-fill);
+  }
+  .ark-rail-neutral {
+    border-left-color: var(--color-line-bright);
+  }
+
+  /* --------------------------------------------------------------------
+     Meter
+     -------------------------------------------------------------------- */
+  .ark-meter {
+    width: 100%;
+    height: 3px;
+    background-color: var(--color-sunken-strong);
+    overflow: hidden;
+    border-radius: 999px;
+  }
+
+  .ark-meter > span {
+    display: block;
+    height: 100%;
+    background-color: var(--color-accent);
+    transition: width 0.2s linear;
+  }
+
+  /* --------------------------------------------------------------------
+     Tables
+     Dense, hairline-ruled, sticky header. Numeric columns are tabular.
+     -------------------------------------------------------------------- */
+  .ark-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 12px;
+  }
+
+  .ark-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: var(--color-surface);
+    border-bottom: 1px solid var(--color-line-strong);
+    padding: 0.4375rem 0.625rem;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--color-ink-subtle);
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  .ark-table thead th.is-sortable {
+    cursor: pointer;
+  }
+
+  .ark-table thead th.is-sortable:hover {
+    color: var(--color-ink);
+  }
+
+  .ark-table thead th.is-sorted {
+    color: var(--color-accent);
+  }
+
+  .ark-table tbody td {
+    padding: 0.4375rem 0.625rem;
+    border-bottom: 1px solid var(--color-line);
+    color: var(--color-ink-muted);
+    vertical-align: middle;
+  }
+
+  .ark-table tbody tr:hover td {
+    background-color: var(--color-sunken-strong);
+    color: var(--color-ink);
+  }
+
+  .ark-table tbody tr.is-selected td {
+    background-color: var(--color-accent-soft);
+  }
+
+  .ark-table .is-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  /* --------------------------------------------------------------------
+     Tabs
+     -------------------------------------------------------------------- */
+  .ark-tabs {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .ark-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.4375rem 0.75rem;
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    color: var(--color-ink-subtle);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 0.1s linear, border-color 0.1s linear;
+  }
+
+  .ark-tab:hover {
+    color: var(--color-ink);
+  }
+
+  .ark-tab[aria-selected='true'] {
+    color: var(--color-ink);
+    border-bottom-color: var(--color-accent);
+  }
+
+  /* --------------------------------------------------------------------
+     Navigation rail
+     -------------------------------------------------------------------- */
+  .ark-nav-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: 30px;
+    padding: 0.3125rem 0.5rem 0.3125rem 0.625rem;
+    border-radius: var(--radius-sm);
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--color-ink-muted);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.1s linear, color 0.1s linear;
+  }
+
+  .ark-nav-item:hover {
+    background-color: var(--color-sunken-strong);
+    color: var(--color-ink);
+  }
+
+  .ark-nav-item.is-active {
+    background-color: var(--color-accent-soft);
+    color: var(--color-ink);
+    font-weight: 600;
+  }
+
+  /* The active marker is a 2px bar at the rail edge — a position cue that
+     survives greyscale and colour-blind rendering. */
+  .ark-nav-item.is-active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 4px;
+    bottom: 4px;
+    width: 2px;
+    border-radius: 999px;
+    background-color: var(--color-accent);
+  }
+
+  .ark-nav-item.is-active svg {
+    color: var(--color-accent);
+  }
+
+  /* --------------------------------------------------------------------
+     Map chrome
+     Opaque, hairline-bordered control stacks in the manner of professional
+     GIS canvases. Nothing here blurs what is underneath it.
+     -------------------------------------------------------------------- */
+  .ark-map-panel {
+    background-color: var(--color-surface-raised);
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    color: var(--color-ink);
+  }
+
+  .ark-map-group {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--color-surface-raised);
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+
+  .ark-map-group.is-row {
+    flex-direction: row;
+  }
+
+  .ark-map-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3125rem;
+    min-height: 28px;
+    min-width: 28px;
+    padding: 0.1875rem 0.375rem;
+    background-color: transparent;
+    border: 0;
+    color: var(--color-ink-muted);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.1s linear, color 0.1s linear;
+  }
+
+  .ark-map-group > .ark-map-btn + .ark-map-btn {
+    border-top: 1px solid var(--color-line);
+  }
+
+  .ark-map-group.is-row > .ark-map-btn + .ark-map-btn {
+    border-top: 0;
+    border-left: 1px solid var(--color-line);
+  }
+
+  .ark-map-btn:hover:not(:disabled) {
+    background-color: var(--color-surface-high);
+    color: var(--color-ink);
+  }
+
+  .ark-map-btn.is-active {
+    background-color: var(--color-accent-soft-strong);
+    color: var(--color-accent);
+  }
+
+  .ark-map-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  /* Coordinate / scale readout strip along the map's lower edge. */
+  .ark-map-readout {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    height: 22px;
+    padding: 0 0.5rem;
+    background-color: var(--color-navy);
+    border-top: 1px solid var(--color-line);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-ink-subtle);
+    white-space: nowrap;
+  }
+
+  /* --------------------------------------------------------------------
+     Overlays: scrim, modal, drawer, command palette
+     -------------------------------------------------------------------- */
+  .ark-scrim {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(4, 5, 6, 0.72);
+  }
+
+  .ark-modal {
+    background-color: var(--color-surface-raised);
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+    max-height: 88vh;
+  }
+
+  .ark-drawer {
+    background-color: var(--color-surface);
+    border-left: 1px solid var(--color-line-strong);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .ark-drawer.is-left {
+    border-left: 0;
+    border-right: 1px solid var(--color-line-strong);
+  }
+
+  .ark-palette {
+    background-color: var(--color-surface-raised);
+    border: 1px solid var(--color-line-bright);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+  }
+
+  .ark-palette-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.4375rem 0.75rem;
+    background: transparent;
+    border: 0;
+    border-left: 2px solid transparent;
+    color: var(--color-ink-muted);
+    font-size: 12.5px;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .ark-palette-item.is-active {
+    background-color: var(--color-accent-soft);
+    border-left-color: var(--color-accent);
+    color: var(--color-ink);
+  }
+
+  /* Keyboard hint. */
+  .ark-kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 0.25rem;
+    border: 1px solid var(--color-line-strong);
+    border-bottom-width: 2px;
+    border-radius: var(--radius-xs);
+    background-color: var(--color-sunken);
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 600;
+    color: var(--color-ink-subtle);
+    line-height: 1;
+  }
+
+  /* --------------------------------------------------------------------
+     Timeline — event history, workflow stages, audit trail
+     -------------------------------------------------------------------- */
+  .ark-timeline {
+    position: relative;
+    padding-left: 0.875rem;
+  }
+
+  .ark-timeline::before {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 6px;
+    bottom: 6px;
+    width: 1px;
+    background-color: var(--color-line-strong);
+  }
+
+  .ark-timeline-node {
+    position: relative;
+  }
+
+  .ark-timeline-node::before {
+    content: '';
+    position: absolute;
+    left: -0.875rem;
+    top: 6px;
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background-color: var(--color-canvas);
+    border: 1px solid var(--color-line-bright);
+  }
+
+  .ark-timeline-node.is-done::before {
+    background-color: var(--color-success-fill);
+    border-color: var(--color-success-fill);
+  }
+
+  .ark-timeline-node.is-current::before {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+
+  .ark-timeline-node.is-failed::before {
+    background-color: var(--color-critical-fill);
+    border-color: var(--color-critical-fill);
+  }
+
+  /* --------------------------------------------------------------------
+     Notifications
+     -------------------------------------------------------------------- */
+  .ark-toast {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    width: 320px;
+    padding: 0.5rem 0.625rem;
+    background-color: var(--color-surface-raised);
+    border: 1px solid var(--color-line-strong);
+    border-left-width: 2px;
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+  }
+
+  .ark-toast.is-critical {
+    border-left-color: var(--color-critical-fill);
+  }
+  .ark-toast.is-high {
+    border-left-color: var(--color-warning-fill);
+  }
+  .ark-toast.is-medium {
+    border-left-color: var(--color-caution-fill);
+  }
+  .ark-toast.is-low {
+    border-left-color: var(--color-info-fill);
+  }
+  .ark-toast.is-resolved {
+    border-left-color: var(--color-success-fill);
+  }
+
+  /* --------------------------------------------------------------------
+     Utilities
+     -------------------------------------------------------------------- */
+  .ark-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #2b2f35 transparent;
+  }
+  .ark-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .ark-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .ark-scroll::-webkit-scrollbar-thumb {
+    background: #2b2f35;
+    border-radius: 999px;
+  }
+  .ark-scroll::-webkit-scrollbar-thumb:hover {
+    background: #3c4149;
+  }
+
+  /* A faint grid that gives a large empty canvas structure without pattern
+     noise. Used behind the map placeholder and empty states only. */
+  .ark-grid-bg {
+    background-image: linear-gradient(
+        to right,
+        var(--color-line) 1px,
+        transparent 1px
+      ),
+      linear-gradient(to bottom, var(--color-line) 1px, transparent 1px);
+    background-size: 32px 32px;
+    background-position: -1px -1px;
+  }
+
+  /* ====================================================================
+     Legacy gov-* aliases
+     Retained so components not yet migrated to src/ui keep rendering in the
+     v2 language rather than the old one. Every definition below is flat:
+     no backdrop-filter, no glow, no gradient. New code uses ark-*.
+     ==================================================================== */
   .gov-page {
     background-color: var(--color-canvas);
     color: var(--color-ink);
   }
 
-  .gov-panel {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-line);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-xs);
-  }
-
+  .gov-panel,
   .gov-panel-flat {
     background-color: var(--color-surface);
     border: 1px solid var(--color-line);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-md);
   }
 
   .gov-inset {
     background-color: var(--color-sunken);
     border: 1px solid var(--color-line);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
   }
 
   .gov-panel-head {
@@ -207,15 +1287,14 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    padding: 0.75rem 1rem;
+    padding: 0.5rem 0.75rem;
     border-bottom: 1px solid var(--color-line);
   }
 
-  /* --- Typography helpers --- */
   .gov-label {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.07em;
     text-transform: uppercase;
     color: var(--color-ink-subtle);
   }
@@ -227,56 +1306,55 @@
   }
 
   .gov-metric {
-    font-size: 22px;
-    line-height: 1.15;
+    font-size: 24px;
+    line-height: 1.1;
     font-weight: 600;
+    letter-spacing: -0.02em;
     color: var(--color-ink);
     font-variant-numeric: tabular-nums;
   }
 
   .gov-metric-sm {
     font-size: 17px;
-    line-height: 1.2;
+    line-height: 1.15;
     font-weight: 600;
     color: var(--color-ink);
     font-variant-numeric: tabular-nums;
   }
 
-  /* Technical value: coordinates, IDs, timestamps */
   .gov-mono {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
   }
 
-  /* --- Buttons --- */
   .gov-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.4rem;
-    min-height: 36px;
-    padding: 0.4375rem 0.75rem;
+    gap: 0.375rem;
+    min-height: 30px;
+    padding: 0.3125rem 0.625rem;
     border: 1px solid transparent;
-    border-radius: var(--radius-md);
-    font-size: 13px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
     font-weight: 600;
     line-height: 1.2;
     white-space: nowrap;
     cursor: pointer;
-    transition: background-color 0.12s ease, border-color 0.12s ease,
-      color 0.12s ease;
+    transition: background-color 0.1s linear, border-color 0.1s linear,
+      color 0.1s linear;
   }
 
   .gov-btn:disabled {
-    opacity: 0.55;
+    opacity: 0.45;
     cursor: not-allowed;
   }
 
   .gov-btn-primary {
     background-color: var(--color-accent);
     border-color: var(--color-accent);
-    color: var(--color-ink-inverse);
+    color: var(--color-accent-ink);
   }
 
   .gov-btn-primary:hover:not(:disabled) {
@@ -285,14 +1363,14 @@
   }
 
   .gov-btn-secondary {
-    background-color: var(--color-sunken);
+    background-color: var(--color-sunken-strong);
     border-color: var(--color-line-strong);
     color: var(--color-ink);
   }
 
   .gov-btn-secondary:hover:not(:disabled) {
-    background-color: var(--color-sunken-strong);
-    border-color: #46515f;
+    background-color: var(--color-surface-high);
+    border-color: var(--color-line-bright);
   }
 
   .gov-btn-quiet {
@@ -302,7 +1380,7 @@
   }
 
   .gov-btn-quiet:hover:not(:disabled) {
-    background-color: var(--color-sunken);
+    background-color: var(--color-sunken-strong);
     color: var(--color-ink);
   }
 
@@ -313,54 +1391,53 @@
   }
 
   .gov-btn-danger:hover:not(:disabled) {
-    background-color: #cc2a1d;
-    border-color: #cc2a1d;
+    background-color: var(--color-critical-fill);
+    border-color: var(--color-critical-fill);
   }
 
   .gov-btn-sm {
-    min-height: 30px;
-    padding: 0.25rem 0.5rem;
-    font-size: 12px;
+    min-height: 27px;
+    padding: 0.1875rem 0.5rem;
+    font-size: 11.5px;
   }
 
   .gov-btn-lg {
-    min-height: 44px;
+    min-height: 36px;
     padding: 0.5rem 0.875rem;
+    font-size: 13px;
   }
 
-  /* Header buttons that sit on the structural bar */
   .gov-btn-onnavy {
-    background-color: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.18);
-    color: #ffffff;
+    background-color: var(--color-sunken-strong);
+    border-color: var(--color-line-strong);
+    color: var(--color-ink);
   }
 
   .gov-btn-onnavy:hover:not(:disabled) {
-    background-color: rgba(255, 255, 255, 0.14);
+    background-color: var(--color-surface-high);
   }
 
-  /* --- Form controls --- */
   .gov-input,
   .gov-select,
   .gov-textarea {
     width: 100%;
-    min-height: 36px;
+    min-height: 30px;
     background-color: var(--color-sunken);
     border: 1px solid var(--color-line-strong);
-    border-radius: var(--radius-md);
-    padding: 0.4375rem 0.625rem;
-    font-size: 13px;
+    border-radius: var(--radius-sm);
+    padding: 0.3125rem 0.5rem;
+    font-size: 12px;
     color: var(--color-ink);
   }
 
   .gov-textarea {
-    min-height: 80px;
+    min-height: 72px;
     resize: vertical;
   }
 
   .gov-input::placeholder,
   .gov-textarea::placeholder {
-    color: var(--color-ink-subtle);
+    color: var(--color-ink-faint);
   }
 
   .gov-input:focus,
@@ -368,34 +1445,32 @@
   .gov-textarea:focus {
     outline: none;
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px rgba(76, 141, 217, 0.28);
+    box-shadow: inset 0 0 0 1px var(--color-accent-border);
   }
 
-  /* Range inputs (layer opacity) */
   .gov-range {
     width: 100%;
-    height: 20px;
+    height: 18px;
     accent-color: var(--color-accent);
     cursor: pointer;
   }
 
-  /* --- Filter chips / segmented controls --- */
   .gov-chip {
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
-    min-height: 32px;
-    padding: 0.25rem 0.625rem;
+    gap: 0.25rem;
+    min-height: 24px;
+    padding: 0.125rem 0.4375rem;
     border: 1px solid var(--color-line);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
     background-color: var(--color-sunken);
-    color: var(--color-ink-muted);
-    font-size: 12px;
+    color: var(--color-ink-subtle);
+    font-size: 11px;
     font-weight: 600;
     white-space: nowrap;
     cursor: pointer;
-    transition: background-color 0.12s ease, border-color 0.12s ease,
-      color 0.12s ease;
+    transition: background-color 0.1s linear, border-color 0.1s linear,
+      color 0.1s linear;
   }
 
   .gov-chip:hover {
@@ -405,22 +1480,21 @@
 
   .gov-chip.is-active,
   .gov-chip[aria-pressed='true'] {
-    background-color: var(--color-accent-soft);
+    background-color: var(--color-accent-soft-strong);
     border-color: var(--color-accent-border);
     color: var(--color-accent);
   }
 
-  /* --- Status badges (always paired with a word, never colour alone) --- */
   .gov-badge {
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.0625rem 0.375rem;
+    gap: 0.1875rem;
+    padding: 0.0625rem 0.3125rem;
     border: 1px solid transparent;
-    border-radius: var(--radius-sm);
-    font-size: 11px;
+    border-radius: var(--radius-xs);
+    font-size: 10px;
     font-weight: 700;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     white-space: nowrap;
   }
@@ -430,58 +1504,52 @@
     border-color: var(--color-critical-border);
     color: var(--color-critical);
   }
-
   .gov-badge.is-high {
     background-color: var(--color-warning-soft);
     border-color: var(--color-warning-border);
     color: var(--color-warning);
   }
-
   .gov-badge.is-medium {
     background-color: var(--color-caution-soft);
     border-color: var(--color-caution-border);
     color: var(--color-caution);
   }
-
   .gov-badge.is-low,
   .gov-badge.is-success {
     background-color: var(--color-success-soft);
     border-color: var(--color-success-border);
     color: var(--color-success);
   }
-
   .gov-badge.is-info {
     background-color: var(--color-info-soft);
     border-color: var(--color-info-border);
     color: var(--color-info);
   }
-
   .gov-badge.is-neutral {
     background-color: var(--color-sunken-strong);
     border-color: var(--color-line);
-    color: var(--color-ink-muted);
+    color: var(--color-ink-subtle);
   }
-
   .gov-badge.is-solid-critical {
     background-color: var(--color-critical-deep);
     border-color: var(--color-critical-fill);
     color: #ffffff;
   }
 
-  /* --- Data provenance tags: keep data honesty visible --- */
   .gov-tag {
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.0625rem 0.3125rem;
-    border-radius: var(--radius-sm);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
+    gap: 0.1875rem;
+    padding: 0 0.25rem;
+    border-radius: var(--radius-xs);
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     border: 1px solid var(--color-line);
     background-color: var(--color-sunken-strong);
-    color: var(--color-ink-muted);
+    color: var(--color-ink-subtle);
     white-space: nowrap;
   }
 
@@ -490,39 +1558,33 @@
     border-color: var(--color-success-border);
     color: var(--color-success);
   }
-
   .gov-tag.is-cached {
     background-color: var(--color-caution-soft);
     border-color: var(--color-caution-border);
     color: var(--color-caution);
   }
-
-  /* Simulated / seeded / demo data uses a dashed border so it reads as
-     provisional even in greyscale or for colour-blind operators. */
   .gov-tag.is-simulated,
   .gov-tag.is-sample {
     background-color: var(--color-sunken);
-    border: 1px dashed var(--color-line-strong);
-    color: var(--color-ink-muted);
+    border: 1px dashed var(--color-line-bright);
+    color: var(--color-ink-subtle);
   }
-
   .gov-tag.is-offline {
     background-color: var(--color-critical-soft);
     border-color: var(--color-critical-border);
     color: var(--color-critical);
   }
 
-  /* --- Rows / list items --- */
   .gov-row {
     border: 1px solid var(--color-line);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
     background-color: var(--color-surface);
-    transition: border-color 0.12s ease, background-color 0.12s ease;
+    transition: border-color 0.1s linear, background-color 0.1s linear;
   }
 
   .gov-row:hover {
     border-color: var(--color-line-strong);
-    background-color: var(--color-sunken);
+    background-color: var(--color-sunken-strong);
   }
 
   .gov-row.is-selected {
@@ -530,36 +1592,29 @@
     background-color: var(--color-accent-soft);
   }
 
-  /* Severity rail — a shape/position cue in addition to colour */
   .gov-rail {
-    border-left-width: 3px;
+    border-left-width: 2px;
     border-left-style: solid;
   }
-
   .gov-rail-critical {
     border-left-color: var(--color-critical-fill);
   }
-
   .gov-rail-high {
     border-left-color: var(--color-warning-fill);
   }
-
   .gov-rail-medium {
     border-left-color: var(--color-caution-fill);
   }
-
   .gov-rail-low {
     border-left-color: var(--color-success-fill);
   }
-
   .gov-rail-info {
     border-left-color: var(--color-info-fill);
   }
 
-  /* --- Meter / progress --- */
   .gov-meter {
     width: 100%;
-    height: 6px;
+    height: 3px;
     background-color: var(--color-sunken-strong);
     border-radius: 999px;
     overflow: hidden;
@@ -572,85 +1627,64 @@
     background-color: var(--color-accent);
   }
 
-  /* --- Sidebar navigation --- */
   .gov-nav-item {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: 0.625rem;
+    gap: 0.5rem;
     width: 100%;
-    min-height: 40px;
-    padding: 0.5rem 0.75rem;
-    border-radius: var(--radius-md);
-    font-size: 13px;
+    min-height: 30px;
+    padding: 0.3125rem 0.5rem 0.3125rem 0.625rem;
+    border-radius: var(--radius-sm);
+    font-size: 12.5px;
     font-weight: 500;
     color: var(--color-ink-muted);
     text-align: left;
     cursor: pointer;
-    transition: background-color 0.12s ease, color 0.12s ease;
+    transition: background-color 0.1s linear, color 0.1s linear;
   }
 
   .gov-nav-item:hover {
-    background-color: var(--color-sunken);
+    background-color: var(--color-sunken-strong);
     color: var(--color-ink);
   }
 
   .gov-nav-item.is-active {
     background-color: var(--color-accent-soft);
-    color: var(--color-accent);
+    color: var(--color-ink);
     font-weight: 600;
-    box-shadow: inset 3px 0 0 0 var(--color-accent);
+    box-shadow: inset 2px 0 0 0 var(--color-accent);
   }
 
-  /* --- Map floating chrome & Tactical Glassmorphism --- */
-  .gov-glass {
-    background: rgba(8, 12, 16, 0.78);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
-  }
-
-  .gov-glass-interactive {
-    background: rgba(8, 12, 16, 0.75);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
-  }
-
-  .gov-glass-interactive:hover {
-    background: rgba(14, 20, 28, 0.88);
-    border-color: rgba(6, 182, 212, 0.35);
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
-  }
-
-  .gov-glass-header {
-    background: rgba(5, 5, 5, 0.82);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
+  /* Glassmorphism is removed from the platform. These names survive only so
+     that a component not yet migrated renders as an opaque panel instead of
+     losing its background entirely. */
+  .gov-glass,
+  .gov-glass-interactive,
   .gov-map-card {
-    background: rgba(8, 12, 16, 0.82);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: var(--radius-lg);
+    background-color: var(--color-surface-raised);
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-md);
     box-shadow: var(--shadow-md);
     color: var(--color-ink);
   }
 
-  /* Grouped control stack, as on professional GIS map canvases */
+  .gov-glass-interactive:hover {
+    background-color: var(--color-surface-high);
+    border-color: var(--color-line-bright);
+  }
+
+  .gov-glass-header {
+    background-color: var(--color-navy);
+    border-bottom: 1px solid var(--color-line);
+  }
+
   .gov-map-group {
     display: flex;
     flex-direction: column;
-    background: rgba(8, 12, 16, 0.82);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: var(--radius-md);
+    background-color: var(--color-surface-raised);
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-sm);
     box-shadow: var(--shadow-sm);
     overflow: hidden;
   }
@@ -663,18 +1697,18 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.375rem;
-    min-height: 34px;
-    min-width: 34px;
-    padding: 0.25rem 0.5rem;
+    gap: 0.3125rem;
+    min-height: 28px;
+    min-width: 28px;
+    padding: 0.1875rem 0.375rem;
     background-color: transparent;
     border: 0;
     border-radius: 0;
-    color: var(--color-ink);
-    font-size: 12px;
+    color: var(--color-ink-muted);
+    font-size: 11px;
     font-weight: 600;
     cursor: pointer;
-    transition: background-color 0.12s ease, color 0.12s ease;
+    transition: background-color 0.1s linear, color 0.1s linear;
   }
 
   .gov-map-group > .gov-map-btn + .gov-map-btn {
@@ -686,69 +1720,84 @@
     border-left: 1px solid var(--color-line);
   }
 
-  .gov-map-btn:hover {
-    background-color: var(--color-sunken-strong);
-    color: var(--color-accent-hover);
+  .gov-map-btn:hover:not(:disabled) {
+    background-color: var(--color-surface-high);
+    color: var(--color-ink);
   }
 
   .gov-map-btn.is-active {
-    background-color: var(--color-accent);
-    color: var(--color-ink-inverse);
+    background-color: var(--color-accent-soft-strong);
+    color: var(--color-accent);
   }
 
   .gov-map-btn:disabled {
-    opacity: 0.4;
+    opacity: 0.35;
     cursor: not-allowed;
   }
 
-  /* Standalone map button (not inside a group) keeps its own border. */
   .gov-map-btn-solo {
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: var(--radius-md);
-    background: rgba(8, 12, 16, 0.82);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface-raised);
     box-shadow: var(--shadow-sm);
   }
 
-  /* Thin scrollbar utility for sidebars and feeds */
   .gov-scroll-thin {
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    scrollbar-color: #2b2f35 transparent;
   }
   .gov-scroll-thin::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
+    width: 6px;
+    height: 6px;
   }
   .gov-scroll-thin::-webkit-scrollbar-track {
     background: transparent;
   }
   .gov-scroll-thin::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
+    background: #2b2f35;
+    border-radius: 999px;
   }
   .gov-scroll-thin::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.4);
+    background: #3c4149;
   }
 }
 
 /* ==========================================================================
-   Animations — minimal, meaningful, motion-safe
+   MOTION
+   Four animations, each with an operational job. Nothing here decorates.
    ========================================================================== */
-@keyframes radar-sweep {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
+
+/* Loading spinner. */
+@keyframes ark-spin {
+  to {
     transform: rotate(360deg);
   }
 }
 
-.animate-radar {
-  animation: radar-sweep 6s linear infinite;
+.ark-spin {
+  animation: ark-spin 0.7s linear infinite;
 }
 
-@keyframes pulse-slow {
+/* Skeleton placeholder while a lazy chunk or a first poll is in flight. */
+@keyframes ark-skeleton {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+
+.ark-skeleton {
+  background-color: var(--color-sunken-strong);
+  border-radius: var(--radius-xs);
+  animation: ark-skeleton 1.6s ease-in-out infinite;
+}
+
+/* Live-source heartbeat. Slow and low-amplitude: it says "this number is
+   being refreshed", not "look at me". */
+@keyframes ark-live {
   0%,
   100% {
     opacity: 1;
@@ -758,11 +1807,28 @@
   }
 }
 
-.animate-pulse-slow {
-  animation: pulse-slow 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+.ark-live-dot {
+  animation: ark-live 2.4s ease-in-out infinite;
 }
 
-@keyframes ticker-scroll {
+/* Unacknowledged critical only, and only until it is acknowledged. */
+@keyframes ark-attention {
+  0%,
+  100% {
+    border-color: var(--color-critical-fill);
+  }
+  50% {
+    border-color: var(--color-critical-border);
+  }
+}
+
+.ark-attention {
+  animation: ark-attention 1.8s ease-in-out infinite;
+}
+
+/* Event ticker. A marquee is the honest presentation of a continuous stream;
+   it is opt-out in settings and stops on hover so a line can be read. */
+@keyframes ark-ticker {
   0% {
     transform: translateX(0%);
   }
@@ -775,7 +1841,7 @@
   display: flex;
   align-items: center;
   width: max-content;
-  animation: ticker-scroll 45s linear infinite;
+  animation: ark-ticker 60s linear infinite;
   will-change: transform;
 }
 
@@ -783,22 +1849,18 @@
   animation-play-state: paused;
 }
 
+/* Legacy animation names, neutralised in one place so a component that has
+   not been migrated cannot reintroduce a neon pulse or an expanding halo. */
+.animate-pulse,
+.animate-pulse-slow {
+  animation: ark-live 2.4s ease-in-out infinite;
+}
 
-/* Attention ring used ONLY for an incident that has just become critical,
-   and only for a short, self-terminating window. */
-@keyframes arka-alert-ring {
-  0% {
-    transform: scale(0.55);
-    opacity: 0.85;
-  }
-  70% {
-    transform: scale(1.6);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(1.6);
-    opacity: 0;
-  }
+.animate-ping,
+.animate-radar,
+.animate-bounce {
+  animation: none !important;
+  opacity: 0 !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -811,10 +1873,18 @@
   }
 }
 
+/* Operator preference, independent of the OS setting: a shared control room
+   often wants motion off on the wall display and on in the analyst bay. */
+[data-reduce-motion='true'] .ark-live-dot,
+[data-reduce-motion='true'] .ark-skeleton,
+[data-reduce-motion='true'] .ark-attention,
+[data-reduce-motion='true'] .animate-ticker,
+[data-reduce-motion='true'] .animate-pulse {
+  animation: none !important;
+}
+
 /* ==========================================================================
    MapLibre GL — dark cartographic chrome
-   The map is the primary workspace, so its chrome is quiet and matches the
-   panel vocabulary above rather than shipping MapLibre's default styling.
    ========================================================================== */
 .maplibregl-map {
   font-family: var(--font-sans) !important;
@@ -859,24 +1929,23 @@
 }
 
 .maplibregl-popup-close-button {
-  width: 26px;
-  height: 26px;
-  font-size: 16px;
-  color: var(--color-ink-muted) !important;
+  width: 24px;
+  height: 24px;
+  font-size: 15px;
+  color: var(--color-ink-subtle) !important;
 }
 
 .maplibregl-popup-close-button:hover {
-  background: var(--color-sunken-strong) !important;
+  background: var(--color-surface-high) !important;
   color: var(--color-ink) !important;
 }
 
-/* Scale bar (bottom-left, as in familiar GIS layouts) */
 .maplibregl-ctrl-scale {
-  background: rgba(20, 24, 29, 0.94) !important;
+  background: var(--color-navy) !important;
   border: 1px solid var(--color-line-strong) !important;
   border-top: 0 !important;
-  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-  color: var(--color-ink) !important;
+  border-radius: 0 0 var(--radius-xs) var(--radius-xs);
+  color: var(--color-ink-muted) !important;
   font-family: var(--font-mono) !important;
   font-size: 10px !important;
   font-weight: 600;
@@ -885,32 +1954,31 @@
 }
 
 .maplibregl-ctrl-attrib {
-  background: rgba(11, 13, 16, 0.82) !important;
-  border-radius: var(--radius-sm) 0 0 0;
-  font-size: 10px !important;
+  background: var(--color-navy) !important;
+  border-radius: var(--radius-xs) 0 0 0;
+  font-size: 9.5px !important;
 }
 
 .maplibregl-ctrl-attrib,
 .maplibregl-ctrl-attrib a {
-  color: var(--color-ink-subtle) !important;
+  color: var(--color-ink-faint) !important;
 }
 
 .maplibregl-ctrl-attrib-button {
-  background-color: rgba(230, 234, 240, 0.7) !important;
+  background-color: rgba(241, 243, 245, 0.6) !important;
 }
 
 /* ==========================================================================
    Leaflet — dark cartographic chrome
-   The live ARKA map is Leaflet, and the base GIS tier binds its own popups and
-   tooltips through it. Leaflet ships white chrome by default, so without these
-   rules a GIS popup built from ARKA's dark tokens renders light text on white.
+   The live ARKA map is Leaflet, and the base GIS tier binds its own popups
+   and tooltips through it. Leaflet ships white chrome by default, so without
+   these rules a popup built from ARKA's dark tokens renders light on white.
    ========================================================================== */
 .leaflet-container {
   font-family: var(--font-sans);
   background: var(--color-map-void);
 }
 
-/* GPU hardware acceleration & tile buffer optimization */
 .leaflet-tile-container,
 .leaflet-pane {
   will-change: transform;
@@ -927,7 +1995,6 @@
   outline-offset: -2px;
 }
 
-/* Feature popups bound by the GIS adapter. */
 .leaflet-popup-content-wrapper {
   background: var(--color-surface-raised);
   color: var(--color-ink);
@@ -958,22 +2025,20 @@
 
 .leaflet-container a.leaflet-popup-close-button:hover,
 .leaflet-container a.leaflet-popup-close-button:focus {
-  background: var(--color-sunken-strong);
+  background: var(--color-surface-high);
   color: var(--color-ink);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
 }
 
-/* A popup tall enough to scroll keeps its own edges rather than Leaflet's grey. */
 .leaflet-popup-scrolled {
   border-top: 1px solid var(--color-line);
   border-bottom: 1px solid var(--color-line);
 }
 
-/* Tooltips — cluster counts and selected-feature labels. */
 .leaflet-tooltip {
   background: var(--color-surface-raised);
   border: 1px solid var(--color-line-strong);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   box-shadow: var(--shadow-sm);
   color: var(--color-ink);
   font-size: 11px;
@@ -983,24 +2048,85 @@
 .leaflet-tooltip-top::before {
   border-top-color: var(--color-line-strong);
 }
-
 .leaflet-tooltip-bottom::before {
   border-bottom-color: var(--color-line-strong);
 }
-
 .leaflet-tooltip-left::before {
   border-left-color: var(--color-line-strong);
 }
-
 .leaflet-tooltip-right::before {
   border-right-color: var(--color-line-strong);
+}
+
+/* --------------------------------------------------------------------------
+   ARKA map markers
+   Every operational marker on the Leaflet canvas is one of these three
+   shapes, sized and coloured from the layer's own style record. Deliberately
+   absent: emoji glyphs, drop shadows and box-shadow halos — a marker must
+   stay readable at zoom 11 over satellite imagery, and a glow does not.
+   -------------------------------------------------------------------------- */
+.ark-marker {
+  background: transparent;
+  border: 0;
+}
+
+/* Point asset: a filled disc with a hairline collar so it separates from any
+   basemap, plus an optional 8px glyph. */
+.ark-marker-dot {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-canvas);
+  color: var(--color-ink-inverse);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Incident: a square rotated 45°, so severity is a shape difference from an
+   asset and not only a colour difference. */
+.ark-marker-diamond {
+  width: 100%;
+  height: 100%;
+  border: 1.5px solid var(--color-canvas);
+  transform: rotate(45deg);
+}
+
+/* Selected asset: a static ring. Static because a moving ring on a moving map
+   is unreadable, and because the operator already knows what they clicked. */
+.ark-marker-ring {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  border: 2px solid var(--color-accent);
+  pointer-events: none;
+}
+
+.ark-marker-label {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translate(-50%, 3px);
+  padding: 0 3px;
+  border-radius: var(--radius-xs);
+  background-color: var(--color-navy);
+  border: 1px solid var(--color-line-strong);
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 /* --------------------------------------------------------------------------
    Base GIS overlay chrome
    Styling for the elements the GIS adapter emits. Colour, size and counts are
    set inline from each layer's own style record and its real feature count;
-   only the shell lives here, so the legend and the map can never disagree.
+   only the shell lives here, so the legend and the map cannot disagree.
 
    Deliberately absent: any filter on .arka-gis-raster-tile. Server-rendered
    city imagery is authoritative — recolouring it to suit the dark theme would
@@ -1021,34 +2147,24 @@
   display: grid;
   place-items: center;
   border-radius: 999px;
-  border-width: 2px;
+  border-width: 1.5px;
   border-style: solid;
-  box-shadow: var(--shadow-sm);
   color: var(--color-ink);
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  /* The bubble is a translucent tint of the layer colour, so the count is
-     shadowed rather than given an opaque plate — the tint has to stay readable
-     as a colour cue. */
-  text-shadow: 0 1px 2px rgba(11, 13, 16, 0.92);
+  text-shadow: 0 1px 2px rgba(6, 7, 8, 0.92);
 }
 
-/* --------------------------------------------------------------------------
-   Map overlay markers
-   Data features are drawn as GPU layers so they tilt with the 3D scene.
-   Only two things stay as HTML markers: measurement pins and the short-lived
-   new-critical attention ring.
-   -------------------------------------------------------------------------- */
+/* Measurement pins stay HTML markers: they are operator annotations, not data. */
 .map-measure-pin {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border-radius: 999px;
-  background: var(--color-warning-fill);
-  color: #1a1204;
-  border: 2px solid #0b0d10;
-  box-shadow: var(--shadow-sm);
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  border: 1.5px solid var(--color-canvas);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1059,14 +2175,14 @@
 
 .map-measure-label {
   position: absolute;
-  top: -22px;
+  top: -21px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 1px 5px;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-warning-border);
-  color: var(--color-warning);
+  padding: 0 4px;
+  border-radius: var(--radius-xs);
+  background: var(--color-navy);
+  border: 1px solid var(--color-accent-border);
+  color: var(--color-accent);
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
@@ -1074,23 +2190,22 @@
 }
 
 .map-alert-ring {
-  width: 46px;
-  height: 46px;
+  width: 34px;
+  height: 34px;
   border-radius: 999px;
   border: 2px solid var(--color-critical-fill);
   pointer-events: none;
-  animation: arka-alert-ring 1.8s ease-out infinite;
 }
 
-/* Popup/tooltip body vocabulary (shared by hover popups and the detail panel) */
+/* Popup and tooltip body vocabulary, shared by hover popups and detail panels. */
 .map-tip-title {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--color-ink);
   font-size: 12px;
 }
 
 .map-tip-sub {
-  color: var(--color-ink-muted);
+  color: var(--color-ink-subtle);
   font-size: 11px;
 }
 
@@ -1112,54 +2227,50 @@
 
 .map-tip-hint {
   margin-top: 4px;
-  font-size: 10px;
-  letter-spacing: 0.04em;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-ink-subtle);
+  color: var(--color-ink-faint);
 }
 
-/* Legend swatches carry a shape/letter as well as a colour. */
 .map-legend-swatch {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
-  color: #0b0d10;
+  color: var(--color-ink-inverse);
   flex: none;
 }
 
 .map-legend-line {
-  width: 16px;
+  width: 14px;
   height: 0;
-  border-top-width: 3px;
+  border-top-width: 2px;
   border-top-style: solid;
   flex: none;
 }
 
-/* Legacy glow utilities are retained as names but reduced to a flat,
-   non-glowing 1px status ring so nothing in the tree renders a neon halo. */
+/* Legacy glow utilities are retained as names but reduced to a flat 1px
+   status ring, so nothing in the tree can render a neon halo. */
 .glow-emerald {
   box-shadow: 0 0 0 1px var(--color-success-border);
 }
-
 .glow-cyan {
   box-shadow: 0 0 0 1px var(--color-accent-border);
 }
-
 .glow-amber {
   box-shadow: 0 0 0 1px var(--color-warning-border);
 }
-
 .glow-red {
   box-shadow: 0 0 0 1px var(--color-critical-border);
 }
 
 /* ==========================================================================
-   Print — operational reports should print on white, not near-black
+   Print — operational reports print on white paper, not near-black
    ========================================================================== */
 @media print {
   html {
@@ -1168,24 +2279,39 @@
 
   body {
     background: #ffffff;
-    color: #16202c;
+    color: #14171a;
     overflow: visible;
+    font-size: 10pt;
   }
 
   .no-print {
     display: none !important;
   }
 
+  .ark-panel,
+  .ark-inset,
   .gov-panel,
   .gov-panel-flat {
     background: #ffffff;
-    border-color: #d7dee8;
+    border-color: #c9cfd6;
     box-shadow: none;
     break-inside: avoid;
   }
 
+  .ark-panel *,
+  .ark-inset *,
   .gov-panel *,
   .gov-panel-flat * {
-    color: #16202c !important;
+    color: #14171a !important;
+  }
+
+  .ark-table thead th {
+    background: #f1f3f5;
+    color: #14171a !important;
+    border-color: #c9cfd6;
+  }
+
+  .ark-table tbody td {
+    border-color: #dde2e7;
   }
 }

@@ -17,6 +17,7 @@
 
 import type { DataState } from '../shared/dataState';
 import type { Severity } from '../types';
+import { EVENT_TONE_HEX } from '../ui/tokens';
 import type { EntityRef } from './entities';
 
 /**
@@ -68,8 +69,11 @@ export const EVENT_KIND_LABEL: Record<EventKind, string> = {
  * about a serious thing. Keeping tone separate from severity is what lets the
  * ticker colour correctly without re-deriving intent at every call site.
  *
- * Maps to the palette the brief specifies:
- *   critical → red · high → amber · medium → yellow · low → cyan · resolved → green
+ * Maps onto the v2 status ramp:
+ *   critical → red · high → amber · medium → yellow · low → steel · resolved → green
+ *
+ * Note what is absent: the interaction accent. Burnt orange means "this is where
+ * you are" or "this is the action", never "this is how bad it is".
  */
 export type EventTone = 'critical' | 'high' | 'medium' | 'low' | 'resolved';
 
@@ -82,17 +86,12 @@ export const EVENT_TONE_RANK: Record<EventTone, number> = {
 };
 
 /**
- * Tailwind-free colour tokens, so the ticker, feed and timeline cannot drift
- * apart. Hex values match the existing ARKA palette already used across the
- * dashboard — this is a re-export of the current identity, not a new one.
+ * Colour per tone, taken from the one token mirror in `src/ui/tokens.ts`.
+ *
+ * The ticker, the feed, the timeline and the chart series all read this, so a
+ * critical event cannot be one red here and a different red two panels over.
  */
-export const EVENT_TONE_COLOR: Record<EventTone, string> = {
-  critical: '#EF4444',
-  high: '#F59E0B',
-  medium: '#EAB308',
-  low: '#06B6D4',
-  resolved: '#10B981',
-};
+export const EVENT_TONE_COLOR: Record<EventTone, string> = EVENT_TONE_HEX;
 
 export const EVENT_TONE_LABEL: Record<EventTone, string> = {
   critical: 'CRITICAL',

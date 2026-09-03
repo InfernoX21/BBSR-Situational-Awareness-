@@ -21,8 +21,34 @@ export const UtilitiesView: React.FC<UtilitiesViewProps> = ({ onJumpToMap }) => 
   const [selectedUtility, setSelectedUtility] = useState<'POWER' | 'WATER' | 'GAS' | 'TELECOM' | 'STREETLIGHTS'>('POWER');
   const [autoLoadShedding, setAutoLoadShedding] = useState<boolean>(false);
 
+  /**
+   * Each utility plots different series keys, so the rows are a common
+   * time-plus-measures shape rather than five incompatible literal types —
+   * otherwise Recharts infers its `data` generic from whichever config happens
+   * to be declared first and rejects the other four.
+   */
+  type SeriesRow = { time: string } & Record<string, string | number>;
+
   // Configuration map for each utility grid
-  const utilityConfigs = {
+  const utilityConfigs: Record<
+    'POWER' | 'WATER' | 'GAS' | 'TELECOM' | 'STREETLIGHTS',
+    {
+      name: string;
+      title: string;
+      subtitle: string;
+      peakBadge: string;
+      accentColor: string;
+      borderColor: string;
+      bgColor: string;
+      textColor: string;
+      dataKey1: string;
+      name1: string;
+      dataKey2: string;
+      name2: string;
+      data: SeriesRow[];
+      nodes: { name: string; status: string; val: string }[];
+    }
+  > = {
     POWER: {
       name: 'Power Grid',
       title: 'Citywide 24h TPCODL Power Load Forecasting',
