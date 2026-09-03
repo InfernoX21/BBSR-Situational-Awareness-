@@ -348,6 +348,15 @@ export interface MapLayersState {
   infrastructure?: boolean;
   floodZones?: boolean;
   heatmaps?: boolean;
+  /**
+   * Utility and civic layers the shell already initialises but which had no
+   * declaration, so `layersState` was silently rejecting them. Optional because
+   * not every map surface offers all of them.
+   */
+  schools?: boolean;
+  telecom?: boolean;
+  power?: boolean;
+  water?: boolean;
   basemapStyle?: BasemapStyle;
 }
 
