@@ -80,6 +80,7 @@ const PAGE_OWNS_SCROLL = new Set<NavItem>([
   'Infrastructure',
   'Reports',
   'Weather & Disaster',
+  'Analytics',
 ]);
 
 export default function App() {
