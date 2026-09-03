@@ -107,9 +107,12 @@ export default function App() {
     power: true,
     water: true,
     floodZones: true,
+    // Heavy assets stay off until requested. `CentralLayerManager` holds the same
+    // defaults; the two must agree or the toolbar's first event flips the map.
     satellite: false,
     heatmaps: false,
-    buildings3D: true,
+    buildings3D: false,
+    basemapStyle: 'dark',
   });
 
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);

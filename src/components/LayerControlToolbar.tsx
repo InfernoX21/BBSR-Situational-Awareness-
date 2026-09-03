@@ -74,12 +74,12 @@ const LAYER_GROUPS: { title: string; ids: LayerId[] }[] = [
 ];
 
 const BASEMAPS: { style: BasemapStyle; label: string }[] = [
-  { style: 'street', label: 'Street (default)' },
+  { style: 'dark', label: 'Dark (default)' },
+  { style: 'night', label: 'Night (low light)' },
+  { style: 'street', label: 'Street' },
   { style: 'satellite', label: 'Satellite imagery' },
   { style: 'hybrid', label: 'Satellite hybrid' },
   { style: 'terrain', label: 'Terrain' },
-  { style: 'dark', label: 'Dark' },
-  { style: 'night', label: 'Night (low light)' },
 ];
 
 const PRESETS: { value: string; label: string }[] = [
@@ -242,7 +242,7 @@ export const LayerControlToolbar: React.FC<LayerControlToolbarProps> = ({
     satellite: {
       label: 'Satellite imagery',
       icon: Globe,
-      meta: layersState.basemapStyle ? layersState.basemapStyle : 'street',
+      meta: layersState.basemapStyle ?? 'dark',
       subtext: 'Satellite, street, terrain and night basemaps',
     },
   };
@@ -319,7 +319,7 @@ export const LayerControlToolbar: React.FC<LayerControlToolbarProps> = ({
             </label>
             <select
               id="basemap-style"
-              value={layersState.basemapStyle || 'street'}
+              value={layersState.basemapStyle ?? 'dark'}
               onChange={(e) => handleSelectBasemap(e.target.value as BasemapStyle)}
               className="bg-white/[0.03] hover:bg-white/[0.08] border border-white/15 hover:border-white/30 text-white text-[11px] font-mono rounded px-2 py-1 h-7.5 focus:outline-none transition-all cursor-pointer shadow-sm"
             >

@@ -33,11 +33,15 @@ export class CentralLayerManager {
     hospitals: true,
     police: true,
     fire: true,
-    buildings3D: true,
+    // Off until the operator asks for it. Building extrusions and a terrain mesh
+    // are the heaviest thing this map can draw, and an operator opening the
+    // dashboard to triage an incident has not asked to pay for them.
+    buildings3D: false,
     satellite: false,
-    // Light street cartography is the default so the map reads as a civic
-    // basemap; every other style remains selectable from the layer toolbar.
-    basemapStyle: 'street',
+    // A near-black backdrop, so incident and asset colour is the only saturated
+    // thing on screen. Street, satellite, terrain and night remain selectable
+    // from the layer toolbar.
+    basemapStyle: 'dark',
   };
 
   private loadingStates: Record<LayerId, boolean> = {
