@@ -263,18 +263,23 @@ export function Field({
 export function FieldLine({
   label,
   value,
+  hint,
   mono = true,
   className,
 }: {
   label: string;
   value: ReactNode | null | undefined;
+  /** Tooltip on the label: what this measures, or why it is unreported. */
+  hint?: string;
   mono?: boolean;
   className?: string;
 }) {
   const empty = value == null || value === '';
   return (
     <div className={cx('flex items-baseline justify-between gap-3 py-0.5', className)}>
-      <span className="text-[11.5px] text-ink-subtle shrink-0">{label}</span>
+      <span className="text-[11.5px] text-ink-subtle shrink-0" title={hint}>
+        {label}
+      </span>
       {empty ? (
         <span className="ark-unknown">NOT REPORTED</span>
       ) : (

@@ -75,7 +75,12 @@ const LOG_TONE: Record<LiveLog['type'], 'critical' | 'warning' | 'success' | 'ne
  * ones still on the old markup, which expects the shell to scroll for them. The
  * set shrinks as views migrate, and this constant disappears with the last one.
  */
-const PAGE_OWNS_SCROLL = new Set<NavItem>(['Drone Feed', 'Infrastructure', 'Reports']);
+const PAGE_OWNS_SCROLL = new Set<NavItem>([
+  'Drone Feed',
+  'Infrastructure',
+  'Reports',
+  'Weather & Disaster',
+]);
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<NavItem>('Dashboard');

@@ -37,7 +37,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { Building2, CloudRain, Download, FileText, Printer, Siren, Car } from 'lucide-react';
-import type { Incident, LandmarkNode, Severity, TrafficSummary, WeatherData } from '../../types';
+import type { Incident, LandmarkNode, TrafficSummary, WeatherData } from '../../types';
 import {
   Button,
   DataTable,
@@ -58,11 +58,11 @@ import {
   PanelFoot,
   PanelHead,
   Segmented,
+  SEVERITY_RAIL,
   SeverityBadge,
   StatusBadge,
   useStoredState,
   type Column,
-  type RailTone,
 } from '../../ui';
 
 interface ReportsViewProps {
@@ -84,14 +84,6 @@ const SCOPE_LABEL: Record<Scope, string> = {
 };
 
 const TIMEFRAME_HOURS: Record<Timeframe, number> = { '24H': 24, '7D': 24 * 7, '30D': 24 * 30 };
-
-/** Severity as a row rail, so the table is scannable without reading the badges. */
-const SEVERITY_RAIL: Record<Severity, RailTone> = {
-  CRITICAL: 'critical',
-  HIGH: 'high',
-  MEDIUM: 'medium',
-  LOW: 'low',
-};
 
 /** One label/value pair in the document. Null renders and exports as unreported. */
 interface ReportRow {
@@ -616,7 +608,7 @@ export function ReportsView({ incidents, weather, trafficSummary, landmarks = []
                 rowKey={(incident) => incident.id}
                 label="Incident records attached to this report"
                 defaultSort={{ key: 'priority', dir: 'asc' }}
-                rowAccent={(incident) => SEVERITY_RAIL[incident.priority] ?? null}
+                rowAccent={(incident) => SEVERITY_RAIL[incident.priority]}
               />
             )}
           </Panel>
