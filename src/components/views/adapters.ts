@@ -5,7 +5,7 @@
  * cannot render an asset without saying where the asset came from. Most modules
  * satisfy that by reading the store, but two do not yet — `src/store/ingest/`
  * has no feed for the facility register or for drone telemetry, so
- * `InfrastructureView` and `DroneFeedView` receive plain `LandmarkNode[]` and
+ * `InfrastructureView` and `DronesView` receive plain `LandmarkNode[]` and
  * `DroneUnit[]` from `App`.
  *
  * Rather than let each of those pages invent its own mapping (the brief forbids

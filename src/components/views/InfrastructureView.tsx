@@ -60,7 +60,6 @@ import {
   OperationalBadge,
   Page,
   PageBody,
-  PageHeader,
   PageSection,
   Panel,
   Provenance,
@@ -70,6 +69,7 @@ import {
   useStoredState,
   type Column,
 } from '../../ui';
+import { ModuleHeader } from '../../shell/navigation';
 import { FACILITY_REGISTER_SOURCE, landmarkEnvelope } from './adapters';
 
 interface InfrastructureViewProps {
@@ -209,8 +209,8 @@ export function InfrastructureView({ landmarks, onSelectLandmark, onJumpToMap }:
 
   return (
     <Page>
-      <PageHeader
-        title="Infrastructure"
+      <ModuleHeader
+        item="Infrastructure"
         subtitle="Register of critical city facilities: health, emergency services, transport, utilities and government estate."
         meta={
           <>

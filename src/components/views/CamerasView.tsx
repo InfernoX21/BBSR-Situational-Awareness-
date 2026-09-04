@@ -222,14 +222,14 @@ const PureSadakshAiCanvas: React.FC<{
   );
 };
 
-interface TrafficCamerasViewProps {
+interface CamerasViewProps {
   incidents?: Incident[];
   landmarks?: LandmarkNode[];
   onSelectCameraOnMap?: (cam: TrafficCameraFeed) => void;
   onJumpToMap?: () => void;
 }
 
-export const TrafficCamerasView: React.FC<TrafficCamerasViewProps> = ({
+export const CamerasView: React.FC<CamerasViewProps> = ({
   incidents = [],
   landmarks = [],
   onSelectCameraOnMap,

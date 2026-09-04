@@ -61,7 +61,6 @@ import {
   MetricGrid,
   Page,
   PageBody,
-  PageHeader,
   PageSection,
   Panel,
   PanelBody,
@@ -75,11 +74,12 @@ import {
   UnavailableState,
   type ChartSeries,
 } from '../../ui';
+import { ModuleHeader } from '../../shell/navigation';
 import { useEntitiesOfKind, useFeed, useFilteredEvents } from '../../store/useArka';
 import { EMPTY_EVENT_FILTER } from '../../store/events';
 import { WEATHER_FEED_ID } from '../../store/ingest/weather';
 
-interface WeatherDisasterViewProps {
+interface EnvironmentViewProps {
   weather: WeatherData;
   onJumpToMap?: () => void;
 }
@@ -151,7 +151,7 @@ function useObservationTrend(observedAt: string | null, weather: WeatherData | n
   return points;
 }
 
-export function WeatherDisasterView({ weather, onJumpToMap }: WeatherDisasterViewProps) {
+export function EnvironmentView({ weather, onJumpToMap }: EnvironmentViewProps) {
   // The store's record is the authority on provenance; the prop is the same
   // payload delivered by `App`'s own poll and is used only as a fallback so the
   // page has something to render before the first feed tick lands.
@@ -174,9 +174,9 @@ export function WeatherDisasterView({ weather, onJumpToMap }: WeatherDisasterVie
 
   return (
     <Page>
-      <PageHeader
-        title="Weather and disaster risk"
-        subtitle="City-centre weather observation and ARKA's derived flood-risk indicator."
+      <ModuleHeader
+        item="Environment"
+        subtitle="City-centre weather observation, ARKA's derived flood-risk indicator and the disaster posture."
         meta={
           <>
             <Provenance

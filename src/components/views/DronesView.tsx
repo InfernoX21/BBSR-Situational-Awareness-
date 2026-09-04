@@ -43,7 +43,6 @@ import {
   OperationalBadge,
   Page,
   PageBody,
-  PageHeader,
   PageSection,
   Panel,
   PanelBody,
@@ -54,9 +53,10 @@ import {
   useStoredState,
   type Column,
 } from '../../ui';
+import { ModuleHeader } from '../../shell/navigation';
 import { DRONE_FIXTURE_SOURCE, droneEnvelope } from './adapters';
 
-interface DroneFeedViewProps {
+interface DronesViewProps {
   drones?: DroneUnit[];
   incidents?: Incident[];
   landmarks?: LandmarkNode[];
@@ -80,7 +80,7 @@ function batteryTone(battery: number): 'critical' | 'medium' | 'low' {
   return 'low';
 }
 
-export function DroneFeedView({ drones = [], onSelectDrone, onJumpToMap }: DroneFeedViewProps) {
+export function DronesView({ drones = [], onSelectDrone, onJumpToMap }: DronesViewProps) {
   const [mode, setMode] = useStoredState<ViewMode>('drones.view', 'CARDS');
   const [statuses, setStatuses] = useStoredState<DroneUnit['status'][]>('drones.status', []);
 
@@ -181,8 +181,8 @@ export function DroneFeedView({ drones = [], onSelectDrone, onJumpToMap }: Drone
 
   return (
     <Page>
-      <PageHeader
-        title="Drone feed"
+      <ModuleHeader
+        item="Drones"
         subtitle="Aerial reconnaissance fleet: ground-control telemetry, tasking and video links."
         meta={
           <>

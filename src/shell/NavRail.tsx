@@ -1,38 +1,46 @@
 /**
  * The primary navigation rail.
  *
- * Replaces the previous sidebar, which mixed two unrelated jobs — routing and
- * agency telemetry — into one scrolling column, so the fifteen modules competed
- * for attention with a list of agency badges. Agency status is operational data
- * and now lives where operational data lives: in a panel, on the dashboard.
+ * Six sections in the operator's own order — what the city is doing, what we
+ * know, the systems that run it, the assets we operate, the record, and who may
+ * touch it. The rail lists operational domains, not features: there is no
+ * "Traffic Cameras" row because the camera network is an asset, and it sits with
+ * the drones and the sensors under Assets.
  *
- * Three things the rail does that the old sidebar did not:
+ * Four things the rail does:
  *
  * 1. **Collapses to icons.** On the map — the primary interface — 232px of
  *    labels is 232px of city the operator cannot see. The state persists, so an
- *    operator who works collapsed stays collapsed across reloads.
+ *    operator who works collapsed stays collapsed across reloads. Collapsed, the
+ *    tooltip carries the label and the hint, because the label is gone.
  *
- * 2. **Carries counts.** A module with unresolved work says so on the rail.
- *    The count is the real number from the store, and absent rather than zero
- *    when the platform has not established one.
+ * 2. **Carries counts.** A domain with unresolved work says so. The count is the
+ *    real number from the store, and absent rather than zero when the platform
+ *    has not established one.
  *
- * 3. **Marks the active module by position as well as colour** — a 2px bar at
- *    the rail edge, via `.ark-nav-item.is-active::before`. A wall display with
+ * 3. **Marks the active destination by position as well as colour** — a 2px bar
+ *    at the rail edge, via `.ark-nav-item.is-active::before`. A wall display with
  *    washed-out gamma still shows it.
+ *
+ * 4. **Takes one Tab stop, then arrow keys.** Twenty-two destinations behind
+ *    twenty-two Tab presses is not navigation, it is an obstacle. The rail
+ *    implements the standard roving-tabindex pattern: Tab enters at the active
+ *    row, Up/Down move between rows across section boundaries, Home/End jump to
+ *    the ends, and Enter or Space activates.
  */
 
-import { memo, type ReactNode } from 'react';
+import { memo, useCallback, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { ChevronsLeft, ChevronsRight } from 'lucide-react';
 import type { NavItem } from '../types';
-import { NAV_GROUPS } from '../components/navConfig';
+import { NAV_GROUPS, NAV_ITEMS } from '../components/navConfig';
 import { cx, IconButton, useStoredState } from '../ui';
 
 /**
- * Unresolved-work counts per module.
+ * Unresolved-work counts per destination.
  *
- * Deliberately `number | null | undefined`: null means "this module tracks a
- * count and it is genuinely zero", undefined means "no count applies here".
- * Zero renders nothing — a badge reading 0 is noise on fifteen rows.
+ * Deliberately `number | null | undefined`: null means "this destination tracks
+ * a count and it is genuinely zero", undefined means "no count applies here".
+ * Zero renders nothing — a badge reading 0 is noise on twenty-two rows.
  */
 export type NavCounts = Partial<Record<NavItem, number | null>>;
 
@@ -44,8 +52,44 @@ export interface NavRailProps {
   footer?: ReactNode;
 }
 
+/** Flat order for arrow-key traversal, which ignores section boundaries. */
+const ORDER: NavItem[] = NAV_ITEMS.map((item) => item.label);
+
 export const NavRail = memo(function NavRail({ active, onNavigate, counts = {}, footer }: NavRailProps) {
   const [collapsed, setCollapsed] = useStoredState<boolean>('shell.rail.collapsed', false);
+  const buttons = useRef(new Map<NavItem, HTMLButtonElement>());
+
+  const focusAt = useCallback((index: number) => {
+    const label = ORDER[Math.max(0, Math.min(ORDER.length - 1, index))];
+    buttons.current.get(label)?.focus();
+  }, []);
+
+  const onKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLButtonElement>, label: NavItem) => {
+      const index = ORDER.indexOf(label);
+      switch (event.key) {
+        case 'ArrowDown':
+          event.preventDefault();
+          focusAt(index + 1);
+          break;
+        case 'ArrowUp':
+          event.preventDefault();
+          focusAt(index - 1);
+          break;
+        case 'Home':
+          event.preventDefault();
+          focusAt(0);
+          break;
+        case 'End':
+          event.preventDefault();
+          focusAt(ORDER.length - 1);
+          break;
+        default:
+          break;
+      }
+    },
+    [focusAt],
+  );
 
   return (
     <nav
@@ -73,7 +117,14 @@ export const NavRail = memo(function NavRail({ active, onNavigate, counts = {}, 
                   <li key={item.label}>
                     <button
                       type="button"
+                      ref={(node) => {
+                        if (node) buttons.current.set(item.label, node);
+                        else buttons.current.delete(item.label);
+                      }}
                       onClick={() => onNavigate(item.label)}
+                      onKeyDown={(event) => onKeyDown(event, item.label)}
+                      // Roving tabindex: one stop for the whole rail.
+                      tabIndex={isActive ? 0 : -1}
                       title={collapsed ? `${item.label} — ${item.hint}` : item.hint}
                       aria-current={isActive ? 'page' : undefined}
                       className={cx('ark-nav-item', isActive && 'is-active', collapsed && 'justify-center px-0')}
@@ -93,7 +144,7 @@ export const NavRail = memo(function NavRail({ active, onNavigate, counts = {}, 
                               ? 'absolute top-0.5 right-0.5 text-accent'
                               : 'px-1 py-px rounded-[2px] bg-sunken-strong text-ink-muted',
                           )}
-                          aria-label={`${count} unresolved`}
+                          aria-label={`${count} open`}
                         >
                           {count > 99 ? '99+' : count}
                         </span>

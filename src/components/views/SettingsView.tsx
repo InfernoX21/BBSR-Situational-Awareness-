@@ -140,7 +140,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <Settings className="w-5 h-5 animate-spin" />
         <div>
           <h1 className="text-lg font-bold uppercase tracking-wider text-white">
-            ARKA OS System Settings & Mobile Command Controls
+            Settings — Console &amp; Integration Configuration
           </h1>
           <p className="text-white/40 text-[11px] mt-0.5">
             Telegram Bot (@Arkacmd_bot) Mobile Companion, AI Model Thresholds & Event Bus Telemetry
