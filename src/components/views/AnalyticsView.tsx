@@ -51,7 +51,6 @@ import {
   OperationalBadge,
   Page,
   PageBody,
-  PageHeader,
   PageSection,
   Panel,
   PanelBody,
@@ -66,6 +65,7 @@ import {
   type Column,
   type RailTone,
 } from '../../ui';
+import { ModuleHeader } from '../../shell/navigation';
 
 interface AnalyticsViewProps {
   incidents: Incident[];
@@ -325,8 +325,8 @@ export function AnalyticsView({ incidents, trafficCorridors, weather }: Analytic
 
   return (
     <Page>
-      <PageHeader
-        title="Analytics"
+      <ModuleHeader
+        item="Analytics"
         subtitle="Distributions across the incident and corridor records ARKA currently holds."
         meta={
           <>

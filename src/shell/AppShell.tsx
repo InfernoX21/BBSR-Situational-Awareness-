@@ -1,7 +1,7 @@
 /**
  * The application shell.
  *
- * Everything that is true on all fifteen modules lives here — the command bar,
+ * Everything that is true on every destination lives here — the command bar,
  * the navigation rail, the palette, notifications, the source-health panel and
  * the global keyboard map — so a module renders only its own content and cannot
  * grow its own private copy of the chrome. That was the previous interface's
@@ -124,10 +124,16 @@ export const AppShell = memo(function AppShell({
       items: NAV_GROUPS.flatMap((group) =>
         group.items.map<CommandItem>((item) => ({
           id: `nav:${item.label}`,
-          label: item.label,
+          // The section is part of the destination's name in the palette, so
+          // "Cameras" is unambiguous next to a dozen other single-word rows.
+          label: group.prefix == null ? item.label : `${group.title} → ${item.label}`,
           hint: item.hint,
           icon: <item.icon size={13} aria-hidden />,
-          keywords: [group.title],
+          // `aliases` carries the pre-migration vocabulary. An operator typing
+          // "traffic cameras" out of habit lands on Assets → Cameras rather
+          // than on nothing, which is the difference between a rename and an
+          // apparent removal.
+          keywords: [group.title, item.route, ...(item.aliases ?? [])],
           disabled: item.label === active,
           run: () => navigate(item.label),
         })),
@@ -245,8 +251,8 @@ export const AppShell = memo(function AppShell({
         open={paletteOpen}
         onClose={closePalette}
         groups={groups}
-        placeholder="Search modules, sources and actions"
-        emptyHint="No command matches. Try a module name, or a source such as “weather”."
+        placeholder="Search destinations, sources and actions"
+        emptyHint="No command matches. Try a domain such as “mobility”, or a source such as “weather”."
       />
 
       <SourceHealthDrawer

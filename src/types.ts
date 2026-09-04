@@ -50,22 +50,47 @@ export interface FlightNode {
   provenance: DataProvenance;
 }
 
+/**
+ * The platform's destinations, named by operational domain.
+ *
+ * These are the labels an operator sees, and they double as the router's keys —
+ * `src/components/navConfig.ts` maps each one to a URL path. The grouping into
+ * Command Center / Intelligence / City Systems / Assets / Insights /
+ * Administration lives there too; this union is only the flat set.
+ *
+ * The names describe what an operator is looking at, not which feature shipped
+ * it: a junction camera is an asset of the city, so it lives under Cameras, and
+ * corridor speeds are part of how the city moves, so they live under Mobility.
+ */
 export type NavItem =
-  | 'Dashboard'
-  | 'AI Operations'
-  | 'Live Map'
-  | 'Intelligence Feed'
-  | 'Incident Center'
-  | 'Traffic Management'
-  | 'Traffic Cameras'
-  | 'Weather & Disaster'
+  // Command Center
+  | 'Command Center'
+  | 'Live City'
+  | 'Active Situations'
+  // Intelligence
+  | 'Intelligence'
+  | 'AI Analysis'
+  | 'Event Correlation'
+  // City systems
+  | 'Mobility'
+  | 'Environment'
   | 'Infrastructure'
   | 'Utilities'
-  | 'Resource Tracker'
-  | 'Drone Feed'
+  // Assets
+  | 'Resources'
+  | 'Cameras'
+  | 'Drones'
+  | 'Sensors'
+  | 'Vehicles'
+  | 'Aviation'
+  // Insights
   | 'Analytics'
   | 'Reports'
-  | 'Settings';
+  | 'History'
+  // Administration
+  | 'Settings'
+  | 'Users & Access'
+  | 'Audit Logs';
 
 export interface TrafficCameraFeed {
   id: string;

@@ -51,7 +51,6 @@ import {
   OperationalBadge,
   Page,
   PageBody,
-  PageHeader,
   PageSection,
   Panel,
   PanelBody,
@@ -64,6 +63,7 @@ import {
   useStoredState,
   type Column,
 } from '../../ui';
+import { ModuleHeader } from '../../shell/navigation';
 
 interface ReportsViewProps {
   incidents: Incident[];
@@ -433,8 +433,8 @@ export function ReportsView({ incidents, weather, trafficSummary, landmarks = []
 
   return (
     <Page>
-      <PageHeader
-        title="Reports"
+      <ModuleHeader
+        item="Reports"
         subtitle="Composed operational briefings and record exports for the city command log."
         meta={
           <>

@@ -14,7 +14,7 @@ import {
   Fuel,
 } from 'lucide-react';
 
-interface ResourceTrackerViewProps {
+interface ResourcesViewProps {
   resources: ResourceUnit[];
   incidents: Incident[];
   onDispatchUnit?: (unitId: string, incidentId: string) => void;
@@ -26,7 +26,7 @@ interface UnitState {
   incidentId: string;
 }
 
-export const ResourceTrackerView: React.FC<ResourceTrackerViewProps> = ({
+export const ResourcesView: React.FC<ResourcesViewProps> = ({
   resources,
   incidents,
   onDispatchUnit,
@@ -94,7 +94,7 @@ export const ResourceTrackerView: React.FC<ResourceTrackerViewProps> = ({
           <div className="flex items-center space-x-2 text-[#06B6D4]">
             <Radio className="w-5 h-5 animate-pulse" />
             <h1 className="text-lg font-bold uppercase tracking-wider text-white">
-              Tactical Resource Tracker & Fleet Dispatch
+              Resources — Response Fleet &amp; Field Teams
             </h1>
             <span className="text-[10px] font-mono font-bold bg-amber-950/40 text-amber-400 border border-amber-800/40 px-2 py-0.5 rounded">
               NOT CONNECTED

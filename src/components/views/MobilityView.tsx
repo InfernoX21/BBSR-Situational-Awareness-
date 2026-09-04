@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
-interface TrafficManagementViewProps {
+interface MobilityViewProps {
   corridors: TrafficCorridor[];
   sensors: TrafficSensor[];
   summary?: TrafficSummary;
@@ -24,7 +24,7 @@ interface TrafficManagementViewProps {
   onJumpToMap?: () => void;
 }
 
-export const TrafficManagementView: React.FC<TrafficManagementViewProps> = ({
+export const MobilityView: React.FC<MobilityViewProps> = ({
   corridors,
   sensors,
   summary,
@@ -65,7 +65,7 @@ export const TrafficManagementView: React.FC<TrafficManagementViewProps> = ({
           <div className="flex items-center space-x-2 text-[#06B6D4]">
             <Car className="w-5 h-5 animate-pulse" />
             <h1 className="text-lg font-bold uppercase tracking-wider text-white">
-              Traffic Operations & Corridor Telemetry
+              Mobility — Corridors, Traffic &amp; Transport
             </h1>
           </div>
           <p className="text-white/40 text-[11px] mt-0.5">

@@ -108,7 +108,7 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
   trafficCorridors = [],
   trafficSensors = [],
   trafficSummary,
-  activeTab = 'Dashboard',
+  activeTab = 'Command Center',
   onSelectIncident,
   selectedIncident,
   onSelectLandmark,
@@ -149,7 +149,10 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
   const routeRendererRef = useRef<LeafletRouteRenderer | null>(null);
   const [routePanelOpen, setRoutePanelOpen] = useState(false);
 
-  const trafficVisible = layersState.traffic || activeTab === 'Traffic Management';
+  // Mobility forces the corridor layer on: arriving at the mobility module with
+  // the traffic layer switched off would show an empty map on the one page whose
+  // whole subject is how the city is moving.
+  const trafficVisible = layersState.traffic || activeTab === 'Mobility';
 
   /**
    * Corridors with real road geometry resolved onto the published road network.
@@ -635,7 +638,7 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
     // ----------------------------------------------------------------------
     // LAYER 1 — TRAFFIC (Polylines, IoT Speed Sensors, Flow Vectors)
     // ----------------------------------------------------------------------
-    if (layersState.traffic || activeTab === 'Traffic Management') {
+    if (trafficVisible) {
       resolvedCorridors.forEach((corridor) => {
         // A corridor is drawn only once the routing engine has joined its surveyed
         // junction anchors along published road segments. Until then there is no
@@ -1193,7 +1196,19 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
     // `corridorGeometryKey` rather than the corridor array: this redraws when a
     // corridor gains real road geometry, not on every five-second traffic poll.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [incidents, landmarks, drones, layersState, selectedIncident, selectedCorridor, corridorGeometryKey]);
+    // `trafficVisible` was missing here, so arriving on the mobility module never
+    // redrew the corridors it forces on — the layer only appeared after some other
+    // dependency happened to change.
+  }, [
+    incidents,
+    landmarks,
+    drones,
+    layersState,
+    selectedIncident,
+    selectedCorridor,
+    corridorGeometryKey,
+    trafficVisible,
+  ]);
 
   // Handle Search Location in Bhubaneswar
   const handleSearch = (e: React.FormEvent) => {

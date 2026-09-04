@@ -32,6 +32,8 @@ import {
 } from './data/bhubaneswarData';
 import { AppShell, ShellTicker } from './shell/AppShell';
 import type { NavCounts } from './shell/NavRail';
+import { useRoute } from './shell/useRoute';
+import { NavigationProvider } from './shell/navigation';
 import { Button, NotificationProvider } from './ui';
 import { MobileAIBottomSheet } from './components/ai/MobileAIBottomSheet';
 import { offlineManager } from './services/offline/OfflineManager';
@@ -44,19 +46,23 @@ import { NewsArticleModal } from './components/NewsArticleModal';
 import { DroneFeedModal } from './components/DroneFeedModal';
 import { LogsModal } from './components/LogsModal';
 
-import { IntelligenceFeedView } from './components/views/IntelligenceFeedView';
-import { IncidentCenterView } from './components/views/IncidentCenterView';
-import { TrafficManagementView } from './components/views/TrafficManagementView';
-import { WeatherDisasterView } from './components/views/WeatherDisasterView';
+import { IntelligenceView } from './components/views/IntelligenceView';
+import { ActiveSituationsView } from './components/views/ActiveSituationsView';
+import { MobilityView } from './components/views/MobilityView';
+import { EnvironmentView } from './components/views/EnvironmentView';
 import { InfrastructureView } from './components/views/InfrastructureView';
 import { UtilitiesView } from './components/views/UtilitiesView';
-import { ResourceTrackerView } from './components/views/ResourceTrackerView';
-import { DroneFeedView } from './components/views/DroneFeedView';
+import { ResourcesView } from './components/views/ResourcesView';
+import { DronesView } from './components/views/DronesView';
 import { AnalyticsView } from './components/views/AnalyticsView';
 import { ReportsView } from './components/views/ReportsView';
 import { SettingsView } from './components/views/SettingsView';
-import { AIOperationsView } from './components/views/AIOperationsView';
-import { TrafficCamerasView } from './components/views/TrafficCamerasView';
+import { AIAnalysisView } from './components/views/AIAnalysisView';
+import { CamerasView } from './components/views/CamerasView';
+import { SensorsView } from './components/views/SensorsView';
+import { AviationView } from './components/views/AviationView';
+import { CorrelationView } from './components/views/CorrelationView';
+import { NotConfiguredView } from './components/views/NotConfiguredView';
 
 /** Log severity mapped onto the ticker's tones. */
 const LOG_TONE: Record<LiveLog['type'], 'critical' | 'warning' | 'success' | 'neutral'> = {
@@ -76,15 +82,26 @@ const LOG_TONE: Record<LiveLog['type'], 'critical' | 'warning' | 'success' | 'ne
  * set shrinks as views migrate, and this constant disappears with the last one.
  */
 const PAGE_OWNS_SCROLL = new Set<NavItem>([
-  'Drone Feed',
+  'Drones',
   'Infrastructure',
   'Reports',
-  'Weather & Disaster',
+  'Environment',
   'Analytics',
+  'Sensors',
+  'Aviation',
+  'Event Correlation',
+  'Vehicles',
+  'History',
+  'Users & Access',
+  'Audit Logs',
 ]);
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<NavItem>('Dashboard');
+  // The URL is the source of truth for which destination is open, so every
+  // destination is bookmarkable and Back works. `server.ts` already serves
+  // index.html for every non-/api path, which is what makes this safe on a hard
+  // refresh without a router dependency.
+  const { active: activeTab, navigate: setActiveTab } = useRoute();
   const [isOffline, setIsOffline] = useState<boolean>(!navigator.onLine);
 
   useEffect(() => {
@@ -355,15 +372,20 @@ export default function App() {
   };
 
   /**
-   * Unresolved work per module, for the rail.
+   * Unresolved work per destination, for the rail and the module tab strips.
    *
-   * Only counts ARKA can actually establish. There is deliberately no badge on
-   * Intelligence Feed or Drone Feed: a headline count is not a task list, and a
-   * number there would read as work waiting on the operator.
+   * Only counts ARKA can actually establish, which is why there is exactly one.
+   * It is derived from the incident list rather than written down — the previous
+   * interface's hardcoded "5" is now whatever is genuinely unresolved, and goes to
+   * zero on a quiet day.
+   *
+   * There is deliberately no badge on Intelligence or Drones: a headline count is
+   * not a task list, and a number there would read as work waiting on the
+   * operator.
    */
   const navCounts = useMemo<NavCounts>(
     () => ({
-      'Incident Center': incidents.filter((i) => i.status !== 'RESOLVED').length,
+      'Active Situations': incidents.filter((i) => i.status !== 'RESOLVED').length,
     }),
     [incidents],
   );
@@ -378,10 +400,14 @@ export default function App() {
     [logs],
   );
 
-  const isMapModule = activeTab === 'Dashboard' || activeTab === 'Live Map';
+  // The two destinations whose primary surface is the map canvas itself. Command
+  // Center adds the intelligence column beside it; Live City gives the canvas the
+  // whole viewport.
+  const isMapModule = activeTab === 'Command Center' || activeTab === 'Live City';
 
   return (
     <NotificationProvider>
+      <NavigationProvider active={activeTab} navigate={setActiveTab} counts={navCounts}>
       <AppShell
         active={activeTab}
         onNavigate={setActiveTab}
@@ -464,7 +490,7 @@ export default function App() {
             </div>
 
             {/* RIGHT INTELLIGENCE CENTER */}
-            {activeTab === 'Dashboard' && (
+            {activeTab === 'Command Center' && (
               <RightIntelligenceCenter
                 incidents={incidents}
                 intelligenceItems={intelligenceItems}
@@ -474,7 +500,7 @@ export default function App() {
                   addLog(`Selected incident #${inc.id} from Intelligence Center.`, 'INFO');
                 }}
                 onOpenArticle={(item) => setSelectedArticle(item)}
-                onViewAllAlerts={() => setActiveTab('Incident Center')}
+                onViewAllAlerts={() => setActiveTab('Active Situations')}
               />
             )}
           </div>
@@ -486,8 +512,8 @@ export default function App() {
                 : 'flex-1 min-w-0 min-h-0 overflow-y-auto ark-scroll'
             }
           >
-            {activeTab === 'AI Operations' ? (
-              <AIOperationsView
+            {activeTab === 'AI Analysis' ? (
+              <AIAnalysisView
                 incidents={incidents}
                 landmarks={landmarks}
                 drones={drones}
@@ -528,35 +554,37 @@ export default function App() {
                   }
                   addLog(`OpenClaw Autonomous Operations executed multi-agent task workflow.`, 'SUCCESS');
                 }}
-                onJumpToMap={() => setActiveTab('Live Map')}
+                onJumpToMap={() => setActiveTab('Live City')}
               />
-            ) : activeTab === 'Intelligence Feed' ? (
-              <IntelligenceFeedView
+            ) : activeTab === 'Intelligence' ? (
+              <IntelligenceView
                 intelligenceItems={intelligenceItems}
                 onSelectArticle={(item) => setSelectedArticle(item)}
                 onFuseIntelligence={handleFuseIntelligence}
                 isFusing={isFusing}
               />
-            ) : activeTab === 'Incident Center' ? (
-              <IncidentCenterView
+            ) : activeTab === 'Event Correlation' ? (
+              <CorrelationView />
+            ) : activeTab === 'Active Situations' ? (
+              <ActiveSituationsView
                 incidents={incidents}
                 onSelectIncident={(inc) => setSelectedIncident(inc)}
                 onUpdateStatus={handleUpdateIncidentStatus}
                 onJumpToMap={(inc) => {
                   setSelectedIncident(inc);
-                  setActiveTab('Live Map');
+                  setActiveTab('Live City');
                 }}
               />
-            ) : activeTab === 'Traffic Management' ? (
-              <TrafficManagementView
+            ) : activeTab === 'Mobility' ? (
+              <MobilityView
                 corridors={trafficCorridors}
                 sensors={trafficSensors}
                 summary={trafficSummary}
                 onSelectCorridor={(corridor) => setSelectedCorridor(corridor)}
-                onJumpToMap={() => setActiveTab('Live Map')}
+                onJumpToMap={() => setActiveTab('Live City')}
               />
-            ) : activeTab === 'Traffic Cameras' ? (
-              <TrafficCamerasView
+            ) : activeTab === 'Cameras' ? (
+              <CamerasView
                 incidents={incidents}
                 landmarks={landmarks}
                 onSelectCameraOnMap={(cam) => {
@@ -571,10 +599,10 @@ export default function App() {
                   });
                   addLog(`CCTV Feed Selected: ${cam.name} (${cam.junction}).`, 'INFO');
                 }}
-                onJumpToMap={() => setActiveTab('Live Map')}
+                onJumpToMap={() => setActiveTab('Live City')}
               />
-            ) : activeTab === 'Weather & Disaster' ? (
-              <WeatherDisasterView weather={weather} onJumpToMap={() => setActiveTab('Live Map')} />
+            ) : activeTab === 'Environment' ? (
+              <EnvironmentView weather={weather} onJumpToMap={() => setActiveTab('Live City')} />
             ) : activeTab === 'Infrastructure' ? (
               <InfrastructureView
                 landmarks={landmarks}
@@ -582,23 +610,34 @@ export default function App() {
                   setSelectedLandmark(lm);
                   addLog(`Inspecting Landmark: ${lm.name}`, 'INFO');
                 }}
-                onJumpToMap={() => setActiveTab('Live Map')}
+                onJumpToMap={() => setActiveTab('Live City')}
               />
             ) : activeTab === 'Utilities' ? (
-              <UtilitiesView onJumpToMap={() => setActiveTab('Live Map')} />
-            ) : activeTab === 'Resource Tracker' ? (
-              <ResourceTrackerView
+              <UtilitiesView onJumpToMap={() => setActiveTab('Live City')} />
+            ) : activeTab === 'Resources' ? (
+              <ResourcesView
                 resources={resources}
                 incidents={incidents}
                 onDispatchUnit={(uId, iId) => addLog(`Dispatched Unit ${uId} to Incident ${iId}`, 'SUCCESS')}
-                onJumpToMap={() => setActiveTab('Live Map')}
+                onJumpToMap={() => setActiveTab('Live City')}
               />
-            ) : activeTab === 'Drone Feed' ? (
-              <DroneFeedView
+            ) : activeTab === 'Drones' ? (
+              <DronesView
                 drones={drones}
                 onSelectDrone={(d) => setSelectedDrone(d)}
-                onJumpToMap={() => setActiveTab('Live Map')}
+                onJumpToMap={() => setActiveTab('Live City')}
               />
+            ) : activeTab === 'Sensors' ? (
+              <SensorsView onJumpToMap={() => setActiveTab('Live City')} />
+            ) : activeTab === 'Vehicles' ? (
+              <NotConfiguredView
+                item="Vehicles"
+                subtitle="Response fleet and public-transport vehicle telemetry."
+                source="Fleet and transit AVL telemetry"
+                reason="ARKA receives no vehicle position feed. Field units appear under Assets → Resources from the duty roster, which records where a unit is assigned rather than where its vehicle currently is. Connect an AVL/GPS gateway for the response fleet, and a GTFS-Realtime vehicle-position feed for city buses, before this module can show a fleet."
+              />
+            ) : activeTab === 'Aviation' ? (
+              <AviationView />
             ) : activeTab === 'Analytics' ? (
               <AnalyticsView incidents={incidents} trafficCorridors={trafficCorridors} weather={weather} />
             ) : activeTab === 'Reports' ? (
@@ -608,8 +647,29 @@ export default function App() {
                 trafficSummary={trafficSummary}
                 landmarks={landmarks}
               />
+            ) : activeTab === 'History' ? (
+              <NotConfiguredView
+                item="History"
+                subtitle="Historical incidents, events and system records."
+                source="Operational record store"
+                reason="Nothing in this deployment persists operational data. Incidents, the event stream and every reading live in memory for the length of a session and are discarded on reload, so there is no history to query — the counts on Insights → Analytics describe the current session only. Connect a database for the incident register and the event stream before this module can answer a question about last week."
+              />
             ) : activeTab === 'Settings' ? (
               <SettingsView layersState={layersState} setLayersState={setLayersState} />
+            ) : activeTab === 'Users & Access' ? (
+              <NotConfiguredView
+                item="Users & Access"
+                subtitle="Roles, permissions and access management."
+                source="Identity provider"
+                reason="ARKA has no authentication in this deployment: there is no sign-in, no session and no notion of who is operating the console, so there are no users to manage and no roles to assign. Every control on every page is available to whoever opens the browser. Connect an identity provider — the state government SSO, or any OIDC issuer — before this module can show an access model."
+              />
+            ) : activeTab === 'Audit Logs' ? (
+              <NotConfiguredView
+                item="Audit Logs"
+                subtitle="System and user activity, and sensitive-data access records."
+                source="Audit trail store"
+                reason="An audit log has to be durable and has to attribute each entry to an identified operator. This deployment has neither: no identity provider names the actor, and nothing is written to disk. The session's event stream — visible on the ticker and in the event log — is the closest thing available, and it is in-memory and unattributed, so it is not an audit record. Connect an identity provider and an append-only log store before this module can stand up to scrutiny."
+              />
             ) : null}
           </div>
         )}
@@ -635,7 +695,8 @@ export default function App() {
         {showLogsModal && (
           <LogsModal logs={logs} onClose={() => setShowLogsModal(false)} onClearLogs={() => setLogs([])} />
         )}
-      </AppShell>
+        </AppShell>
+      </NavigationProvider>
     </NotificationProvider>
   );
 }

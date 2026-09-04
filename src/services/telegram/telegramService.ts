@@ -184,7 +184,7 @@ ${activeInc
       return this.formatTelegramResponse(reply, [
         [
           { text: '📍 View Map', url: 'https://infernox21.github.io/BBSR-Situational-Awareness-/' },
-          { text: '🚨 Incident Center', url: 'https://infernox21.github.io/BBSR-Situational-Awareness-/' },
+          { text: '🚨 Active Situations', url: 'https://infernox21.github.io/BBSR-Situational-Awareness-/' },
         ],
       ]);
     }
@@ -268,7 +268,7 @@ _Executed via 7 OpenClaw Domain Agents & MCP Tools._
       return this.formatTelegramResponse(reply, [
         [
           { text: '📍 View Map Target', url: 'https://infernox21.github.io/BBSR-Situational-Awareness-/' },
-          { text: '🤖 Open AI Operations', url: 'https://infernox21.github.io/BBSR-Situational-Awareness-/' },
+          { text: '🤖 Open AI Analysis', url: 'https://infernox21.github.io/BBSR-Situational-Awareness-/' },
         ],
       ]);
     } catch (err) {
