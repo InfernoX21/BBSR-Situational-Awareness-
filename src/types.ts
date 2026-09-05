@@ -57,7 +57,236 @@ export type NavItem =
   | 'Drone Feed'
   | 'Analytics'
   | 'Reports'
-  | 'Settings';
+  | 'Settings'
+  | 'Knowledge Graph'
+  | 'Event Engine'
+  | 'Prediction Engine'
+  | 'What-If Simulation'
+  | 'Decision Support'
+  | 'Action Center'
+  | 'Feedback Loop'
+  | 'Case Management'
+  | 'Timeline Replay'
+  | 'Data Fabric'
+  | 'Audit Logs';
+
+export type OperationalRole =
+  | 'TRAFFIC_OPERATOR'
+  | 'EMERGENCY_OPERATOR'
+  | 'CITY_ADMIN'
+  | 'ANALYST';
+
+export type OperationalMapMode =
+  | 'TRAFFIC_OPS'
+  | 'EMERGENCY_OPS'
+  | 'ENVIRONMENTAL_OPS'
+  | 'AVIATION_OPS';
+
+export type CityEntityType =
+  | 'ROAD'
+  | 'INTERSECTION'
+  | 'VEHICLE'
+  | 'EMERGENCY_VEHICLE'
+  | 'PUBLIC_TRANSPORT'
+  | 'INCIDENT'
+  | 'CAMERA'
+  | 'BUILDING'
+  | 'INFRASTRUCTURE'
+  | 'GEO_REGION'
+  | 'EVENT'
+  | 'ALERT'
+  | 'WEATHER_CONDITION'
+  | 'OPERATOR'
+  | 'AGENCY'
+  | 'SENSOR';
+
+export interface CityEntity {
+  id: string;
+  name: string;
+  type: CityEntityType;
+  status: string;
+  lat?: number;
+  lng?: number;
+  address?: string;
+  provenance: DataProvenance;
+  lastUpdate: string;
+  attributes: Record<string, any>;
+  connectedEntityIds: string[];
+  recentEventIds: string[];
+  activeAlertIds: string[];
+}
+
+export interface EntityRelationship {
+  id: string;
+  sourceId: string;
+  targetId: string;
+  relationType: 'TRAVERSES' | 'CONNECTS_TO' | 'AFFECTED_BY' | 'MONITORED_BY' | 'ASSIGNED_TO' | 'LOCATED_IN' | 'PRECEDES';
+  label: string;
+  strength?: number;
+}
+
+export interface CityEvent {
+  id: string;
+  title: string;
+  category: string;
+  severity: Severity;
+  timestamp: string;
+  lat?: number;
+  lng?: number;
+  locationName?: string;
+  source: string;
+  confidence: number;
+  what: string;
+  where: string;
+  when: string;
+  affectedEntityIds: string[];
+  relatedEventIds: string[];
+  evaluationNotes: string;
+  status: 'NEW' | 'EVALUATING' | 'ESCALATED' | 'RESOLVED';
+}
+
+export interface DataFabricSource {
+  id: string;
+  name: string;
+  category: string;
+  status: 'CONNECTED' | 'ACTIVE' | 'DELAYED' | 'OFFLINE' | 'SIMULATED' | 'UNAVAILABLE';
+  lastSync: string;
+  updateFrequencySec: number;
+  itemCount: number;
+  latencyMs: number;
+  provenance: DataProvenance;
+  note?: string;
+}
+
+export type IntelligenceClassification = 'OBSERVED' | 'DETECTED' | 'INFERRED' | 'PREDICTED' | 'SIMULATED';
+
+export interface ExplainableIntelligenceCard {
+  id: string;
+  title: string;
+  classification: IntelligenceClassification;
+  situation: string;
+  evidence: string[];
+  dataSources: string[];
+  confidencePct: number;
+  potentialImpact: string;
+  relatedEntityIds: string[];
+  possibleNextDevelopments: string[];
+  timestamp: string;
+}
+
+export interface PredictionRecord {
+  id: string;
+  target: string;
+  predictionHorizonMinutes: number;
+  confidencePct: number;
+  sourceData: string[];
+  modelStatus: 'ACTIVE' | 'CALIBRATING' | 'UNAVAILABLE';
+  timestamp: string;
+  predictedValue: string;
+  details: string;
+}
+
+export interface SimulationScenario {
+  id: string;
+  title: string;
+  type: 'ROAD_BLOCK' | 'EMERGENCY_PRIORITY' | 'WEATHER_DISRUPTION' | 'INFRASTRUCTURE_FAILURE';
+  description: string;
+  isLive: false; // Always false
+  createdAt: string;
+  parameters: {
+    blockedRoadId?: string;
+    emergencyVehicleId?: string;
+    targetDestination?: string;
+  };
+  results: {
+    affectedRoads: string[];
+    trafficCongestionIncreasePct: number;
+    affectedIntersections: string[];
+    emergencyRouteEtaMin: number;
+    alternateRouteNames: string[];
+    signalAdjustmentRecommendations: string[];
+  };
+}
+
+export interface DecisionOption {
+  id: string;
+  optionLabel: 'A' | 'B' | 'C';
+  title: string;
+  expectedImpact: string;
+  affectedArea: string;
+  confidencePct: number;
+  assumptions: string[];
+  risks: string[];
+  requiredAction: string;
+}
+
+export interface DecisionRecommendation {
+  id: string;
+  incidentId: string;
+  situationSummary: string;
+  options: DecisionOption[];
+  recommendedOptionId: string;
+  recommendationReason: string;
+  timestamp: string;
+  status: 'PENDING_OPERATOR_REVIEW' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+}
+
+export interface ActionItem {
+  id: string;
+  incidentId: string;
+  recommendationId?: string;
+  title: string;
+  actionType: string;
+  status: 'PROPOSED' | 'APPROVED' | 'IN_PROGRESS' | 'COMPLETED' | 'REJECTED' | 'EXPIRED';
+  operator: string;
+  timestamp: string;
+  reason: string;
+  relatedEventId?: string;
+  affectedEntityIds: string[];
+  executionTarget?: string;
+}
+
+export interface FeedbackRecord {
+  id: string;
+  actionId: string;
+  incidentId: string;
+  timestamp: string;
+  metricName: string;
+  expectedOutcome: string;
+  actualOutcome: string;
+  deviationPct: number;
+  outcomeGrade: 'EXCEEDED' | 'MET' | 'DEGRADED' | 'FAILED';
+  lessonsLearned: string;
+}
+
+export interface CityCase {
+  id: string; // e.g. "INCIDENT #ARKA-9021"
+  title: string;
+  category: string;
+  priority: Severity;
+  status: 'OPEN' | 'INVESTIGATING' | 'ACTION_IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+  locationName: string;
+  lat: number;
+  lng: number;
+  timestamp: string;
+  timeline: { time: string; event: string; actor: string }[];
+  relatedEntityIds: string[];
+  evidenceSources: string[];
+  intelligenceCards: ExplainableIntelligenceCard[];
+  recommendations: DecisionRecommendation[];
+  actions: ActionItem[];
+  assignedOperators: string[];
+  postIncidentAnalysis?: string;
+}
+
+export interface AuditLog {
+  id: string;
+  who: string;
+  didWhat: string;
+  when: string;
+  targetEntityId?: string;
+  reason: string;
+}
 
 export interface TrafficCameraFeed {
   id: string;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { WeatherData, Severity, ConnectionHealthInfo, ConnectionHealthMap } from '../types';
 import { liveDataManager } from '../services/LiveDataManager';
+import { operationalStore, useOperationalStore } from '../store/useOperationalStore';
 import {
   Activity,
   ShieldAlert,
@@ -13,6 +14,9 @@ import {
   ChevronDown,
   X,
   MapPin,
+  UserCheck,
+  Search,
+  Play,
 } from 'lucide-react';
 
 interface TopStatusBarProps {
@@ -139,6 +143,42 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
           <MapPin className="w-3 h-3 text-cyan-400 shrink-0" aria-hidden="true" />
           <span className="text-white/50">Jurisdiction:</span>
           <span className="font-semibold text-white">Bhubaneswar (BMC), Odisha</span>
+        </div>
+
+        {/* --- Global Search Trigger --- */}
+        <button
+          onClick={() => operationalStore.setIsSearchOpen(true)}
+          className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-xs font-mono transition cursor-pointer"
+          title="Search everything across Bhubaneswar (Ctrl+K)"
+        >
+          <Search className="w-3.5 h-3.5 text-orange-400" />
+          <span>Search...</span>
+          <span className="text-[10px] px-1 py-0.2 rounded bg-zinc-950 text-zinc-500 font-mono">Ctrl+K</span>
+        </button>
+
+        {/* --- Guided Operational Loop Demo Button --- */}
+        <button
+          onClick={() => operationalStore.setIsGuidedFlowOpen(true)}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-orange-500 hover:bg-orange-600 text-zinc-950 font-bold text-xs font-mono transition shadow"
+          title="Demonstrate end-to-end 14-step operational loop"
+        >
+          <Play className="w-3.5 h-3.5 fill-current" />
+          <span>OPERATIONAL LOOP DEMO</span>
+        </button>
+
+        {/* --- Role Switcher --- */}
+        <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded px-1.5 py-0.5 text-xs font-mono">
+          <UserCheck className="w-3.5 h-3.5 text-orange-400" />
+          <select
+            value={useOperationalStore().role}
+            onChange={(e) => operationalStore.setRole(e.target.value as any)}
+            className="bg-transparent text-zinc-200 focus:outline-none cursor-pointer font-bold"
+          >
+            <option value="TRAFFIC_OPERATOR" className="bg-zinc-950">Traffic Operator</option>
+            <option value="EMERGENCY_OPERATOR" className="bg-zinc-950">Emergency Operator</option>
+            <option value="CITY_ADMIN" className="bg-zinc-950">City Administrator</option>
+            <option value="ANALYST" className="bg-zinc-950">City Analyst</option>
+          </select>
         </div>
 
         <div className="flex-1 min-w-2" />

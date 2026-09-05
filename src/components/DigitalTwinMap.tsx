@@ -21,6 +21,7 @@ import {
   UtilityNode,
   BasemapStyle,
 } from '../types';
+import { operationalStore, useOperationalStore } from '../store/useOperationalStore';
 import { CentralLayerManager } from '../services/LayerManager';
 import { LayerControlToolbar } from './LayerControlToolbar';
 // Base GIS tier: the city's own authoritative geography, rendered into dedicated
@@ -1358,21 +1359,68 @@ export const DigitalTwinMap: React.FC<DigitalTwinMapProps> = ({
           }}
         />
 
-        {/* Floating Search Bar */}
-        <div className="absolute top-3 left-4 z-10 pointer-events-auto">
+        {/* Operational Map Context & Floating Search Bar */}
+        <div className="absolute top-3 left-4 z-10 pointer-events-auto flex items-center gap-2">
           <form
             onSubmit={handleSearch}
-            className="flex items-center gov-glass-interactive rounded-md px-3 py-1.5 w-72 shadow-2xl font-mono text-xs"
+            className="flex items-center gov-glass-interactive rounded-md px-3 py-1.5 w-64 shadow-2xl font-mono text-xs"
           >
             <Search className="w-3.5 h-3.5 text-white/40 mr-2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search Bhubaneswar locations..."
+              placeholder="Search Bhubaneswar..."
               className="bg-transparent text-white placeholder-white/30 focus:outline-none w-full"
             />
           </form>
+
+          {/* Operational Context Mode Switcher Bar */}
+          <div className="flex items-center bg-zinc-950/90 border border-zinc-800 rounded-md p-1 font-mono text-[11px] shadow-2xl gap-1">
+            <button
+              onClick={() => operationalStore.setMapMode('TRAFFIC_OPS')}
+              className={`px-2 py-1 rounded transition ${
+                useOperationalStore().mapMode === 'TRAFFIC_OPS'
+                  ? 'bg-orange-500 text-zinc-950 font-bold'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              TRAFFIC OPS
+            </button>
+
+            <button
+              onClick={() => operationalStore.setMapMode('EMERGENCY_OPS')}
+              className={`px-2 py-1 rounded transition ${
+                useOperationalStore().mapMode === 'EMERGENCY_OPS'
+                  ? 'bg-red-500 text-zinc-950 font-bold'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              EMERGENCY OPS
+            </button>
+
+            <button
+              onClick={() => operationalStore.setMapMode('ENVIRONMENTAL_OPS')}
+              className={`px-2 py-1 rounded transition ${
+                useOperationalStore().mapMode === 'ENVIRONMENTAL_OPS'
+                  ? 'bg-blue-500 text-zinc-950 font-bold'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              ENVIRONMENTAL OPS
+            </button>
+
+            <button
+              onClick={() => operationalStore.setMapMode('AVIATION_OPS')}
+              className={`px-2 py-1 rounded transition ${
+                useOperationalStore().mapMode === 'AVIATION_OPS'
+                  ? 'bg-purple-500 text-zinc-950 font-bold'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              AVIATION OPS
+            </button>
+          </div>
         </div>
 
         {/*

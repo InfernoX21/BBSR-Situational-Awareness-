@@ -45,6 +45,10 @@ import { IncidentDetailModal } from './components/IncidentDetailModal';
 import { NewsArticleModal } from './components/NewsArticleModal';
 import { DroneFeedModal } from './components/DroneFeedModal';
 import { LogsModal } from './components/LogsModal';
+import { EntityIntelligencePanel } from './components/EntityIntelligencePanel';
+import { ProvenanceModal } from './components/ProvenanceModal';
+import { GlobalSearchModal } from './components/GlobalSearchModal';
+import { GuidedOperationalFlowModal } from './components/GuidedOperationalFlowModal';
 
 import { IntelligenceFeedView } from './components/views/IntelligenceFeedView';
 import { IncidentCenterView } from './components/views/IncidentCenterView';
@@ -59,6 +63,20 @@ import { ReportsView } from './components/views/ReportsView';
 import { SettingsView } from './components/views/SettingsView';
 import { AIOperationsView } from './components/views/AIOperationsView';
 import { TrafficCamerasView } from './components/views/TrafficCamerasView';
+
+import { KnowledgeGraphView } from './components/views/KnowledgeGraphView';
+import { SimulationView } from './components/views/SimulationView';
+import { DecisionSupportView } from './components/views/DecisionSupportView';
+import { ActionCenterView } from './components/views/ActionCenterView';
+import { FeedbackLoopView } from './components/views/FeedbackLoopView';
+import { CaseManagementView } from './components/views/CaseManagementView';
+import { TimelineReplayView } from './components/views/TimelineReplayView';
+import { DataFabricView } from './components/views/DataFabricView';
+import { AuditLogsView } from './components/views/AuditLogsView';
+import { EventEngineView } from './components/views/EventEngineView';
+import { PredictionView } from './components/views/PredictionView';
+
+import { operationalStore, useOperationalStore } from './store/useOperationalStore';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<NavItem>('Dashboard');
@@ -668,6 +686,28 @@ export default function App() {
                 layersState={layersState}
                 setLayersState={setLayersState}
               />
+            ) : activeTab === 'Knowledge Graph' ? (
+              <KnowledgeGraphView />
+            ) : activeTab === 'What-If Simulation' ? (
+              <SimulationView />
+            ) : activeTab === 'Decision Support' ? (
+              <DecisionSupportView />
+            ) : activeTab === 'Action Center' ? (
+              <ActionCenterView />
+            ) : activeTab === 'Feedback Loop' ? (
+              <FeedbackLoopView />
+            ) : activeTab === 'Case Management' ? (
+              <CaseManagementView />
+            ) : activeTab === 'Timeline Replay' ? (
+              <TimelineReplayView />
+            ) : activeTab === 'Data Fabric' ? (
+              <DataFabricView />
+            ) : activeTab === 'Audit Logs' ? (
+              <AuditLogsView />
+            ) : activeTab === 'Event Engine' ? (
+              <EventEngineView />
+            ) : activeTab === 'Prediction Engine' ? (
+              <PredictionView />
             ) : null}
           </div>
         )}
@@ -700,6 +740,27 @@ export default function App() {
           onClearLogs={() => setLogs([])}
         />
       )}
+
+      {/* OPERATIONAL OS MODALS */}
+      <EntityIntelligencePanel
+        entity={useOperationalStore().selectedEntity}
+        onClose={() => operationalStore.setSelectedEntity(null)}
+      />
+
+      <ProvenanceModal
+        card={useOperationalStore().provenanceCard}
+        onClose={() => operationalStore.setProvenanceCard(null)}
+      />
+
+      <GlobalSearchModal
+        isOpen={useOperationalStore().isSearchOpen}
+        onClose={() => operationalStore.setIsSearchOpen(false)}
+      />
+
+      <GuidedOperationalFlowModal
+        isOpen={useOperationalStore().isGuidedFlowOpen}
+        onClose={() => operationalStore.setIsGuidedFlowOpen(false)}
+      />
     </div>
   );
 }

@@ -15,6 +15,16 @@ import {
   BarChart3,
   FileText,
   Settings,
+  Network,
+  Cpu,
+  TrendingUp,
+  PlayCircle,
+  CheckSquare,
+  RotateCcw,
+  FolderKanban,
+  History,
+  Database,
+  ShieldCheck,
 } from 'lucide-react';
 import { NavItem } from '../types';
 
@@ -32,50 +42,69 @@ export interface NavGroup {
 }
 
 /**
- * Single source of truth for the primary navigation, shared by the desktop
- * sidebar and the mobile drawer so labels, order and grouping never drift.
- * Every route that existed before the redesign is still present here.
+ * Single source of truth for the primary navigation, organized into the
+ * 6 core operational sections of the City Operating System:
+ * COMMAND, INTELLIGENCE, OPERATIONS, ANALYSIS, DATA, ADMIN.
  */
 export const NAV_GROUPS: NavGroup[] = [
   {
-    title: 'Situational awareness',
+    title: 'COMMAND',
     items: [
-      { label: 'Dashboard', icon: Activity, hint: 'Map, alerts queue and city analytics' },
-      { label: 'Live Map', icon: Map, hint: 'Full-width geospatial workspace' },
-      { label: 'Intelligence Feed', icon: Rss, hint: 'News, advisories and bulletins' },
+      { label: 'Dashboard', icon: Activity, hint: 'Bhubaneswar city overview and critical metrics' },
+      { label: 'Live Map', icon: Map, hint: 'Primary operational map workspace' },
+      { label: 'Incident Center', icon: AlertTriangle, hint: 'Active incident queue and dispatch' },
     ],
   },
   {
-    title: 'Response operations',
+    title: 'INTELLIGENCE',
     items: [
-      { label: 'Incident Center', icon: AlertTriangle, hint: 'Incident queue and response workflow' },
-      { label: 'AI Operations', icon: Bot, hint: 'Assisted analysis and task automation' },
-      { label: 'Resource Tracker', icon: Radio, hint: 'Field units and dispatch status' },
-      { label: 'Drone Feed', icon: Navigation, hint: 'Live UAV reconnaissance stream & aerial telemetry' },
+      { label: 'Intelligence Feed', icon: Rss, hint: 'Live news, advisories and bulletins' },
+      { label: 'Event Engine', icon: Cpu, hint: 'Standardized real-time city event stream' },
+      { label: 'Knowledge Graph', icon: Network, hint: 'Interconnected city entities & relationships' },
+      { label: 'AI Operations', icon: Bot, hint: 'City-aware AI copilot & automated analysis' },
     ],
   },
   {
-    title: 'City systems',
+    title: 'OPERATIONS',
     items: [
-      { label: 'Traffic Management', icon: Car, hint: 'Corridor speeds, signals and diversions' },
-      { label: 'Traffic Cameras', icon: Camera, hint: 'Junction CCTV monitoring' },
-      { label: 'Weather & Disaster', icon: CloudRain, hint: 'Weather, flood risk and shelters' },
-      { label: 'Infrastructure', icon: Building2, hint: 'Civic assets and facilities' },
-      { label: 'Utilities', icon: Zap, hint: 'Power, water, gas, telecom and lighting' },
+      { label: 'Case Management', icon: FolderKanban, hint: 'Incident #ARKA workspaces & case history' },
+      { label: 'Decision Support', icon: Activity, hint: 'AI-assisted option matrix & recommendations' },
+      { label: 'Action Center', icon: CheckSquare, hint: 'Task execution lifecycle & approvals' },
+      { label: 'Resource Tracker', icon: Radio, hint: 'Field emergency units & fleet dispatch' },
+      { label: 'Drone Feed', icon: Navigation, hint: 'Surveillance UAV aerial reconnaissance' },
+      { label: 'Traffic Management', icon: Car, hint: 'Corridors, signals & congestion control' },
+      { label: 'Traffic Cameras', icon: Camera, hint: 'Junction CCTV & computer vision feeds' },
+      { label: 'Weather & Disaster', icon: CloudRain, hint: 'IMD radar, flood risk & shelter ops' },
+      { label: 'Infrastructure', icon: Building2, hint: 'BhubaneswarOne civic assets & facilities' },
+      { label: 'Utilities', icon: Zap, hint: 'Power grid SCADA & drainage pumps' },
     ],
   },
   {
-    title: 'Analysis & records',
+    title: 'ANALYSIS',
     items: [
-      { label: 'Analytics', icon: BarChart3, hint: 'Trends and distribution charts' },
-      { label: 'Reports', icon: FileText, hint: 'Briefings and exports' },
+      { label: 'Prediction Engine', icon: TrendingUp, hint: 'Traffic & emergency delay forecasts' },
+      { label: 'What-If Simulation', icon: PlayCircle, hint: 'Scenario sandbox (road block, priority route)' },
+      { label: 'Timeline Replay', icon: History, hint: 'Chronological event replay & spatial history' },
+      { label: 'Feedback Loop', icon: RotateCcw, hint: 'Expected vs actual post-incident outcome audit' },
+      { label: 'Analytics', icon: BarChart3, hint: 'Long-term trends & performance distribution' },
+      { label: 'Reports', icon: FileText, hint: 'Operational briefings & executive exports' },
     ],
   },
   {
-    title: 'Administration',
-    items: [{ label: 'Settings', icon: Settings, hint: 'Platform and layer preferences' }],
+    title: 'DATA',
+    items: [
+      { label: 'Data Fabric', icon: Database, hint: '17+ connected data sources & health monitoring' },
+    ],
+  },
+  {
+    title: 'ADMIN',
+    items: [
+      { label: 'Audit Logs', icon: ShieldCheck, hint: 'Operator action security audit trail' },
+      { label: 'Settings', icon: Settings, hint: 'Platform preferences & layer configuration' },
+    ],
   },
 ];
 
-/** Flat list, preserved for anything that needs a simple ordered lookup. */
+/** Flat list, preserved for simple ordered lookup. */
 export const NAV_ITEMS: NavEntry[] = NAV_GROUPS.flatMap((g) => g.items);
+
