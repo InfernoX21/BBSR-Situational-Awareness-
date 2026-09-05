@@ -36,7 +36,7 @@ import {
   Check,
 } from 'lucide-react';
 
-interface AIOperationsViewProps {
+interface AIAnalysisViewProps {
   incidents: Incident[];
   landmarks: LandmarkNode[];
   drones: DroneUnit[];
@@ -47,7 +47,7 @@ interface AIOperationsViewProps {
   onJumpToMap?: () => void;
 }
 
-export const AIOperationsView: React.FC<AIOperationsViewProps> = ({
+export const AIAnalysisView: React.FC<AIAnalysisViewProps> = ({
   incidents,
   landmarks,
   drones,
@@ -131,7 +131,7 @@ export const AIOperationsView: React.FC<AIOperationsViewProps> = ({
             <div>
               <div className="flex items-center space-x-2">
                 <h1 className="text-lg font-bold uppercase tracking-wider text-white">
-                  OpenClaw Autonomous AI Operations Engine
+                  AI Analysis — OpenClaw Reasoning Engine
                 </h1>
                 <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/40">
                   v2026.7.1-2 ONLINE

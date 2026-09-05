@@ -152,7 +152,7 @@ ${(context.incidents || [])
       inlineKeyboard = [
         [
           { text: '📍 View Map', url: 'https://infernox21.github.io/BBSR-Situational-Awareness-/' },
-          { text: '🚨 Incident Center', url: 'https://infernox21.github.io/BBSR-Situational-Awareness-/' },
+          { text: '🚨 Active Situations', url: 'https://infernox21.github.io/BBSR-Situational-Awareness-/' },
         ],
       ];
     } else if (promptLower.startsWith('/weather') || promptLower.includes('weather') || promptLower.includes('disaster report')) {
@@ -211,7 +211,7 @@ _Processed via 7 OpenClaw Domain Agents & MCP Tools._
         inlineKeyboard = [
           [
             { text: '📍 View Map Target', url: 'https://infernox21.github.io/BBSR-Situational-Awareness-/' },
-            { text: '🤖 Open AI Operations', url: 'https://infernox21.github.io/BBSR-Situational-Awareness-/' },
+            { text: '🤖 Open AI Analysis', url: 'https://infernox21.github.io/BBSR-Situational-Awareness-/' },
           ],
         ];
       } catch (err: any) {

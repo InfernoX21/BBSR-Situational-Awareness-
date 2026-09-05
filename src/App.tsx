@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { WifiOff } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { ScrollText, WifiOff } from 'lucide-react';
 import {
   NavItem,
   Agency,
@@ -18,7 +18,6 @@ import {
 } from './types';
 import { liveDataManager } from './services/LiveDataManager';
 import {
-  BHUBANESWAR_CENTER,
   AGENCIES,
   INITIAL_WEATHER,
   INITIAL_INCIDENTS,
@@ -31,16 +30,17 @@ import {
   INITIAL_TRAFFIC_SENSORS,
   INITIAL_TRAFFIC_SUMMARY,
 } from './data/bhubaneswarData';
-import { Sidebar } from './components/Sidebar';
-import { TopStatusBar } from './components/TopStatusBar';
-import { MobileNavDrawer } from './components/MobileNavDrawer';
+import { AppShell, ShellTicker } from './shell/AppShell';
+import type { NavCounts } from './shell/NavRail';
+import { useRoute } from './shell/useRoute';
+import { NavigationProvider } from './shell/navigation';
+import { Button, NotificationProvider } from './ui';
 import { MobileAIBottomSheet } from './components/ai/MobileAIBottomSheet';
 import { offlineManager } from './services/offline/OfflineManager';
 import { DigitalTwinMap } from './components/DigitalTwinMap';
 import { IncidentPopup } from './components/IncidentPopup';
 import { RightIntelligenceCenter } from './components/RightIntelligenceCenter';
 import { BottomAnalytics } from './components/BottomAnalytics';
-import { BottomLogBar } from './components/BottomLogBar';
 import { IncidentDetailModal } from './components/IncidentDetailModal';
 import { NewsArticleModal } from './components/NewsArticleModal';
 import { DroneFeedModal } from './components/DroneFeedModal';
@@ -50,19 +50,55 @@ import { ProvenanceModal } from './components/ProvenanceModal';
 import { GlobalSearchModal } from './components/GlobalSearchModal';
 import { GuidedOperationalFlowModal } from './components/GuidedOperationalFlowModal';
 
-import { IntelligenceFeedView } from './components/views/IntelligenceFeedView';
-import { IncidentCenterView } from './components/views/IncidentCenterView';
-import { TrafficManagementView } from './components/views/TrafficManagementView';
-import { WeatherDisasterView } from './components/views/WeatherDisasterView';
+import { IntelligenceView } from './components/views/IntelligenceView';
+import { ActiveSituationsView } from './components/views/ActiveSituationsView';
+import { MobilityView } from './components/views/MobilityView';
+import { EnvironmentView } from './components/views/EnvironmentView';
 import { InfrastructureView } from './components/views/InfrastructureView';
 import { UtilitiesView } from './components/views/UtilitiesView';
-import { ResourceTrackerView } from './components/views/ResourceTrackerView';
-import { DroneFeedView } from './components/views/DroneFeedView';
+import { ResourcesView } from './components/views/ResourcesView';
+import { DronesView } from './components/views/DronesView';
 import { AnalyticsView } from './components/views/AnalyticsView';
 import { ReportsView } from './components/views/ReportsView';
 import { SettingsView } from './components/views/SettingsView';
-import { AIOperationsView } from './components/views/AIOperationsView';
-import { TrafficCamerasView } from './components/views/TrafficCamerasView';
+import { AIAnalysisView } from './components/views/AIAnalysisView';
+import { CamerasView } from './components/views/CamerasView';
+import { SensorsView } from './components/views/SensorsView';
+import { AviationView } from './components/views/AviationView';
+import { CorrelationView } from './components/views/CorrelationView';
+import { NotConfiguredView } from './components/views/NotConfiguredView';
+
+/** Log severity mapped onto the ticker's tones. */
+const LOG_TONE: Record<LiveLog['type'], 'critical' | 'warning' | 'success' | 'neutral'> = {
+  ALERT: 'critical',
+  WARN: 'warning',
+  SUCCESS: 'success',
+  INFO: 'neutral',
+};
+
+/**
+ * Modules whose page component owns its own scrolling.
+ *
+ * A page built on `ui/surfaces`' `Page` is a flex column with its own scroll
+ * container and a sticky `PageHeader`; nesting it inside a second scroller would
+ * give it two scrollbars and unstick the header. Modules not listed here are the
+ * ones still on the old markup, which expects the shell to scroll for them. The
+ * set shrinks as views migrate, and this constant disappears with the last one.
+ */
+const PAGE_OWNS_SCROLL = new Set<NavItem>([
+  'Drones',
+  'Infrastructure',
+  'Reports',
+  'Environment',
+  'Analytics',
+  'Sensors',
+  'Aviation',
+  'Event Correlation',
+  'Vehicles',
+  'History',
+  'Users & Access',
+  'Audit Logs',
+]);
 
 import { KnowledgeGraphView } from './components/views/KnowledgeGraphView';
 import { SimulationView } from './components/views/SimulationView';
@@ -79,8 +115,11 @@ import { PredictionView } from './components/views/PredictionView';
 import { operationalStore, useOperationalStore } from './store/useOperationalStore';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<NavItem>('Dashboard');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  // The URL is the source of truth for which destination is open, so every
+  // destination is bookmarkable and Back works. `server.ts` already serves
+  // index.html for every non-/api path, which is what makes this safe on a hard
+  // refresh without a router dependency.
+  const { active: activeTab, navigate: setActiveTab } = useRoute();
   const [isOffline, setIsOffline] = useState<boolean>(!navigator.onLine);
 
   useEffect(() => {
@@ -88,13 +127,13 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  const [agencies, setAgencies] = useState<Agency[]>(AGENCIES);
+  const [agencies] = useState<Agency[]>(AGENCIES);
   const [incidents, setIncidents] = useState<Incident[]>(INITIAL_INCIDENTS);
   const [intelligenceItems, setIntelligenceItems] = useState<IntelligenceItem[]>(INITIAL_INTELLIGENCE);
   const [weather, setWeather] = useState<WeatherData>(INITIAL_WEATHER);
-  const [resources, setResources] = useState<ResourceUnit[]>(RESOURCE_UNITS);
+  const [resources] = useState<ResourceUnit[]>(RESOURCE_UNITS);
   const [drones, setDrones] = useState<DroneUnit[]>(DRONE_UNITS);
-  const [landmarks, setLandmarks] = useState<LandmarkNode[]>(LANDMARKS);
+  const [landmarks] = useState<LandmarkNode[]>(LANDMARKS);
   const [logs, setLogs] = useState<LiveLog[]>(INITIAL_LOGS);
   const [threatLevel, setThreatLevel] = useState<Severity>('HIGH');
 
@@ -120,9 +159,12 @@ export default function App() {
     power: true,
     water: true,
     floodZones: true,
+    // Heavy assets stay off until requested. `CentralLayerManager` holds the same
+    // defaults; the two must agree or the toolbar's first event flips the map.
     satellite: false,
     heatmaps: false,
-    buildings3D: true,
+    buildings3D: false,
+    basemapStyle: 'dark',
   });
 
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
@@ -132,7 +174,6 @@ export default function App() {
   const [selectedLandmark, setSelectedLandmark] = useState<LandmarkNode | null>(null);
 
   const [isFusing, setIsFusing] = useState(false);
-  const [fusedIncident, setFusedIncident] = useState<Incident | null>(INITIAL_INCIDENTS[0]);
   const [showLogsModal, setShowLogsModal] = useState(false);
 
   // Add a helper to prepend logs
@@ -197,7 +238,7 @@ export default function App() {
             source: 'Open-Meteo & IMD radar',
             timestamp: new Date().toISOString(),
             provider: 'IMD Bhubaneswar',
-            confidence: 98,
+            // No confidence: Open-Meteo publishes a model reading, not a score.
             latencyMs: latency,
             lastUpdated: timeStr,
             classification: 'LIVE',
@@ -210,27 +251,17 @@ export default function App() {
     }
 
     if (fetchedData) {
-      const jitterTemp = Number((fetchedData.temperature + (Math.random() * 0.2 - 0.1)).toFixed(1));
-      const jitterHum = Math.min(100, Math.max(30, fetchedData.humidity + (Math.random() > 0.5 ? 1 : -1)));
-      const timeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
-
-      const liveUpdatedWeather: WeatherData = {
-        ...fetchedData,
-        temperature: jitterTemp,
-        humidity: jitterHum,
-        provenance: {
-          ...fetchedData.provenance,
-          source: fetchedData.provenance?.source || 'Open-Meteo & IMD radar',
-          provider: fetchedData.provenance?.provider || 'IMD Bhubaneswar',
-          confidence: 98,
-          latencyMs: Math.floor(14 + Math.random() * 8),
-          lastUpdated: timeStr,
-          classification: 'LIVE',
-        },
-      };
-
-      setWeather(liveUpdatedWeather);
-      liveDataManager.updateHealth('weather', 'CONNECTED', liveUpdatedWeather.provenance!.latencyMs, 'Open-Meteo & IMD Doppler Radar Mesh active', 'LIVE');
+      // Passed through exactly as received. The previous build jittered the
+      // temperature and humidity by ±0.1 and overwrote latency with a random
+      // 14–22 ms so the readout always looked alive; both invented data.
+      setWeather(fetchedData);
+      liveDataManager.updateHealth(
+        'weather',
+        'CONNECTED',
+        fetchedData.provenance?.latencyMs ?? Date.now() - startTime,
+        'Open-Meteo & IMD Doppler Radar Mesh active',
+        'LIVE',
+      );
     }
   }, []);
 
@@ -282,91 +313,15 @@ export default function App() {
       );
     }, 15000);
 
-    // Live News Stream Generator: Auto-pushes fresh Bhubaneswar news to Feed + Bottom Ticker Bar
-    const liveNewsPool = [
-      {
-        publisherName: 'BMC Control Room',
-        headline: 'BMC Dewatering Ops Activated: 45 High-Capacity Pumps at NALCO & Jayadev Vihar',
-        summary: 'Bhubaneswar Municipal Corporation emergency response teams deployed for heavy monsoon runoff control.',
-        category: 'CIVIC_ALERT',
-        classification: 'ALERT',
-      },
-      {
-        publisherName: 'Bhubaneswar Traffic Police',
-        headline: 'Traffic Advisory: Diversions Active on Janpath for Station Square Utilities Work',
-        summary: 'Heavy vehicles rerouted via Vani Vihar & Rajmahal Overbridge. Traffic wardens deployed at key intersections.',
-        category: 'TRAFFIC_ALERT',
-        classification: 'LIVE',
-      },
-      {
-        publisherName: 'OSDMA Emergency Grid',
-        headline: 'IMD Doppler Radar: Severe Thunderstorm & Lightning Warning for Khordha District',
-        summary: 'Wind speeds up to 55 km/h expected. Citizens advised to take shelter and stay clear of trees & power lines.',
-        category: 'WEATHER_ADVISORY',
-        classification: 'ALERT',
-      },
-      {
-        publisherName: 'TPCODL SCADA Center',
-        headline: 'Grid Stabilization: Saheed Nagar 33kV Substation Load Balanced at 428 MW',
-        summary: 'Automated SCADA trip reset completed successfully. Saheed Nagar & Unit-9 distribution feeders online.',
-        category: 'UTILITIES_UPDATE',
-        classification: 'LIVE',
-      },
-      {
-        publisherName: 'ARKA Surveillance Drones',
-        headline: 'Drone Patrol #04 Detects Minor Vehicle Breakdown Near Rasulgarh Square',
-        summary: 'Autonomous camera alert dispatched PCR Van #14 for rapid traffic clearance.',
-        category: 'AI_SURVEILLANCE',
-        classification: 'LIVE',
-      },
-      {
-        publisherName: 'WatCo Odisha',
-        headline: '24x7 Water Supply Pressure Normalization at Saheed Nagar & Unit-9',
-        summary: 'Pipeline pressure telemetry steady at 2.4 bar following automated valve adjustment.',
-        category: 'CIVIC_UPDATE',
-        classification: 'LIVE',
-      },
-      {
-        publisherName: 'Capital Hospital Emergency',
-        headline: 'Trauma Unit Level-1 Readiness Watch Activated Across Bhubaneswar',
-        summary: '8 108-Ambulances placed on high-readiness standby at Master Canteen & Kalpana Square.',
-        category: 'HEALTH_EMERGENCY',
-        classification: 'LIVE',
-      },
-    ];
-
-    let newsIndex = 0;
-    const newsInterval = setInterval(() => {
-      const template = liveNewsPool[newsIndex % liveNewsPool.length];
-      newsIndex++;
-
-      const newArticle: IntelligenceItem = {
-        id: `news-live-${Date.now()}`,
-        publisherName: template.publisherName,
-        headline: template.headline,
-        summary: template.summary,
-        category: template.category,
-        classification: template.classification,
-        publishedTime: 'Just now',
-        url: '#',
-        source: 'GOVT_ADVISORY',
-      };
-
-      // 1. Prepend to Live Intelligence Feed in Right Intelligence Center
-      setIntelligenceItems((prev) => [newArticle, ...prev.slice(0, 15)]);
-
-      // 2. Automatically log to Bottom Stream Bar ticker (>_ STREAM)
-      addLog(
-        `[INTELLIGENCE FEED] ${template.publisherName}: "${template.headline}"`,
-        template.classification === 'ALERT' ? 'ALERT' : 'INFO'
-      );
-    }, 12000);
+    // Removed: a seven-entry pool of pre-written headlines was pushed into the
+    // intelligence feed every twelve seconds, each stamped "Just now" and
+    // attributed to BMC, OSDMA, TPCODL and WatCo. Nothing produced them. The
+    // feed now shows only what /api/news/bhubaneswar returns.
 
     return () => {
       clearInterval(interval);
       clearInterval(weatherInterval);
       clearInterval(trafficInterval);
-      clearInterval(newsInterval);
     };
   }, []);
 
@@ -390,7 +345,6 @@ export default function App() {
 
       if (json.fusedIncident) {
         const newInc = json.fusedIncident as Incident;
-        setFusedIncident(newInc);
         // Prepend fused incident if not already present
         setIncidents((prev) => [newInc, ...prev.filter((i) => i.id !== newInc.id)]);
         setSelectedIncident(newInc);
@@ -401,11 +355,6 @@ export default function App() {
     } finally {
       setIsFusing(false);
     }
-  };
-
-  const handleRefreshAll = () => {
-    addLog('Refreshing all C2 sensors & intelligence feeds...', 'INFO');
-    handleFuseIntelligence();
   };
 
   const handleUpdateIncidentStatus = (id: string, newStatus: Incident['status']) => {
@@ -440,58 +389,80 @@ export default function App() {
     }
   };
 
+  /**
+   * Unresolved work per destination, for the rail and the module tab strips.
+   *
+   * Only counts ARKA can actually establish, which is why there is exactly one.
+   * It is derived from the incident list rather than written down — the previous
+   * interface's hardcoded "5" is now whatever is genuinely unresolved, and goes to
+   * zero on a quiet day.
+   *
+   * There is deliberately no badge on Intelligence or Drones: a headline count is
+   * not a task list, and a number there would read as work waiting on the
+   * operator.
+   */
+  const navCounts = useMemo<NavCounts>(
+    () => ({
+      'Active Situations': incidents.filter((i) => i.status !== 'RESOLVED').length,
+    }),
+    [incidents],
+  );
+
+  const tickerItems = useMemo(
+    () =>
+      logs.slice(0, 14).map((log) => ({
+        id: log.id,
+        label: `${log.timestamp}  ${log.message}`,
+        tone: LOG_TONE[log.type],
+      })),
+    [logs],
+  );
+
+  // The two destinations whose primary surface is the map canvas itself. Command
+  // Center adds the intelligence column beside it; Live City gives the canvas the
+  // whole viewport.
+  const isMapModule = activeTab === 'Command Center' || activeTab === 'Live City';
+
   return (
-    <div className="w-full h-screen max-h-screen bg-canvas flex flex-col overflow-hidden text-ink font-sans">
-      {/* Offline Alert Banner */}
-      {isOffline && (
-        <div
-          role="status"
-          className="bg-warning-soft border-b border-warning-border text-warning px-4 py-1.5 text-[12px] font-semibold flex items-center justify-center gap-2 shrink-0 z-50"
-        >
-          <WifiOff className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-          <span>
-            Network offline — ARKA is running on cached data with a local draft queue. Values shown may be stale.
-          </span>
-        </div>
-      )}
-
-      {/* LAYER 2: TOP STATUS BAR */}
-      <TopStatusBar
-        weather={weather}
-        threatLevel={threatLevel}
-        setThreatLevel={setThreatLevel}
-        onRefreshAll={handleRefreshAll}
-        onRefreshWeather={fetchLiveWeather}
-        onOpenMobileMenu={() => setMobileMenuOpen(true)}
-      />
-
-      {/* Mobile Navigation Drawer Overlay (< md) */}
-      <MobileNavDrawer
-        isOpen={mobileMenuOpen}
-        onClose={() => setMobileMenuOpen(false)}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        agencies={agencies}
-      />
-
-      {/* Mobile Floating OpenClaw AI Assistant (FAB & Bottom Sheet) */}
-      <MobileAIBottomSheet />
-
-      {/* MAIN CONTAINER: SIDEBAR + DIGITAL TWIN + INTELLIGENCE CENTER */}
-      <div className="flex-1 flex overflow-hidden relative min-w-0 min-h-0">
-        {/* LAYER 1: LEFT SIDEBAR (260px) */}
-        <Sidebar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          agencies={agencies}
-          onAgencyClick={(agency) => {
-            addLog(`Selected Agency: ${agency.name} (${agency.activeUnits} active field units).`, 'INFO');
-          }}
-        />
-
-        {/* MAIN WORKSPACE AREA ACCORDING TO ACTIVE TAB */}
-        {activeTab === 'Dashboard' || activeTab === 'Live Map' ? (
-          <>
+    <NotificationProvider>
+      <NavigationProvider active={activeTab} navigate={setActiveTab} counts={navCounts}>
+      <AppShell
+        active={activeTab}
+        onNavigate={setActiveTab}
+        counts={navCounts}
+        alertLevel={threatLevel}
+        onAlertLevelChange={setThreatLevel}
+        banner={
+          isOffline ? (
+            <div
+              role="status"
+              className="shrink-0 bg-warning-soft border-b border-warning-border text-warning px-3 py-1.5 text-[11.5px] font-medium flex items-center justify-center gap-2"
+            >
+              <WifiOff className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              <span>
+                Network offline — ARKA is running on cached data with a local draft queue. Values shown may be stale.
+              </span>
+            </div>
+          ) : null
+        }
+        ticker={
+          <ShellTicker
+            items={tickerItems}
+            right={
+              <Button
+                variant="quiet"
+                size="xs"
+                icon={<ScrollText size={11} />}
+                onClick={() => setShowLogsModal(true)}
+              >
+                Event log
+              </Button>
+            }
+          />
+        }
+      >
+        {isMapModule ? (
+          <div className="flex-1 flex min-w-0 min-h-0">
             {/* MAIN DIGITAL TWIN MAP */}
             <div className="flex-1 flex flex-col relative overflow-hidden min-w-0 min-h-0">
               <DigitalTwinMap
@@ -537,7 +508,7 @@ export default function App() {
             </div>
 
             {/* RIGHT INTELLIGENCE CENTER */}
-            {activeTab === 'Dashboard' && (
+            {activeTab === 'Command Center' && (
               <RightIntelligenceCenter
                 incidents={incidents}
                 intelligenceItems={intelligenceItems}
@@ -547,14 +518,20 @@ export default function App() {
                   addLog(`Selected incident #${inc.id} from Intelligence Center.`, 'INFO');
                 }}
                 onOpenArticle={(item) => setSelectedArticle(item)}
-                onViewAllAlerts={() => setActiveTab('Incident Center')}
+                onViewAllAlerts={() => setActiveTab('Active Situations')}
               />
             )}
-          </>
+          </div>
         ) : (
-          <div className="flex-1 h-full overflow-y-auto bg-canvas min-w-0 min-h-0 gov-scroll-thin">
-            {activeTab === 'AI Operations' ? (
-              <AIOperationsView
+          <div
+            className={
+              PAGE_OWNS_SCROLL.has(activeTab)
+                ? 'flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden'
+                : 'flex-1 min-w-0 min-h-0 overflow-y-auto ark-scroll'
+            }
+          >
+            {activeTab === 'AI Analysis' ? (
+              <AIAnalysisView
                 incidents={incidents}
                 landmarks={landmarks}
                 drones={drones}
@@ -595,35 +572,37 @@ export default function App() {
                   }
                   addLog(`OpenClaw Autonomous Operations executed multi-agent task workflow.`, 'SUCCESS');
                 }}
-                onJumpToMap={() => setActiveTab('Dashboard')}
+                onJumpToMap={() => setActiveTab('Live City')}
               />
-            ) : activeTab === 'Intelligence Feed' ? (
-              <IntelligenceFeedView
+            ) : activeTab === 'Intelligence' ? (
+              <IntelligenceView
                 intelligenceItems={intelligenceItems}
                 onSelectArticle={(item) => setSelectedArticle(item)}
                 onFuseIntelligence={handleFuseIntelligence}
                 isFusing={isFusing}
               />
-            ) : activeTab === 'Incident Center' ? (
-              <IncidentCenterView
+            ) : activeTab === 'Event Correlation' ? (
+              <CorrelationView />
+            ) : activeTab === 'Active Situations' ? (
+              <ActiveSituationsView
                 incidents={incidents}
                 onSelectIncident={(inc) => setSelectedIncident(inc)}
                 onUpdateStatus={handleUpdateIncidentStatus}
                 onJumpToMap={(inc) => {
                   setSelectedIncident(inc);
-                  setActiveTab('Dashboard');
+                  setActiveTab('Live City');
                 }}
               />
-            ) : activeTab === 'Traffic Management' ? (
-              <TrafficManagementView
+            ) : activeTab === 'Mobility' ? (
+              <MobilityView
                 corridors={trafficCorridors}
                 sensors={trafficSensors}
                 summary={trafficSummary}
                 onSelectCorridor={(corridor) => setSelectedCorridor(corridor)}
-                onJumpToMap={() => setActiveTab('Dashboard')}
+                onJumpToMap={() => setActiveTab('Live City')}
               />
-            ) : activeTab === 'Traffic Cameras' ? (
-              <TrafficCamerasView
+            ) : activeTab === 'Cameras' ? (
+              <CamerasView
                 incidents={incidents}
                 landmarks={landmarks}
                 onSelectCameraOnMap={(cam) => {
@@ -638,13 +617,10 @@ export default function App() {
                   });
                   addLog(`CCTV Feed Selected: ${cam.name} (${cam.junction}).`, 'INFO');
                 }}
-                onJumpToMap={() => setActiveTab('Dashboard')}
+                onJumpToMap={() => setActiveTab('Live City')}
               />
-            ) : activeTab === 'Weather & Disaster' ? (
-              <WeatherDisasterView
-                weather={weather}
-                onJumpToMap={() => setActiveTab('Dashboard')}
-              />
+            ) : activeTab === 'Environment' ? (
+              <EnvironmentView weather={weather} onJumpToMap={() => setActiveTab('Live City')} />
             ) : activeTab === 'Infrastructure' ? (
               <InfrastructureView
                 landmarks={landmarks}
@@ -652,40 +628,61 @@ export default function App() {
                   setSelectedLandmark(lm);
                   addLog(`Inspecting Landmark: ${lm.name}`, 'INFO');
                 }}
-                onJumpToMap={() => setActiveTab('Dashboard')}
+                onJumpToMap={() => setActiveTab('Live City')}
               />
             ) : activeTab === 'Utilities' ? (
-              <UtilitiesView onJumpToMap={() => setActiveTab('Dashboard')} />
-            ) : activeTab === 'Resource Tracker' ? (
-              <ResourceTrackerView
+              <UtilitiesView onJumpToMap={() => setActiveTab('Live City')} />
+            ) : activeTab === 'Resources' ? (
+              <ResourcesView
                 resources={resources}
                 incidents={incidents}
                 onDispatchUnit={(uId, iId) => addLog(`Dispatched Unit ${uId} to Incident ${iId}`, 'SUCCESS')}
-                onJumpToMap={() => setActiveTab('Dashboard')}
+                onJumpToMap={() => setActiveTab('Live City')}
               />
-            ) : activeTab === 'Drone Feed' ? (
-              <DroneFeedView
+            ) : activeTab === 'Drones' ? (
+              <DronesView
                 drones={drones}
                 onSelectDrone={(d) => setSelectedDrone(d)}
-                onJumpToMap={() => setActiveTab('Dashboard')}
+                onJumpToMap={() => setActiveTab('Live City')}
               />
+            ) : activeTab === 'Sensors' ? (
+              <SensorsView onJumpToMap={() => setActiveTab('Live City')} />
+            ) : activeTab === 'Vehicles' ? (
+              <NotConfiguredView
+                item="Vehicles"
+                subtitle="Response fleet and public-transport vehicle telemetry."
+                source="Fleet and transit AVL telemetry"
+                reason="ARKA receives no vehicle position feed. Field units appear under Assets → Resources from the duty roster, which records where a unit is assigned rather than where its vehicle currently is. Connect an AVL/GPS gateway for the response fleet, and a GTFS-Realtime vehicle-position feed for city buses, before this module can show a fleet."
+              />
+            ) : activeTab === 'Aviation' ? (
+              <AviationView />
             ) : activeTab === 'Analytics' ? (
-              <AnalyticsView
-                incidents={incidents}
-                trafficCorridors={trafficCorridors}
-                weather={weather}
-              />
+              <AnalyticsView incidents={incidents} trafficCorridors={trafficCorridors} weather={weather} />
             ) : activeTab === 'Reports' ? (
               <ReportsView
                 incidents={incidents}
                 weather={weather}
                 trafficSummary={trafficSummary}
+                landmarks={landmarks}
+              />
+            ) : activeTab === 'History' ? (
+              <NotConfiguredView
+                item="History"
+                subtitle="Historical incidents, events and system records."
+                source="Operational record store"
+                reason="Nothing in this deployment persists operational data. Incidents, the event stream and every reading live in memory for the length of a session and are discarded on reload, so there is no history to query — the counts on Insights → Analytics describe the current session only. Connect a database for the incident register and the event stream before this module can answer a question about last week."
               />
             ) : activeTab === 'Settings' ? (
-              <SettingsView
-                layersState={layersState}
-                setLayersState={setLayersState}
+              <SettingsView layersState={layersState} setLayersState={setLayersState} />
+            ) : activeTab === 'Users & Access' ? (
+              <NotConfiguredView
+                item="Users & Access"
+                subtitle="Roles, permissions and access management."
+                source="Identity provider"
+                reason="ARKA has no authentication in this deployment: there is no sign-in, no session and no notion of who is operating the console, so there are no users to manage and no roles to assign. Every control on every page is available to whoever opens the browser. Connect an identity provider — the state government SSO, or any OIDC issuer — before this module can show an access model."
               />
+            ) : activeTab === 'Audit Logs' ? (
+              <AuditLogsView />
             ) : activeTab === 'Knowledge Graph' ? (
               <KnowledgeGraphView />
             ) : activeTab === 'What-If Simulation' ? (
@@ -702,8 +699,6 @@ export default function App() {
               <TimelineReplayView />
             ) : activeTab === 'Data Fabric' ? (
               <DataFabricView />
-            ) : activeTab === 'Audit Logs' ? (
-              <AuditLogsView />
             ) : activeTab === 'Event Engine' ? (
               <EventEngineView />
             ) : activeTab === 'Prediction Engine' ? (
@@ -711,56 +706,51 @@ export default function App() {
             ) : null}
           </div>
         )}
-      </div>
 
-      {/* LAYER 7: BOTTOM LIVE LOG BAR */}
-      <BottomLogBar logs={logs} onOpenLogsModal={() => setShowLogsModal(true)} />
+        {/* Mobile Floating OpenClaw AI Assistant (FAB & Bottom Sheet) */}
+        <MobileAIBottomSheet />
 
-      {/* DEEP INSPECTION MODALS */}
-      {detailModalIncident && (
-        <IncidentDetailModal
-          incident={detailModalIncident}
-          onClose={() => setDetailModalIncident(null)}
-          onUpdateStatus={handleUpdateIncidentStatus}
+        {/* DEEP INSPECTION MODALS */}
+        {detailModalIncident && (
+          <IncidentDetailModal
+            incident={detailModalIncident}
+            onClose={() => setDetailModalIncident(null)}
+            onUpdateStatus={handleUpdateIncidentStatus}
+          />
+        )}
+
+        {selectedArticle && (
+          <NewsArticleModal item={selectedArticle} onClose={() => setSelectedArticle(null)} />
+        )}
+
+        {selectedDrone && <DroneFeedModal drone={selectedDrone} onClose={() => setSelectedDrone(null)} />}
+
+        {showLogsModal && (
+          <LogsModal logs={logs} onClose={() => setShowLogsModal(false)} onClearLogs={() => setLogs([])} />
+        )}
+
+        {/* OPERATIONAL OS MODALS */}
+        <EntityIntelligencePanel
+          entity={useOperationalStore().selectedEntity}
+          onClose={() => operationalStore.setSelectedEntity(null)}
         />
-      )}
 
-      {selectedArticle && (
-        <NewsArticleModal item={selectedArticle} onClose={() => setSelectedArticle(null)} />
-      )}
-
-      {selectedDrone && (
-        <DroneFeedModal drone={selectedDrone} onClose={() => setSelectedDrone(null)} />
-      )}
-
-      {showLogsModal && (
-        <LogsModal
-          logs={logs}
-          onClose={() => setShowLogsModal(false)}
-          onClearLogs={() => setLogs([])}
+        <ProvenanceModal
+          card={useOperationalStore().provenanceCard}
+          onClose={() => operationalStore.setProvenanceCard(null)}
         />
-      )}
 
-      {/* OPERATIONAL OS MODALS */}
-      <EntityIntelligencePanel
-        entity={useOperationalStore().selectedEntity}
-        onClose={() => operationalStore.setSelectedEntity(null)}
-      />
+        <GlobalSearchModal
+          isOpen={useOperationalStore().isSearchOpen}
+          onClose={() => operationalStore.setIsSearchOpen(false)}
+        />
 
-      <ProvenanceModal
-        card={useOperationalStore().provenanceCard}
-        onClose={() => operationalStore.setProvenanceCard(null)}
-      />
-
-      <GlobalSearchModal
-        isOpen={useOperationalStore().isSearchOpen}
-        onClose={() => operationalStore.setIsSearchOpen(false)}
-      />
-
-      <GuidedOperationalFlowModal
-        isOpen={useOperationalStore().isGuidedFlowOpen}
-        onClose={() => operationalStore.setIsGuidedFlowOpen(false)}
-      />
-    </div>
+        <GuidedOperationalFlowModal
+          isOpen={useOperationalStore().isGuidedFlowOpen}
+          onClose={() => operationalStore.setIsGuidedFlowOpen(false)}
+        />
+        </AppShell>
+      </NavigationProvider>
+    </NotificationProvider>
   );
 }

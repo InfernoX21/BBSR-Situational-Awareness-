@@ -147,7 +147,7 @@ export const DEFAULT_SETTINGS: ArkaSettings = {
   autoRotate: {
     enabled: false,
     intervalSeconds: 45,
-    tabs: ['Dashboard', 'Live Map', 'Incident Center', 'Traffic Management'],
+    tabs: ['Command Center', 'Live City', 'Active Situations', 'Mobility'],
   },
   refresh: {
     cadenceSeconds: null,
@@ -239,7 +239,9 @@ function pickLayers(value: unknown): MapLayersState {
 
 function pickTabs(value: unknown, fallback: NavItem[]): NavItem[] {
   if (!Array.isArray(value)) return [...fallback];
-  const valid = value.filter((item): item is NavItem => NAV_ITEMS.some((nav) => nav === item));
+  // `NAV_ITEMS` holds entries, not labels. Comparing an entry to a string was
+  // always false, so every stored rotation silently fell back to the default.
+  const valid = value.filter((item): item is NavItem => NAV_ITEMS.some((nav) => nav.label === item));
   // An empty rotation would leave the display frozen on whatever was last shown,
   // which looks identical to a crash. Fall back rather than allow it.
   return valid.length > 0 ? valid : [...fallback];

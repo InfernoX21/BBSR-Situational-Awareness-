@@ -22,14 +22,14 @@ import {
   Eye,
 } from 'lucide-react';
 
-interface IncidentCenterViewProps {
+interface ActiveSituationsViewProps {
   incidents: Incident[];
   onSelectIncident: (inc: Incident) => void;
   onUpdateStatus: (id: string, status: Incident['status']) => void;
   onJumpToMap: (inc: Incident) => void;
 }
 
-export const IncidentCenterView: React.FC<IncidentCenterViewProps> = ({
+export const ActiveSituationsView: React.FC<ActiveSituationsViewProps> = ({
   incidents,
   onSelectIncident,
   onUpdateStatus,
@@ -166,7 +166,7 @@ export const IncidentCenterView: React.FC<IncidentCenterViewProps> = ({
           <div className="flex items-center space-x-2 text-[#EF4444]">
             <AlertTriangle className="w-5 h-5 animate-pulse" />
             <h1 className="text-lg font-bold uppercase tracking-wider text-white">
-              Incident Management Center
+              Active Situations — Incidents, Alerts &amp; Anomalies
             </h1>
           </div>
           <p className="text-white/40 text-[11px] mt-0.5">

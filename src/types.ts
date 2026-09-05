@@ -8,7 +8,15 @@ export interface DataProvenance {
   source: string;
   timestamp: string;
   provider: string;
-  confidence: number;
+  /**
+   * Model or detector confidence, 0–100.
+   *
+   * Optional because most sources do not publish one. A measurement — a gauge
+   * reading, a vehicle count — has no confidence score, and inventing a number
+   * so the field is always populated is what produced the interface's hardcoded
+   * "98%". Absent means unscored, and the UI renders it as such.
+   */
+  confidence?: number;
   latencyMs: number;
   lastUpdated: string;
   classification?: DataClassification;
@@ -42,22 +50,45 @@ export interface FlightNode {
   provenance: DataProvenance;
 }
 
+/**
+ * The platform's destinations, named by operational domain.
+ *
+ * These are the labels an operator sees, and they double as the router's keys —
+ * `src/components/navConfig.ts` maps each one to a URL path. The grouping into
+ * Command Center / Intelligence / City Systems / Assets / Insights /
+ * Administration lives there too; this union is only the flat set.
+ *
+ * The names describe what an operator is looking at, not which feature shipped
+ * it: a junction camera is an asset of the city, so it lives under Cameras, and
+ * corridor speeds are part of how the city moves, so they live under Mobility.
+ */
 export type NavItem =
-  | 'Dashboard'
-  | 'AI Operations'
-  | 'Live Map'
-  | 'Intelligence Feed'
-  | 'Incident Center'
-  | 'Traffic Management'
-  | 'Traffic Cameras'
-  | 'Weather & Disaster'
+  // Command Center
+  | 'Command Center'
+  | 'Live City'
+  | 'Active Situations'
+  // Intelligence
+  | 'Intelligence'
+  | 'AI Analysis'
+  | 'Event Correlation'
+  // City systems
+  | 'Mobility'
+  | 'Environment'
   | 'Infrastructure'
   | 'Utilities'
-  | 'Resource Tracker'
-  | 'Drone Feed'
+  // Assets
+  | 'Resources'
+  | 'Cameras'
+  | 'Drones'
+  | 'Sensors'
+  | 'Vehicles'
+  | 'Aviation'
+  // Insights
   | 'Analytics'
   | 'Reports'
+  | 'History'
   | 'Settings'
+  | 'Users & Access'
   | 'Knowledge Graph'
   | 'Event Engine'
   | 'Prediction Engine'
@@ -285,7 +316,7 @@ export interface AuditLog {
   didWhat: string;
   when: string;
   targetEntityId?: string;
-  reason: string;
+  reason?: string;
 }
 
 export interface TrafficCameraFeed {
@@ -577,6 +608,15 @@ export interface MapLayersState {
   infrastructure?: boolean;
   floodZones?: boolean;
   heatmaps?: boolean;
+  /**
+   * Utility and civic layers the shell already initialises but which had no
+   * declaration, so `layersState` was silently rejecting them. Optional because
+   * not every map surface offers all of them.
+   */
+  schools?: boolean;
+  telecom?: boolean;
+  power?: boolean;
+  water?: boolean;
   basemapStyle?: BasemapStyle;
 }
 

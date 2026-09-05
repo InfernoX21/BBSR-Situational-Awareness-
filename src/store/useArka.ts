@@ -188,7 +188,7 @@ export const arkaNav = {
   },
 
   /** Select an entity and ask the map to go to it. */
-  locate(entity: EntityRef, intent: MapIntent = 'locate', tab: NavItem = 'Live Map'): void {
+  locate(entity: EntityRef, intent: MapIntent = 'locate', tab: NavItem = 'Live City'): void {
     arkaStore.setFocus({ entity, tab, mapIntent: intent });
   },
 

@@ -15,14 +15,14 @@ import {
   Share2,
 } from 'lucide-react';
 
-interface IntelligenceFeedViewProps {
+interface IntelligenceViewProps {
   intelligenceItems: IntelligenceItem[];
   onSelectArticle: (item: IntelligenceItem) => void;
   onFuseIntelligence: () => void;
   isFusing: boolean;
 }
 
-export const IntelligenceFeedView: React.FC<IntelligenceFeedViewProps> = ({
+export const IntelligenceView: React.FC<IntelligenceViewProps> = ({
   intelligenceItems,
   onSelectArticle,
   onFuseIntelligence,
@@ -84,7 +84,7 @@ export const IntelligenceFeedView: React.FC<IntelligenceFeedViewProps> = ({
           <div className="flex items-center space-x-2 text-[#06B6D4]">
             <Rss className="w-5 h-5 animate-pulse" />
             <h1 className="text-lg font-bold uppercase tracking-wider text-white">
-              Intelligence Stream & Feeds
+              Intelligence — Incoming Information Stream
             </h1>
           </div>
           <p className="text-white/40 text-[11px] mt-0.5">

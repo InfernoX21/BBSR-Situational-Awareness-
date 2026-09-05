@@ -1,31 +1,47 @@
-import React, { useState } from 'react';
-import { Incident, ResourceUnit, WeatherData, Severity, TrafficCorridor, TrafficSummary } from '../types';
+/**
+ * The dashboard's bottom workbench.
+ *
+ * Four resizable, reorderable panels under the map. Reordering and the panel
+ * height persist per operator, which is the brief's "custom dashboards" and
+ * "persistent filters" requirement met at the level this surface actually needs:
+ * a duty officer who wants cameras first should not rearrange them every shift.
+ *
+ * Charts arrive through `ui/chart`, which keeps Recharts behind `React.lazy` and
+ * does not even reference it until the panel is on screen. This file previously
+ * imported nine Recharts symbols directly, which put the whole library in the
+ * initial bundle for a strip that starts 180px tall.
+ *
+ * Fabrications removed:
+ *
+ * - The severity donut's `criticalCount || 1`, `highCount || 2`, `mediumCount || 3`,
+ *   `lowCount || 1`, `resolvedCount || 4`. With no incidents at all the chart drew
+ *   a full five-slice ring summing to eleven. Zero now reads as zero, and an empty
+ *   city reads as NO RECORDS.
+ * - `timelineData`, six hardcoded hourly rows commented "Timeline Mock Hourly
+ *   Data". The timeline is now bucketed from the incidents' own timestamps.
+ * - `trafficSummary?.cityAvgSpeedKmh || 25`, which asserted a city average speed
+ *   when the traffic feed had reported nothing.
+ * - `unit="k"` on the speed axis, which labelled 32 km/h as "32k".
+ */
+
+import { memo, useCallback, useMemo, useState, type DragEvent, type MouseEvent, type ReactNode, type TouchEvent } from 'react';
+import { BarChart2, ChevronDown, ChevronUp, GripHorizontal, GripVertical, PieChart } from 'lucide-react';
+import type { Incident, ResourceUnit, TrafficCorridor, TrafficSummary, WeatherData } from '../types';
 import { LiveNewsPanel } from './LiveNewsPanel';
 import { LiveTrafficCameraPanel } from './LiveTrafficCameraPanel';
 import {
-  GripHorizontal,
-  GripVertical,
-  ChevronUp,
-  ChevronDown,
-  Maximize2,
-  Minimize2,
-  PieChart as PieIcon,
-  BarChart2,
-  Radio,
-  Car,
-} from 'lucide-react';
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-} from 'recharts';
+  Chart,
+  DistributionBar,
+  IconButton,
+  SEVERITY_COLOR,
+  STATUS,
+  SURFACE,
+  Segmented,
+  Tally,
+  cx,
+  useStoredState,
+  type ChartSeries,
+} from '../ui';
 
 interface BottomAnalyticsProps {
   incidents: Incident[];
@@ -37,266 +53,237 @@ interface BottomAnalyticsProps {
 
 type WidgetId = 'INCIDENTS' | 'TRAFFIC' | 'NEWS' | 'CAMERAS';
 
-export const BottomAnalytics: React.FC<BottomAnalyticsProps> = ({
+const DEFAULT_ORDER: WidgetId[] = ['INCIDENTS', 'TRAFFIC', 'NEWS', 'CAMERAS'];
+const DEFAULT_HEIGHT = 208;
+const MIN_HEIGHT = 120;
+const MAX_HEIGHT = 520;
+const COLLAPSED_HEIGHT = 30;
+
+const TRAFFIC_SERIES: readonly ChartSeries[] = [
+  { key: 'observed', label: 'Observed', kind: 'bar', color: STATUS.highFill },
+  // Free-flow is a reference value, not a reading, so it takes a structural grey
+  // rather than a slot on the status ramp.
+  { key: 'freeFlow', label: 'Free flow', kind: 'bar', color: SURFACE.lineStrong },
+];
+
+const TIMELINE_SERIES: readonly ChartSeries[] = [
+  { key: 'CRITICAL', label: 'Critical', kind: 'bar', color: SEVERITY_COLOR.CRITICAL },
+  { key: 'HIGH', label: 'High', kind: 'bar', color: SEVERITY_COLOR.HIGH },
+  { key: 'MEDIUM', label: 'Medium', kind: 'bar', color: SEVERITY_COLOR.MEDIUM },
+  { key: 'LOW', label: 'Low', kind: 'bar', color: SEVERITY_COLOR.LOW },
+];
+
+/**
+ * Two-hour buckets over the last twelve hours, from the incidents' own
+ * timestamps.
+ *
+ * Incidents whose timestamp is unparseable or outside the window are excluded
+ * rather than dropped into the nearest bucket — an incident of unknown time must
+ * not become evidence about a specific hour. Buckets with nothing in them are
+ * kept, because an empty two-hour window is a fact about the city.
+ */
+function bucketByHour(incidents: readonly Incident[], now: number) {
+  const SPAN_HOURS = 12;
+  const STEP_HOURS = 2;
+  const stepMs = STEP_HOURS * 3_600_000;
+  const start = Math.floor((now - SPAN_HOURS * 3_600_000) / stepMs) * stepMs;
+
+  const buckets = Array.from({ length: SPAN_HOURS / STEP_HOURS + 1 }, (_, index) => {
+    const at = new Date(start + index * stepMs);
+    return {
+      time: `${String(at.getHours()).padStart(2, '0')}:00`,
+      CRITICAL: 0,
+      HIGH: 0,
+      MEDIUM: 0,
+      LOW: 0,
+    };
+  });
+
+  let placed = 0;
+  for (const incident of incidents) {
+    const at = Date.parse(incident.timestamp);
+    if (!Number.isFinite(at)) continue;
+    const index = Math.floor((at - start) / stepMs);
+    if (index < 0 || index >= buckets.length) continue;
+    buckets[index][incident.priority] += 1;
+    placed += 1;
+  }
+
+  return { buckets, placed };
+}
+
+export const BottomAnalytics = memo(function BottomAnalytics({
   incidents,
-  resources,
-  weather,
   trafficCorridors = [],
   trafficSummary,
-}) => {
-  // Height Resizing & Collapse States
-  const [panelHeight, setPanelHeight] = useState<number>(180);
-  const [isResizing, setIsResizing] = useState<boolean>(false);
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+}: BottomAnalyticsProps) {
+  const [height, setHeight] = useStoredState<number>('dashboard.workbench.height', DEFAULT_HEIGHT);
+  const [collapsed, setCollapsed] = useStoredState<boolean>('dashboard.workbench.collapsed', false);
+  const [order, setOrder] = useStoredState<WidgetId[]>('dashboard.workbench.order', DEFAULT_ORDER);
+  const [resizing, setResizing] = useState(false);
+  const [dragged, setDragged] = useState<WidgetId | null>(null);
+  const [dropTarget, setDropTarget] = useState<WidgetId | null>(null);
+  const [trafficMode, setTrafficMode] = useStoredState<'FLOW' | 'TIMELINE'>(
+    'dashboard.workbench.trafficMode',
+    'FLOW',
+  );
 
-  // Widget Order State & Dragging States
-  const [widgetOrder, setWidgetOrder] = useState<WidgetId[]>([
-    'INCIDENTS',
-    'TRAFFIC',
-    'NEWS',
-    'CAMERAS',
-  ]);
-  const [draggedWidget, setDraggedWidget] = useState<WidgetId | null>(null);
-  const [targetWidget, setTargetWidget] = useState<WidgetId | null>(null);
+  // --- Resize ---------------------------------------------------------------
 
-  const [widget2Mode, setWidget2Mode] = useState<'TRAFFIC' | 'TIMELINE'>('TRAFFIC');
-  const [timelineFilter] = useState<'TODAY' | '1HR' | '24HR'>('TODAY');
+  const startResize = useCallback(
+    (event: MouseEvent | TouchEvent) => {
+      event.preventDefault();
+      setResizing(true);
+      const startY = 'touches' in event ? event.touches[0].clientY : event.clientY;
+      const startHeight = height;
 
-  // Vertical Resizing Handler
-  const startResizing = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-    const startY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    const startHeight = panelHeight;
+      const onMove = (move: globalThis.MouseEvent | globalThis.TouchEvent) => {
+        const currentY = 'touches' in move ? move.touches[0].clientY : move.clientY;
+        // Dragging up grows the panel.
+        setHeight(Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, startHeight + (startY - currentY))));
+      };
+      const onEnd = () => {
+        setResizing(false);
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onEnd);
+        window.removeEventListener('touchmove', onMove);
+        window.removeEventListener('touchend', onEnd);
+      };
 
-    const onMove = (moveEvent: MouseEvent | TouchEvent) => {
-      const currentY = 'touches' in moveEvent ? moveEvent.touches[0].clientY : moveEvent.clientY;
-      const deltaY = startY - currentY; // Dragging up increases height
-      const newHeight = Math.max(32, Math.min(480, startHeight + deltaY));
-      if (newHeight <= 45) {
-        setIsCollapsed(true);
-      } else {
-        setIsCollapsed(false);
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onEnd);
+      window.addEventListener('touchmove', onMove);
+      window.addEventListener('touchend', onEnd);
+    },
+    [height, setHeight],
+  );
+
+  // --- Reorder --------------------------------------------------------------
+
+  const onDrop = useCallback(
+    (event: DragEvent, target: WidgetId) => {
+      event.preventDefault();
+      setDropTarget(null);
+      if (!dragged || dragged === target) {
+        setDragged(null);
+        return;
       }
-      setPanelHeight(newHeight);
-    };
+      const next = [...order];
+      const from = next.indexOf(dragged);
+      const to = next.indexOf(target);
+      if (from !== -1 && to !== -1) {
+        next[from] = target;
+        next[to] = dragged;
+        setOrder(next);
+      }
+      setDragged(null);
+    },
+    [dragged, order, setOrder],
+  );
 
-    const onEnd = () => {
-      setIsResizing(false);
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onEnd);
-      window.removeEventListener('touchmove', onMove);
-      window.removeEventListener('touchend', onEnd);
-    };
+  // --- Derived data ---------------------------------------------------------
 
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onEnd);
-    window.addEventListener('touchmove', onMove);
-    window.addEventListener('touchend', onEnd);
-  };
-
-  // Drag & Drop Reordering Handlers
-  const handleDragStart = (e: React.DragEvent, id: WidgetId) => {
-    setDraggedWidget(id);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', id);
-  };
-
-  const handleDragOver = (e: React.DragEvent, id: WidgetId) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (targetWidget !== id) {
-      setTargetWidget(id);
+  const distribution = useMemo(() => {
+    const tally = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 } as Record<Incident['priority'], number>;
+    let resolved = 0;
+    for (const incident of incidents) {
+      tally[incident.priority] += 1;
+      if (incident.status === 'RESOLVED') resolved += 1;
     }
-  };
+    return [
+      { label: 'Critical', value: tally.CRITICAL, color: SEVERITY_COLOR.CRITICAL },
+      { label: 'High', value: tally.HIGH, color: SEVERITY_COLOR.HIGH },
+      { label: 'Medium', value: tally.MEDIUM, color: SEVERITY_COLOR.MEDIUM },
+      { label: 'Low', value: tally.LOW, color: SEVERITY_COLOR.LOW },
+      { label: 'Resolved', value: resolved, color: STATUS.infoFill },
+    ];
+  }, [incidents]);
 
-  const handleDrop = (e: React.DragEvent, dropTargetId: WidgetId) => {
-    e.preventDefault();
-    if (!draggedWidget || draggedWidget === dropTargetId) {
-      setDraggedWidget(null);
-      setTargetWidget(null);
-      return;
-    }
+  const trafficData = useMemo(
+    () =>
+      trafficCorridors.map((corridor) => ({
+        // Corridor names are long by design; the axis gets the road, the tooltip
+        // gets the full name through the datum.
+        name: corridor.roadName || corridor.name,
+        observed: corridor.avgSpeedKmh,
+        freeFlow: corridor.freeFlowSpeedKmh,
+      })),
+    [trafficCorridors],
+  );
 
-    const newOrder = [...widgetOrder];
-    const draggedIdx = newOrder.indexOf(draggedWidget);
-    const targetIdx = newOrder.indexOf(dropTargetId);
+  // Recomputed only when the incident set changes: a clock-driven window would
+  // rebucket every second for a strip nobody is reading that closely.
+  const timeline = useMemo(() => bucketByHour(incidents, Date.now()), [incidents]);
 
-    if (draggedIdx !== -1 && targetIdx !== -1) {
-      newOrder[draggedIdx] = dropTargetId;
-      newOrder[targetIdx] = draggedWidget;
-      setWidgetOrder(newOrder);
-    }
-
-    setDraggedWidget(null);
-    setTargetWidget(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedWidget(null);
-    setTargetWidget(null);
-  };
-
-  // Compute Incident Distribution Data
-  const criticalCount = incidents.filter((i) => i.priority === 'CRITICAL').length;
-  const highCount = incidents.filter((i) => i.priority === 'HIGH').length;
-  const mediumCount = incidents.filter((i) => i.priority === 'MEDIUM').length;
-  const lowCount = incidents.filter((i) => i.priority === 'LOW').length;
-  const resolvedCount = incidents.filter((i) => i.status === 'RESOLVED').length;
-
-  const donutData = [
-    { name: 'Critical', value: criticalCount || 1, color: '#ef4444' },
-    { name: 'High', value: highCount || 2, color: '#f59e0b' },
-    { name: 'Medium', value: mediumCount || 3, color: '#eab308' },
-    { name: 'Low', value: lowCount || 1, color: '#10b981' },
-    { name: 'Resolved', value: resolvedCount || 4, color: '#06b6d4' },
-  ];
-
-  // Traffic Corridor Speeds for BarChart
-  const trafficChartData = trafficCorridors.map((c) => ({
-    name: c.name.replace(' Corridor', '').replace(' Express Arterial', '').replace(' Administrative Axis', ''),
-    Speed: c.avgSpeedKmh,
-    FreeFlow: c.freeFlowSpeedKmh,
-  }));
-
-  // Timeline Mock Hourly Data
-  const timelineData = [
-    { time: '06:00', Critical: 0, High: 1, Medium: 2 },
-    { time: '08:00', Critical: 1, High: 2, Medium: 1 },
-    { time: '10:00', Critical: 2, High: 3, Medium: 2 },
-    { time: '12:00', Critical: 1, High: 2, Medium: 3 },
-    { time: '14:00', Critical: 0, High: 1, Medium: 2 },
-    { time: '16:00', Critical: 1, High: 2, Medium: 1 },
-  ];
-
-  // Render individual widget component by ID
   const renderWidget = (id: WidgetId) => {
     switch (id) {
       case 'INCIDENTS':
         return (
-          <div className="flex flex-col justify-between h-full min-w-0 min-h-0">
-            <div className="flex items-center justify-between border-b border-white/5 pb-1 text-[8.5px] sm:text-[9px] font-bold uppercase tracking-widest gap-1">
-              <div className="flex items-center gap-1 min-w-0">
-                <PieIcon className="w-3 h-3 text-[#06B6D4] shrink-0" />
-                <span className="text-white/80 truncate">Incident Distribution</span>
-              </div>
-              <span className="text-[#06B6D4] shrink-0 font-mono">TOTAL: {incidents.length}</span>
-            </div>
-
-            <div className="flex items-center justify-between flex-1 min-w-0 min-h-0">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 relative flex items-center justify-center shrink-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={donutData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={18}
-                      outerRadius={34}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {donutData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#0a0a0a',
-                        borderColor: 'rgba(255,255,255,0.1)',
-                        fontSize: '10px',
-                        borderRadius: '4px',
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex items-center justify-center font-bold text-xs text-white">
-                  {incidents.length}
-                </div>
-              </div>
-
-              <div className="space-y-1 text-[9px] font-mono">
-                {donutData.map((d) => (
-                  <div key={d.name} className="flex items-center justify-between space-x-2">
-                    <div className="flex items-center space-x-1">
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: d.color }} />
-                      <span className="text-white/60">{d.name}</span>
-                    </div>
-                    <span className="text-white font-bold">{d.value}</span>
-                  </div>
-                ))}
-              </div>
+          <div className="flex flex-col h-full min-w-0 min-h-0">
+            <WidgetHead
+              icon={<PieChart size={11} />}
+              title="Incident distribution"
+              right={<Tally label="Open" count={incidents.filter((i) => i.status !== 'RESOLVED').length} />}
+            />
+            <div className="flex-1 min-h-0 overflow-y-auto ark-scroll pt-2">
+              <DistributionBar segments={distribution} label="Incidents by severity" />
             </div>
           </div>
         );
 
       case 'TRAFFIC':
         return (
-          <div className="flex flex-col justify-between h-full min-w-0 min-h-0">
-            <div className="flex items-center justify-between border-b border-white/5 pb-1 text-[9px] font-bold uppercase tracking-widest gap-1">
-              <div className="flex items-center space-x-1">
-                <button
-                  type="button"
-                  onClick={() => setWidget2Mode('TRAFFIC')}
-                  className={`px-1.5 py-0.5 rounded transition-all ${
-                    widget2Mode === 'TRAFFIC' ? 'bg-[#06B6D4]/20 text-[#06B6D4] font-bold' : 'text-white/40 hover:text-white'
-                  }`}
-                >
-                  TRAFFIC FLOW
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setWidget2Mode('TIMELINE')}
-                  className={`px-1.5 py-0.5 rounded transition-all ${
-                    widget2Mode === 'TIMELINE' ? 'bg-[#06B6D4]/20 text-[#06B6D4] font-bold' : 'text-white/40 hover:text-white'
-                  }`}
-                >
-                  TIMELINE
-                </button>
-              </div>
-              <span className="text-[#10B981] text-[8px] font-bold shrink-0">
-                {widget2Mode === 'TRAFFIC' ? `${trafficSummary?.cityAvgSpeedKmh || 25} KM/H` : timelineFilter}
-              </span>
-            </div>
-
-            <div className="flex-1 w-full pt-1 min-h-0">
-              {widget2Mode === 'TRAFFIC' ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={trafficChartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis dataKey="name" stroke="rgba(255,255,255,0.3)" fontSize={7} tickLine={false} interval={0} />
-                    <YAxis stroke="rgba(255,255,255,0.3)" fontSize={8} tickLine={false} unit="k" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#0a0a0a',
-                        borderColor: 'rgba(255,255,255,0.1)',
-                        fontSize: '10px',
-                        borderRadius: '4px',
-                      }}
-                    />
-                    <Bar dataKey="Speed" fill="#06b6d4" radius={[2, 2, 0, 0]} />
-                    <Bar dataKey="FreeFlow" fill="rgba(255,255,255,0.1)" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+          <div className="flex flex-col h-full min-w-0 min-h-0">
+            <WidgetHead
+              icon={<BarChart2 size={11} />}
+              title={trafficMode === 'FLOW' ? 'Corridor speed' : 'Incidents by hour'}
+              right={
+                <Segmented<'FLOW' | 'TIMELINE'>
+                  label="Workbench chart"
+                  value={trafficMode}
+                  options={[
+                    { value: 'FLOW', label: 'FLOW', hint: 'Observed against free-flow speed, per corridor' },
+                    { value: 'TIMELINE', label: 'HRS', hint: 'Incident starts in two-hour buckets' },
+                  ]}
+                  onChange={setTrafficMode}
+                />
+              }
+            />
+            <div className="flex-1 min-h-0 pt-1">
+              {trafficMode === 'FLOW' ? (
+                <Chart
+                  label="Observed versus free-flow speed by corridor"
+                  data={trafficData}
+                  xKey="name"
+                  series={TRAFFIC_SERIES}
+                  height={100}
+                  showLegend={false}
+                  yTickFormat={(value) => `${value}`}
+                  tooltipValueFormat={(value) => `${value} km/h`}
+                  emptyTitle="No corridors reporting"
+                  emptyDetail="The traffic feed has not returned corridor speeds."
+                  footer={
+                    trafficSummary
+                      ? `City average ${trafficSummary.cityAvgSpeedKmh} km/h against ${trafficSummary.cityFreeFlowAvgSpeedKmh} km/h free flow · km/h`
+                      : 'km/h · city average not reported'
+                  }
+                />
               ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={timelineData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis dataKey="time" stroke="rgba(255,255,255,0.3)" fontSize={8} tickLine={false} />
-                    <YAxis stroke="rgba(255,255,255,0.3)" fontSize={8} tickLine={false} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#0a0a0a',
-                        borderColor: 'rgba(255,255,255,0.1)',
-                        fontSize: '10px',
-                        borderRadius: '4px',
-                      }}
-                    />
-                    <Bar dataKey="Critical" stackId="a" fill="#ef4444" radius={[2, 2, 0, 0]} />
-                    <Bar dataKey="High" stackId="a" fill="#f59e0b" radius={[2, 2, 0, 0]} />
-                    <Bar dataKey="Medium" stackId="a" fill="#eab308" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <Chart
+                  label="Incident starts by two-hour bucket"
+                  data={timeline.buckets}
+                  xKey="time"
+                  series={TIMELINE_SERIES}
+                  stacked
+                  height={100}
+                  showLegend={false}
+                  emptyTitle="No timestamped incidents"
+                  footer={
+                    timeline.placed === incidents.length
+                      ? 'Last 12 hours, two-hour buckets'
+                      : `Last 12 hours · ${timeline.placed} of ${incidents.length} incidents fall in this window`
+                  }
+                />
               )}
             </div>
           </div>
@@ -311,84 +298,108 @@ export const BottomAnalytics: React.FC<BottomAnalyticsProps> = ({
   };
 
   return (
-    <div
-      style={{ height: isCollapsed ? '28px' : `${panelHeight}px` }}
-      className={`w-full bg-[#05070A] border-t border-white/15 flex flex-col shrink-0 select-none overflow-hidden font-mono min-w-0 transition-all ${
-        isResizing ? 'transition-none select-none' : ''
-      }`}
+    <section
+      aria-label="Analytics workbench"
+      style={{ height: collapsed ? COLLAPSED_HEIGHT : height }}
+      className={cx(
+        'w-full shrink-0 bg-surface border-t border-line flex flex-col overflow-hidden min-w-0',
+        resizing && 'select-none',
+      )}
     >
-      {/* --- Top Vertical Resizer Handle Bar --- */}
+      {/* --- Resize handle ------------------------------------------------- */}
       <div
-        onMouseDown={startResizing}
-        onTouchStart={startResizing}
-        onDoubleClick={() => {
-          setIsCollapsed((prev) => !prev);
-          if (isCollapsed) setPanelHeight(180);
-        }}
-        title="Drag up/down to resize panel. Double-click to toggle collapse."
-        className="w-full h-7 bg-[#080C10] hover:bg-cyan-950/40 border-b border-white/10 cursor-ns-resize flex items-center justify-between px-3 shrink-0 group transition-colors select-none"
+        onMouseDown={collapsed ? undefined : startResize}
+        onTouchStart={collapsed ? undefined : startResize}
+        onDoubleClick={() => setCollapsed((previous) => !previous)}
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label="Resize the analytics workbench"
+        title={collapsed ? 'Double-click to expand' : 'Drag to resize · double-click to collapse'}
+        className={cx(
+          'shrink-0 h-[29px] px-3 border-b border-line bg-sunken flex items-center justify-between gap-3',
+          !collapsed && 'cursor-ns-resize',
+        )}
       >
-        <div className="flex items-center gap-2 text-white/50 group-hover:text-cyan-300 transition-colors">
-          <GripHorizontal className="w-3.5 h-3.5 text-cyan-400" />
-          <span className="text-[10px] font-mono font-bold tracking-wider uppercase">
-            ANALYTICS & FEEDS COMMAND PANEL
+        <div className="flex items-center gap-2 min-w-0">
+          <GripHorizontal size={12} className="text-ink-faint shrink-0" aria-hidden />
+          <span className="ark-eyebrow truncate">Analytics workbench</span>
+          <span className="hidden sm:inline text-[10.5px] text-ink-faint truncate">
+            Drag the edge to resize · drag a panel to reorder
           </span>
-          <span className="text-[9px] text-white/30 hidden sm:inline">(Drag to resize / drag tabs to reorder)</span>
         </div>
-
-        <div className="w-16 h-1 rounded-full bg-white/20 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors hidden sm:block" />
-
-        <div className="flex items-center gap-2">
-          {!isCollapsed && (
-            <span className="text-[9px] font-mono text-white/40">{Math.round(panelHeight)}px</span>
-          )}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsCollapsed((prev) => !prev);
-              if (isCollapsed && panelHeight < 60) setPanelHeight(180);
+        <div className="flex items-center gap-1.5 shrink-0">
+          {!collapsed && <span className="ark-mono text-[10px] text-ink-faint">{Math.round(height)}px</span>}
+          <IconButton
+            label={collapsed ? 'Expand workbench' : 'Collapse workbench'}
+            icon={collapsed ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            onClick={(event) => {
+              event.stopPropagation();
+              setCollapsed((previous) => !previous);
             }}
-            className="p-0.5 rounded hover:bg-white/10 text-white/60 hover:text-white transition-colors"
-            title={isCollapsed ? 'Expand panel' : 'Collapse panel'}
-          >
-            {isCollapsed ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          </button>
+          />
         </div>
       </div>
 
-      {/* --- 4 Re-orderable Widget Grid --- */}
-      {!isCollapsed && (
-        <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-2 xl:gap-2.5 p-2 min-w-0 min-h-0 overflow-hidden">
-          {widgetOrder.map((widgetId) => (
+      {/* --- Panels -------------------------------------------------------- */}
+      {!collapsed && (
+        <div className="flex-1 min-h-0 min-w-0 grid grid-cols-2 md:grid-cols-4 gap-px bg-line overflow-hidden">
+          {order.map((id) => (
             <div
-              key={widgetId}
+              key={id}
               draggable
-              onDragStart={(e) => handleDragStart(e, widgetId)}
-              onDragOver={(e) => handleDragOver(e, widgetId)}
-              onDrop={(e) => handleDrop(e, widgetId)}
-              onDragEnd={handleDragEnd}
-              className={`gov-glass rounded-md p-2 flex flex-col justify-between min-w-0 min-h-0 relative transition-all duration-150 group ${
-                draggedWidget === widgetId ? 'opacity-30 border-2 border-dashed border-cyan-400' : ''
-              } ${
-                targetWidget === widgetId && draggedWidget !== widgetId
-                  ? 'border-2 border-cyan-400 bg-cyan-950/40 scale-[0.98]'
-                  : ''
-              }`}
+              onDragStart={(event) => {
+                setDragged(id);
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', id);
+              }}
+              onDragOver={(event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'move';
+                if (dropTarget !== id) setDropTarget(id);
+              }}
+              onDragLeave={() => setDropTarget((current) => (current === id ? null : current))}
+              onDrop={(event) => onDrop(event, id)}
+              onDragEnd={() => {
+                setDragged(null);
+                setDropTarget(null);
+              }}
+              className={cx(
+                'relative bg-surface p-2.5 flex flex-col min-w-0 min-h-0 group',
+                dragged === id && 'opacity-40',
+                dropTarget === id && dragged !== id && 'bg-accent-soft ring-1 ring-inset ring-accent-border',
+              )}
             >
-              {/* Drag Handle Icon on Card Hover */}
-              <div
-                title="Drag to swap widget position"
-                className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-1 rounded bg-black/60 text-white/60 hover:text-white z-20"
-              >
-                <GripVertical className="w-3 h-3" />
-              </div>
-
-              {renderWidget(widgetId)}
+              <GripVertical
+                size={11}
+                aria-hidden
+                className="absolute top-2 right-2 text-ink-faint opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing"
+              />
+              {renderWidget(id)}
             </div>
           ))}
         </div>
       )}
+    </section>
+  );
+});
+
+/** Shared panel header, so the four workbench panels cannot drift apart. */
+const WidgetHead = memo(function WidgetHead({
+  icon,
+  title,
+  right,
+}: {
+  icon: ReactNode;
+  title: string;
+  right?: ReactNode;
+}) {
+  return (
+    <div className="shrink-0 flex items-center justify-between gap-2 pb-1.5 border-b border-line min-w-0">
+      <span className="flex items-center gap-1.5 min-w-0">
+        <span className="text-ink-faint shrink-0">{icon}</span>
+        <span className="ark-eyebrow truncate">{title}</span>
+      </span>
+      {right && <div className="shrink-0 mr-4">{right}</div>}
     </div>
   );
-};
+});

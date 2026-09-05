@@ -56,7 +56,7 @@ export interface Focus {
 }
 
 export const INITIAL_FOCUS: Focus = {
-  tab: 'Dashboard',
+  tab: 'Command Center',
   entity: null,
   mapIntent: 'none',
   nonce: 0,
@@ -99,20 +99,25 @@ export function focusEquivalent(a: Focus, b: Focus): boolean {
 }
 
 /**
- * Which module owns an entity kind — where "open details" should land.
+ * Which destination owns an entity kind — where "open details" should land.
  *
  * One table rather than a `switch` at each call site, so a marker on the map, a
  * row in analytics and a chip on an event all navigate to the same place.
+ *
+ * A corridor lands on Mobility because a corridor is part of how the city moves;
+ * a roadside detector lands on Sensors because a detector is a piece of estate
+ * ARKA operates and maintains. The two used to share a page and the distinction
+ * was invisible.
  */
 export const HOME_TAB_FOR_KIND: Record<EntityRef['kind'], NavItem> = {
-  incident: 'Incident Center',
-  resource: 'Resource Tracker',
-  drone: 'Drone Feed',
-  camera: 'Traffic Cameras',
-  sensor: 'Traffic Management',
-  corridor: 'Traffic Management',
+  incident: 'Active Situations',
+  resource: 'Resources',
+  drone: 'Drones',
+  camera: 'Cameras',
+  sensor: 'Sensors',
+  corridor: 'Mobility',
   infrastructure: 'Infrastructure',
   utility: 'Utilities',
-  weather: 'Weather & Disaster',
-  intelligence: 'Intelligence Feed',
+  weather: 'Environment',
+  intelligence: 'Intelligence',
 };
